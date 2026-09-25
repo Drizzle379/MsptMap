@@ -10,9 +10,9 @@
 |---|---|---|
 | Minecraft 26.2 + Fabric Loader ≥ 0.19.3 | 必需 | |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | 必需 | |
-| [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 客户端必需 | 编译时只用其 API，运行时不打包 |
-| [Carpet](https://modrinth.com/mod/carpet) | 可选 | 装了才按 `commandMsptMap` 规则判权限 |
-| [Mod Menu](https://modrinth.com/mod/modmenu) | 可选 | 提供「模组菜单 → 设置」入口 |
+| [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 客户端必需 | |
+| [Carpet](https://modrinth.com/mod/carpet) | 可选 | 安装后可以管理指令使用权限 |
+| [Mod Menu](https://modrinth.com/mod/modmenu) | 建议安装 | 安装后可以快捷进行设置 |
 
 ## 构建
 
@@ -28,13 +28,13 @@ jar 放进 `mods/`。采样在服务端进行，**服务端也要装**；客户�
 
 ## 用法
 
-1. 打开世界地图，点左上角的柱状图按钮开始扫描（或输入 `/msptmap scan [秒数]`，默认 5 秒、上限 60）
-2. 按钮外圈转满后地图按区块铺色：绿 → 黄 → 红（红点默认 1.5 mspt）；加载着但窗口内没干活的区块铺淡灰
+1. 打开世界地图，点左上角的柱状图按钮开始扫描（或输入 `/msptmap scan [秒数]`）
+2. 采样成功后地图按区块卡顿情况铺色：绿 → 黄 → 红；弱加载区块为淡灰色
 3. 悬停任意区块看详情：坐标、加载等级、各类耗时
 4. ✕ 按钮清空热力图
 5. 设置：Mod Menu → 设置，或 `/msptmap config`；存在 `config/msptmap-client.properties`
 
-**单人档**：地图开着时世界暂停、服务端不走 tick，扫描要关掉地图才会开始。
+**单人档**：地图打开时世界暂停，点击扫描按钮后要关闭地图等待。
 
 服务端控制台与管理员另有同名命令，结果只打到服务端控制台。
 
