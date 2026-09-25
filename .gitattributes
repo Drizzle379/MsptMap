@@ -1,0 +1,8 @@
+# 统一 LF，避免 gradlew 被转成 CRLF 后在 Git Bash 里报 bad interpreter
+* text=auto eol=lf
+
+# Windows 批处理必须是 CRLF
+*.bat text eol=crlf
+
+# 二进制，别当文本处理
+*.jar binary

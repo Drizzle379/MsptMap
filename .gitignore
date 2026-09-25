@@ -1,0 +1,21 @@
+# Gradle / Loom 产物
+build/
+.gradle/
+run/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# 系统
+Thumbs.db
+.DS_Store
+
+# 本地留存、不进仓库
+libs/
+PLAN.md
+icons/preview-*.png

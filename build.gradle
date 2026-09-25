@@ -1,0 +1,56 @@
+plugins {
+	// 26.2 的源码未混淆，故用不 remap 的 loom
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+repositories {
+	// 地毯（可选依赖：编译时需要，运行时不打包）
+	maven { url = 'https://masa.dy.fi/maven' }
+	// Xaero 世界地图及其前置库（作者官方 maven；编译时需要，运行时不打包，玩家自己装）
+	maven {
+		name = "Xaero's Maven"
+		url = 'https://chocolateminecraft.com/maven'
+	}
+	// Mod Menu（编译时需要，运行时不打包：装了才有「模组菜单 → 设置」入口）
+	maven { url = 'https://maven.terraformersmc.com/releases/' }
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+
+	// 26.2 未混淆 → 用 implementation 而非 modImplementation
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	// 服务端与客户端各自会装 Fabric API，故仅编译时引用
+	compileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// 可选依赖：不写 depends，运行时不打包
+	compileOnly "carpet:fabric-carpet:${project.carpet_core_version}"
+	// 只需其 API 的两个类（ModMenuApi / ConfigScreenFactory），不引入它依赖的 fabric-api（transitive = false）
+	compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
+		transitive = false
+	}
+	compileOnly "xaero.map:xaeroworldmap-fabric-26.2:${project.xaero_worldmap_version}"
+	// 前置库由上面那个包的 pom 带进来，但其版本是区间 [1.7.0,1.8)（会解析成最新 1.7.x），这里钉死实测版本
+	compileOnly("xaero.lib:xaerolib-fabric-26.2:${project.xaero_lib_version}") {
+		version { strictly "${project.xaero_lib_version}" }
+	}
+
+	// MixinExtras 随包发一份 0.5.5，两个理由：
+	// ① @Local 属 MixinExtras 功能，版本须与编译所用的那一版一致；
+	// ② Mixin 0.17.4 写出的注解形式，Fabric Loader 里带的 0.5.4 认不了。
+	include(implementation("io.github.llamalad7:mixinextras-fabric:0.5.5"))
+}
+
+group = project.maven_group
+base.archivesName = project.archives_base_name
+version = "v${project.mod_version}"
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = "UTF-8"
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

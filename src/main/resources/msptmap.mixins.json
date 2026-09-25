@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "msptmap.mixins",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "BoundTickingBlockEntityMixin",
+    "ChunkMapAccessor",
+    "NaturalSpawnerMixin",
+    "ServerLevelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

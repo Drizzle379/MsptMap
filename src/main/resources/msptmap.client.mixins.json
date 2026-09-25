@@ -1,0 +1,11 @@
+{
+  "required": false,
+  "package": "msptmap.client.mixins",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "GuiMapMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
