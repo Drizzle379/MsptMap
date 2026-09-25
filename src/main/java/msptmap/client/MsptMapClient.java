@@ -26,8 +26,10 @@ import net.minecraft.network.chat.Component;
 public class MsptMapClient implements ClientModInitializer {
 	/** 点击后包确实发出时在聊天栏显示（服务端是否答应随后另说）。 */
 	static final String STARTING_MESSAGE = "分析中…";
-	/** 服务端未装本模组：包发不出去。 */
-	static final String NO_MOD_MESSAGE = "分析失败，服务端未安装 MsptMap";
+	/** 包发不出去：服务端未装本模组，或装的是协议不同的另一版本（Fabric 只告诉「对面不认识这个包 ID」）。 */
+	static final String NO_MOD_MESSAGE = "分析失败，服务端未安装 MsptMap 或版本不一致";
+	/** 包收到了而魔数对不上：对面装的是协议不同的另一版本。 */
+	static final String MISMATCH_MESSAGE = "分析失败，MsptMap 客户端与服务端版本不一致";
 
 	@Override
 	public void onInitializeClient() {
@@ -42,6 +44,13 @@ public class MsptMapClient implements ClientModInitializer {
 		});
 
 		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE, (payload, context) -> {
+			if (payload.protocol() != MsptMapMod.PROTOCOL) {
+				// 对面是别版本的服务端：字段含义已不同（状态码还可能越界），整包丢弃
+				MsptMapMod.LOGGER.warn("服务端 MsptMap 协议不一致（收到 {}，本端 {}），结果已丢弃",
+						payload.protocol(), MsptMapMod.PROTOCOL);
+				say(MISMATCH_MESSAGE);
+				return;
+			}
 			switch (payload.status()) {
 				case START -> {
 					MsptMapMod.LOGGER.info("收到 开始：服务端要扫 {} 秒", payload.seconds());
@@ -183,7 +192,7 @@ public class MsptMapClient implements ClientModInitializer {
 		if (!ClientPlayNetworking.canSend(ScanRequestPayload.TYPE)) {
 			return false;
 		}
-		ClientPlayNetworking.send(new ScanRequestPayload(seconds));
+		ClientPlayNetworking.send(ScanRequestPayload.scan(seconds));
 		return true;
 	}
 }

@@ -28,17 +28,32 @@ public final class ChunkTooltip {
 	private static final int BACKGROUND = 0xC0000000;
 	private static final int TEXT_COLOR = 0xFFFFFFFF;
 
+	/**
+	 * 各类耗时在详情与设置界面里的显示顺序。
+	 *
+	 * 与枚举顺序不同：枚举只许在末尾追加（协议按 ordinal 上线），而这里按「原版 tick 的先后」排，
+	 * 与 {@code ServerLevel.tick} 里各阶段的次序一致。新增类别时这里也要加一项，否则设置界面与
+	 * 详情都不会显示它（顺序自定）。
+	 */
+	static final List<TickCategory> ORDER = List.of(
+			TickCategory.RANDOM_TICK,
+			TickCategory.SCHEDULED,
+			TickCategory.NEIGHBOR_UPDATE,
+			TickCategory.BLOCK_EVENT,
+			TickCategory.BLOCK_ENTITY,
+			TickCategory.ENTITY,
+			TickCategory.SPAWN);
+
 	private ChunkTooltip() {
 	}
 
 	/**
 	 * 详情要显示的每一行。显示哪几行由 {@link ClientConfig} 的勾选决定，全关时返回空列表
-	 * （连「未采样」也不给）；调用方见到空列表即不画面板。明细右侧的「×1200」是另一条开关
-	 * （{@link ClientConfig#tooltipCounts}），不单独成行。
+	 * （连「未采样」也不给）；调用方见到空列表即不画面板。
 	 *
 	 * @param chunk       鼠标所指区块；快照中没有（本次未扫到）时传 null —— 坐标行照给，另加一行
 	 *                    「未采样」，以便区分「无数据」与「未显示」
-	 * @param windowTicks 窗口内经过的 tick 数，五类纳秒换算 mspt 时的分母
+	 * @param windowTicks 窗口内经过的 tick 数，各类纳秒换算 mspt 时的分母
 	 */
 	public static List<String> lines(ClientSnapshot.Chunk chunk, int chunkX, int chunkZ, int windowTicks) {
 		List<String> lines = new ArrayList<>();
@@ -58,10 +73,13 @@ public final class ChunkTooltip {
 		if (ClientConfig.tooltipTotal) {
 			lines.add("合计 " + format(chunk.mspt()) + " mspt");
 		}
-		for (TickCategory category : TickCategory.values()) {
+		if (ClientConfig.tooltipEntities) {
+			// 与耗时无关的瞬时值：方块实体 / 实体 / 刷怪那几类耗时的成因多半在这里
+			lines.add("实体数 " + chunk.entities());
+		}
+		for (TickCategory category : ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {
-				lines.add(label(category) + " " + ms(chunk.nanos()[category.ordinal()], windowTicks) + " mspt"
-						+ (ClientConfig.tooltipCounts ? " ×" + chunk.counts()[category.ordinal()] : ""));
+				lines.add(label(category) + " " + ms(chunk.nanos()[category.ordinal()], windowTicks) + " mspt");
 			}
 		}
 		return lines;
@@ -131,14 +149,17 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 五类的名称。用 switch 而非数组：枚举顺序变更会在编译期报错，不会静默错位。
+	 * 各类的名称。用 switch 而非数组：枚举新增类别时会在编译期报错，不会静默错位。
+	 * 名称都是四个字（对齐后每行等宽），新增时沿用。
 	 *
-	 * 包内可见：设置界面那五个勾选框也用它 —— 详情显示什么，设置里就写什么。
+	 * 包内可见：设置界面那些勾选框也用它 —— 详情显示什么，设置里就写什么。
 	 */
 	static String label(TickCategory category) {
 		return switch (category) {
 			case RANDOM_TICK -> "随机刻";
 			case SCHEDULED -> "计划刻";
+			case NEIGHBOR_UPDATE -> "方块更新";
+			case BLOCK_EVENT -> "方块事件";
 			case BLOCK_ENTITY -> "方块实体";
 			case ENTITY -> "实体";
 			case SPAWN -> "刷怪";

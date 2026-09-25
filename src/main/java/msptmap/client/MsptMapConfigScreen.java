@@ -91,7 +91,8 @@ public class MsptMapConfigScreen extends Screen {
 		int panelX = Math.max(MARGIN, (width - panelWidth) / 2);
 		int rightX = panelX + leftWidth + COLUMN_GAP;
 
-		int totalHeight = TITLE_HEIGHT + leftColumnHeight() + BUTTON_GAP + WIDGET_HEIGHT;
+		int totalHeight = TITLE_HEIGHT + Math.max(leftColumnHeight(), rightColumnHeight())
+				+ BUTTON_GAP + WIDGET_HEIGHT;
 		// 矮窗口（GUI 高度常见下限为 240）从 18 起，宁可下溢也不把标题顶出屏幕
 		titleY = Math.max(18, (height - totalHeight) / 2);
 		int bodyTop = titleY + TITLE_HEIGHT;
@@ -136,43 +137,34 @@ public class MsptMapConfigScreen extends Screen {
 				value -> ClientConfig.showWeakGray = value);
 		leftY += ROW;
 
-		// 右列：悬停详情。两个子列，顺序与悬停详情中的行序一致
+		// 右列：悬停详情。两个子列，自上而下与悬停详情中的行序一致：
+		// 左子列是四条单行信息，右子列是各类明细
 		int subWidth = (rightWidth - SUB_GAP) / 2;
 		int columnB = rightX + subWidth + SUB_GAP;
 		labels.add(new Label("悬停详情", rightX, bodyTop + 4, true));
 		int rightY = bodyTop + HEADER;
 		addCheckbox(rightX, rightY, "坐标", ClientConfig.tooltipCoords,
 				value -> ClientConfig.tooltipCoords = value);
-		addCheckbox(columnB, rightY, ChunkTooltip.label(TickCategory.SCHEDULED),
-				ClientConfig.tooltipCategory(TickCategory.SCHEDULED),
-				value -> ClientConfig.tooltipCategories[TickCategory.SCHEDULED.ordinal()] = value);
 		rightY += ROW;
 		addCheckbox(rightX, rightY, "等级", ClientConfig.tooltipLevels,
 				value -> ClientConfig.tooltipLevels = value);
-		addCheckbox(columnB, rightY, ChunkTooltip.label(TickCategory.BLOCK_ENTITY),
-				ClientConfig.tooltipCategory(TickCategory.BLOCK_ENTITY),
-				value -> ClientConfig.tooltipCategories[TickCategory.BLOCK_ENTITY.ordinal()] = value);
 		rightY += ROW;
 		addCheckbox(rightX, rightY, "合计", ClientConfig.tooltipTotal,
 				value -> ClientConfig.tooltipTotal = value);
-		addCheckbox(columnB, rightY, ChunkTooltip.label(TickCategory.ENTITY),
-				ClientConfig.tooltipCategory(TickCategory.ENTITY),
-				value -> ClientConfig.tooltipCategories[TickCategory.ENTITY.ordinal()] = value);
 		rightY += ROW;
-		addCheckbox(rightX, rightY, ChunkTooltip.label(TickCategory.RANDOM_TICK),
-				ClientConfig.tooltipCategory(TickCategory.RANDOM_TICK),
-				value -> ClientConfig.tooltipCategories[TickCategory.RANDOM_TICK.ordinal()] = value);
-		addCheckbox(columnB, rightY, ChunkTooltip.label(TickCategory.SPAWN),
-				ClientConfig.tooltipCategory(TickCategory.SPAWN),
-				value -> ClientConfig.tooltipCategories[TickCategory.SPAWN.ordinal()] = value);
+		addCheckbox(rightX, rightY, "实体数", ClientConfig.tooltipEntities,
+				value -> ClientConfig.tooltipEntities = value);
 
-		// 五类明细右侧的「×1200」开关。它不单独成行，与上面那八行分开摆放
-		rightY += ROW;
-		addCheckbox(rightX, rightY, "调用次数", ClientConfig.tooltipCounts,
-				value -> ClientConfig.tooltipCounts = value);
+		// 各类明细：按显示顺序逐行排，标签与开关都取自同一份定义
+		int categoryY = bodyTop + HEADER;
+		for (TickCategory category : ChunkTooltip.ORDER) {
+			addCheckbox(columnB, categoryY, ChunkTooltip.label(category), ClientConfig.tooltipCategory(category),
+					value -> ClientConfig.tooltipCategories[category.ordinal()] = value);
+			categoryY += ROW;
+		}
 
-		// 底部两个按钮
-		int buttonY = leftY + BUTTON_GAP;
+		// 底部两个按钮。两列高度不等，取较低的那列（明细比单行信息多，右列通常更长）
+		int buttonY = Math.max(leftY, categoryY) + BUTTON_GAP;
 		addRenderableWidget(Button.builder(Component.literal("恢复默认"), button -> {
 					ClientConfig.resetToDefaults();
 					// 值已回到默认，控件随之重建（滑块位置、勾选框、秒数框文本）
@@ -224,9 +216,22 @@ public class MsptMapConfigScreen extends Screen {
 		return HEADER * 2 + ROW * 5 + GROUP_GAP;
 	}
 
+	/**
+	 * 右列总高度：一个分组标题 + 较高的那个子列（左子列四条单行信息、右子列各类明细各占一行）。
+	 *
+	 * 同 {@link #leftColumnHeight()}，仅用于整块居中，增删行时同步修改。
+	 */
+	private static int rightColumnHeight() {
+		return HEADER + ROW * Math.max(4, ChunkTooltip.ORDER.size());
+	}
+
 	/** 右列宽度：两个子列，各按最长标签计算（宽度为 Checkbox 的框 + 4 + 文字）。 */
 	private int rightColumnWidth() {
-		int subWidth = Checkbox.getBoxSize(font) + 4 + font.width(ChunkTooltip.label(TickCategory.BLOCK_ENTITY));
+		int widest = 0;
+		for (TickCategory category : ChunkTooltip.ORDER) {
+			widest = Math.max(widest, font.width(ChunkTooltip.label(category)));
+		}
+		int subWidth = Checkbox.getBoxSize(font) + 4 + widest;
 		return subWidth * 2 + SUB_GAP;
 	}
 

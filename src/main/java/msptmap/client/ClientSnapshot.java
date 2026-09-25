@@ -21,14 +21,16 @@ public final class ClientSnapshot {
 	 *
 	 * {@code timed} = 本段窗口内测到过耗时：false 表示只被服务端加载、整段窗口无计时，铺淡灰 ——
 	 * 「未测到」与「测到 0」不同。
+	 *
+	 * {@code entities} 是服务端出快照那一刻该区块的实体数（含乘客），不是窗口内的平均值。
 	 */
-	public record Chunk(int x1, int z1, int x2, int z2, float mspt, int loadLevel, int computeLevel, boolean timed,
-		long[] nanos, int[] counts) {
+	public record Chunk(int x1, int z1, int x2, int z2, float mspt, int loadLevel, int computeLevel, int entities,
+		boolean timed, long[] nanos, int[] counts) {
 	}
 
 	private static final Map<Identifier, Chunk[]> byDimension = new HashMap<>();
 
-	/** 本次窗口实际经过的 tick 数：五类纳秒换算 ms/tick 的分母。 */
+	/** 本次窗口实际经过的 tick 数：各类纳秒换算 ms/tick 的分母。 */
 	private static int windowTicks;
 
 	private ClientSnapshot() {
@@ -55,6 +57,7 @@ public final class ClientSnapshot {
 						mspt(chunk.totalNanos(), windowTicks),
 						chunk.loadLevel(),
 						chunk.computeLevel(),
+						chunk.entities(),
 						timed(chunk.counts()),
 						chunk.nanos(),
 						chunk.counts());
@@ -82,7 +85,7 @@ public final class ClientSnapshot {
 		return byDimension.get(dimension);
 	}
 
-	/** 本次窗口经过的 tick 数。悬停详情用它把五类纳秒换算成 ms/tick。 */
+	/** 本次窗口经过的 tick 数。悬停详情用它把各类纳秒换算成 ms/tick。 */
 	public static int windowTicks() {
 		return windowTicks;
 	}
@@ -105,7 +108,7 @@ public final class ClientSnapshot {
 		return null;
 	}
 
-	/** 五类次数只要有一项非 0，即该区块在本段窗口内被计时过。 */
+	/** 各类次数只要有一项非 0，即该区块在本段窗口内被计时过。 */
 	private static boolean timed(int[] counts) {
 		for (int count : counts) {
 			if (count > 0) {

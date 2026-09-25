@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "msptmap",
-	"version": "0.1.0",
+	"version": "0.2.1",
 	"name": "MsptMap",
 	"description": "在 Xaero 的世界地图上，把每个区块的 MSPT 画成绿黄红热力图。",
 	"authors": [

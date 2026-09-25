@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * 快照的数据形状与字节格式。两者同处一个文件：字段变更必然连带编解码。
  *
- * 一次扫描的结果按维度分组，每个区块含坐标、五类耗时与次数、加载等级与计算等级。
+ * 一次扫描的结果按维度分组，每个区块含坐标、七类耗时与次数、实体数、加载等级与计算等级。
  * 字节上统一使用 varint/varlong：耗时为纳秒，多数在数千至数百万之间，比定长 long 省约一半流量。
  */
 public final class SnapshotCodec {
@@ -23,10 +23,11 @@ public final class SnapshotCodec {
 	 * 单个区块的全部数据。数组下标 = {@link TickCategory#ordinal()}，顺序不可变更；数组直接引用采样器
 	 * 实例，不复制。
 	 *
+	 * {@code entities} 是出快照那一刻该区块的实体数，与窗口内是否计时无关。
 	 * 耗时与次数全为 0 表示该区块仅被加载（见 MsptSampler.addLoadedChunks），客户端据此铺淡灰。
 	 */
-	public record ChunkData(int x, int z, long[] nanos, int[] counts, int loadLevel, int computeLevel) {
-		/** 五类耗时之和。除以窗口 tick 数即 ms/tick，故不单独传输。 */
+	public record ChunkData(int x, int z, long[] nanos, int[] counts, int entities, int loadLevel, int computeLevel) {
+		/** 各类耗时之和。除以窗口 tick 数即 ms/tick，故不单独传输。 */
 		public long totalNanos() {
 			long total = 0L;
 			for (long value : nanos) {
@@ -48,6 +49,7 @@ public final class SnapshotCodec {
 					buf.writeVarLong(chunk.nanos()[i]);
 					buf.writeVarInt(chunk.counts()[i]);
 				}
+				buf.writeVarInt(chunk.entities());
 				buf.writeVarInt(chunk.loadLevel());
 				buf.writeVarInt(chunk.computeLevel());
 			},
@@ -60,9 +62,10 @@ public final class SnapshotCodec {
 					nanos[i] = buf.readVarLong();
 					counts[i] = buf.readVarInt();
 				}
+				int entities = buf.readVarInt();
 				int loadLevel = buf.readVarInt();
 				int computeLevel = buf.readVarInt();
-				return new ChunkData(x, z, nanos, counts, loadLevel, computeLevel);
+				return new ChunkData(x, z, nanos, counts, entities, loadLevel, computeLevel);
 			});
 
 	/**

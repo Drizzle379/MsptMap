@@ -1,5 +1,6 @@
 package msptmap.sampler;
 
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -13,6 +14,7 @@ import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.ArrayList;
@@ -158,6 +160,7 @@ public final class MsptSampler {
 	private static SnapshotCodec.DimensionData snapshotDimension(ServerLevel level, Long2ObjectOpenHashMap<ChunkTiming> chunks,
 			int budget) {
 		DistanceManager distanceManager = level.getChunkSource().chunkMap.getDistanceManager();
+		Long2IntOpenHashMap entityCounts = entityCounts(level);
 		LongOpenHashSet measured = new LongOpenHashSet(chunks.size());
 		List<SnapshotCodec.ChunkData> out = new ArrayList<>(chunks.size());
 		chunks.forEach((key, timing) -> {
@@ -167,6 +170,7 @@ public final class MsptSampler {
 					ChunkPos.getZ(key),
 					timing.nanosArray(),
 					timing.countsArray(),
+					entityCounts.get(key),
 					// simulate=false 取加载等级，true 取计算等级（和 /chunkloadinfo 同一个方法）
 					distanceManager.getChunkLevel(key, false),
 					distanceManager.getChunkLevel(key, true)));
@@ -179,8 +183,23 @@ public final class MsptSampler {
 					level.dimension().identifier(), chunks.size() - out.size());
 		}
 		// 有计时的收完，再补「加载着、窗口内无计时」的那些
-		addLoadedChunks(level, distanceManager, measured, out, budget - used);
+		addLoadedChunks(level, distanceManager, measured, entityCounts, out, budget - used);
 		return new SnapshotCodec.DimensionData(level.dimension().identifier(), out);
+	}
+
+	/**
+	 * 出快照那一刻每个区块的实体数（含乘客）。
+	 *
+	 * 与耗时不同，这是瞬时值而非窗口内的累计，故不放进热路径：每维度遍历一遍全部实体，只在收尾时做一次。
+	 */
+	private static Long2IntOpenHashMap entityCounts(ServerLevel level) {
+		Long2IntOpenHashMap counts = new Long2IntOpenHashMap();
+		for (Entity entity : level.getAllEntities()) {
+			if (!entity.isRemoved()) {
+				counts.addTo(entity.chunkPosition().pack(), 1);
+			}
+		}
+		return counts;
 	}
 
 	/**
@@ -192,7 +211,7 @@ public final class MsptSampler {
 	 * 这批区块没有轻重可挑，装不下即中止，并留一行日志。
 	 */
 	private static void addLoadedChunks(ServerLevel level, DistanceManager distanceManager, LongOpenHashSet measured,
-			List<SnapshotCodec.ChunkData> out, int budget) {
+			Long2IntOpenHashMap entityCounts, List<SnapshotCodec.ChunkData> out, int budget) {
 		int used = 0;
 		boolean full = false;
 		for (Long2ObjectMap.Entry<ChunkHolder> entry : ((ChunkMapAccessor) (Object) level.getChunkSource().chunkMap)
@@ -207,7 +226,7 @@ public final class MsptSampler {
 			}
 			SnapshotCodec.ChunkData chunk = new SnapshotCodec.ChunkData(ChunkPos.getX(key), ChunkPos.getZ(key),
 					new long[TickCategory.values().length], new int[TickCategory.values().length],
-					loadLevel, distanceManager.getChunkLevel(key, true));
+					entityCounts.get(key), loadLevel, distanceManager.getChunkLevel(key, true));
 			int size = SnapshotCodec.encodedSize(chunk);
 			if (used + size > budget) {
 				full = true;
@@ -232,7 +251,8 @@ public final class MsptSampler {
 
 		for (int i = 0; i < Math.min(5, rows.size()); i++) {
 			Row row = rows.get(i);
-			MsptMapMod.LOGGER.info("  #{} {} ({}, {})  {} mspt [随机刻 {} 计划刻 {} 方块实体 {} 实体 {} 刷怪 {}]",
+			MsptMapMod.LOGGER.info("  #{} {} ({}, {})  {} mspt [随机刻 {} 计划刻 {} 方块更新 {} 方块事件 {} "
+							+ "方块实体 {} 实体 {} 刷怪 {}]",
 					i + 1,
 					row.level.dimension().identifier(),
 					ChunkPos.getX(row.key),
@@ -240,6 +260,8 @@ public final class MsptSampler {
 					ms(row.timing.totalNanos()),
 					ms(row.timing.nanos(TickCategory.RANDOM_TICK)),
 					ms(row.timing.nanos(TickCategory.SCHEDULED)),
+					ms(row.timing.nanos(TickCategory.NEIGHBOR_UPDATE)),
+					ms(row.timing.nanos(TickCategory.BLOCK_EVENT)),
 					ms(row.timing.nanos(TickCategory.BLOCK_ENTITY)),
 					ms(row.timing.nanos(TickCategory.ENTITY)),
 					ms(row.timing.nanos(TickCategory.SPAWN)));

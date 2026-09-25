@@ -25,6 +25,18 @@ public class MsptMapMod implements ModInitializer {
 	public static final String MOD_ID = "msptmap";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+	/**
+	 * 协议版本（魔数，"MSP2" 的十六进制）。两个包都以它打头。
+	 *
+	 * 改动包的字节格式（字段增删、顺序调整、类别增删）时必须同时 +1 并改
+	 * {@link #CHANNEL_SUFFIX}：包 ID 不同，两端协议不同的包根本不会互相送达；
+	 * 魔数则是第二道闸，防的是包 ID 相同而格式不同（漏改后缀）的情况。
+	 */
+	public static final int PROTOCOL = 0x4D535032;
+
+	/** 两个包 ID 共同的协议后缀，与 {@link #PROTOCOL} 同进同退。 */
+	public static final String CHANNEL_SUFFIX = "_v2";
+
 	@Override
 	public void onInitialize() {
 		ServerTickEvents.END_SERVER_TICK.register(server -> MsptSampler.onServerTick());
@@ -42,6 +54,12 @@ public class MsptMapMod implements ModInitializer {
 
 		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE, (payload, context) -> {
 			ServerPlayer player = context.player();
+			if (payload.protocol() != PROTOCOL) {
+				// 包名对得上而魔数对不上：对面是别版本的客户端。什么都不回（它可能读不懂本端的状态码）
+				LOGGER.warn("玩家 {} 的 MsptMap 协议不一致（收到 {}，本端 {}），已忽略其请求",
+						player.getGameProfile().name(), payload.protocol(), PROTOCOL);
+				return;
+			}
 			// 权限闸门，同 MsptMapCommand
 			if (!MsptMapSettings.canUse.test(player.createCommandSourceStack())) {
 				ServerPlayNetworking.send(player, ScanResultPayload.denied());

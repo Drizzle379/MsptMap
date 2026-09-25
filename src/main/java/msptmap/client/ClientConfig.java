@@ -54,16 +54,15 @@ public final class ClientConfig {
 	/** 弱加载（加载等级 ≥32）且整段窗口无耗时的区块是否铺淡灰。 */
 	public static boolean showWeakGray;
 
-	/** 悬停详情中三条单行信息各自的显示开关。 */
+	/** 悬停详情中四条单行信息各自的显示开关。 */
 	public static boolean tooltipCoords;
 	public static boolean tooltipLevels;
 	public static boolean tooltipTotal;
+	/** 「实体数 N」是否显示。与耗时无关，故不占明细那一组开关。 */
+	public static boolean tooltipEntities;
 
-	/** 五类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
+	/** 各类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
 	public static final boolean[] tooltipCategories = new boolean[TickCategory.values().length];
-
-	/** 五类明细右侧的「×1200」（该类在窗口内的调用次数）是否显示。默认不显示。 */
-	public static boolean tooltipCounts;
 
 	static {
 		// 默认值只在 resetToDefaults() 中写一次：首次启动与「恢复默认」共用同一份
@@ -83,8 +82,8 @@ public final class ClientConfig {
 		tooltipCoords = true;
 		tooltipLevels = true;
 		tooltipTotal = true;
+		tooltipEntities = true;
 		Arrays.fill(tooltipCategories, true);
-		tooltipCounts = false;
 	}
 
 	/** 从 config/msptmap-client.properties 读取；文件缺失或损坏则用默认值，绝不因设置崩游戏。 */
@@ -119,7 +118,7 @@ public final class ClientConfig {
 		tooltipCoords = readBoolean(properties, "tooltip.coords", tooltipCoords);
 		tooltipLevels = readBoolean(properties, "tooltip.levels", tooltipLevels);
 		tooltipTotal = readBoolean(properties, "tooltip.total", tooltipTotal);
-		tooltipCounts = readBoolean(properties, "tooltip.counts", tooltipCounts);
+		tooltipEntities = readBoolean(properties, "tooltip.entities", tooltipEntities);
 		for (TickCategory category : TickCategory.values()) {
 			tooltipCategories[category.ordinal()] =
 					readBoolean(properties, "tooltip.category." + category.name(), tooltipCategories[category.ordinal()]);
@@ -142,7 +141,7 @@ public final class ClientConfig {
 		text.append("tooltip.coords=").append(tooltipCoords).append('\n');
 		text.append("tooltip.levels=").append(tooltipLevels).append('\n');
 		text.append("tooltip.total=").append(tooltipTotal).append('\n');
-		text.append("tooltip.counts=").append(tooltipCounts).append('\n');
+		text.append("tooltip.entities=").append(tooltipEntities).append('\n');
 		for (TickCategory category : TickCategory.values()) {
 			text.append("tooltip.category.").append(category.name()).append('=')
 					.append(tooltipCategories[category.ordinal()]).append('\n');
@@ -162,7 +161,7 @@ public final class ClientConfig {
 
 	/** 悬停详情是否一行都不显示 —— 全关时整个面板不画，不留空框。 */
 	public static boolean anyTooltipLine() {
-		if (tooltipCoords || tooltipLevels || tooltipTotal) {
+		if (tooltipCoords || tooltipLevels || tooltipTotal || tooltipEntities) {
 			return true;
 		}
 		for (boolean on : tooltipCategories) {
