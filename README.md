@@ -40,4 +40,4 @@ jar 放进 `mods/`。采样在服务端进行，**服务端也要装**；客户�
 
 ## 许可
 
-[MIT](LICENSE)。按钮图标的规格见 [icons/README.md](icons/README.md)。
+[MIT](LICENSE)。
