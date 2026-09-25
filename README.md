@@ -2,7 +2,7 @@
 
 在 [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map)上，把每个区块的 MSPT（每 tick 毫秒数）画成绿黄红热力图。
 
-服务端采样随机刻、计划刻、实体三类工作的耗时，结果发给发起扫描的客户端，按区块铺色。
+服务端采样随机刻、计划刻、方块实体、实体、刷怪五类工作的耗时，结果发给发起扫描的客户端，按区块铺色。
 
 ## 环境
 
@@ -16,7 +16,7 @@
 
 ## 构建
 
-需要 JDK 25；产物在 `build/libs/MsptMap-<版本>.jar`（Windows 用 `gradlew.bat`）。
+需要 JDK 25；产物在 `build/libs/`，形如 `MsptMap-Fabric-26.2-v0.1.0.jar`（Windows 用 `gradlew.bat`）。
 
 ```shell
 ./gradlew build

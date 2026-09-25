@@ -8,6 +8,11 @@
 		"Drizzle"
 	],
 	"license": "MIT",
+	"contact": {
+		"homepage": "https://github.com/Drizzle379/MsptMap",
+		"sources": "https://github.com/Drizzle379/MsptMap",
+		"issues": "https://github.com/Drizzle379/MsptMap/issues"
+	},
 	"environment": "*",
 	"entrypoints": {
 		"main": [

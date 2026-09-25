@@ -42,7 +42,7 @@ dependencies {
 }
 
 group = project.maven_group
-base.archivesName = project.archives_base_name
+base.archivesName = "${project.archives_base_name}-Fabric-${project.minecraft_version}"
 version = "v${project.mod_version}"
 
 tasks.withType(JavaCompile).configureEach {
