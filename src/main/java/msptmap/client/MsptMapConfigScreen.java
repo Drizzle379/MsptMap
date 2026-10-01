@@ -20,7 +20,7 @@ import java.util.function.DoubleFunction;
  * 设置界面。两个入口：模组菜单（{@link ModMenuIntegration}）与命令 {@code /msptmap config}。
  *
  * 布局为两列（左：扫描 + 颜色；右：悬停详情），窗口过窄则压窄滑块并整块居中。控件位置在 {@link #init()}
- * 中算好，文字在 {@link #extractRenderState} 中绘制 —— 26.2 的框架顺序是 extractBackground →
+ * 中算好，文字在 {@link #extractRenderState} 中绘制 —— 框架顺序是 extractBackground →
  * extractRenderState → 绘制控件，故 super 之后再画会压在控件底层（文字只写在控件旁的空白处，不重叠）。
  *
  * 落盘只有一处：{@link #onClose()}。滑块拖动、勾选框点击、秒数框输入都立刻写入内存字段（地图下一帧即
@@ -188,7 +188,7 @@ public class MsptMapConfigScreen extends Screen {
 	}
 
 	/**
-	 * 窗口改大小走这条路径：26.2 的 {@code init(int, int)} 只在首次调用 {@link #init()}，之后都调这里。
+	 * 窗口改大小走这条路径：{@code init(int, int)} 只在首次调用 {@link #init()}，之后都调这里。
 	 * 不接则窗口拉大后控件留在原处、旁边的文字却按新布局走，整块就散了。
 	 */
 	@Override
@@ -238,7 +238,7 @@ public class MsptMapConfigScreen extends Screen {
 	/**
 	 * 秒数输入框。
 	 *
-	 * 26.2 的 EditBox 没有 setFilter，合法范围自行把关：输入非法则把框内文本改回当前
+	 * EditBox 没有 setFilter，合法范围自行把关：输入非法则把框内文本改回当前
 	 * 生效值（改回的文本必然合法，故 responder 不会递归多层），使框内显示与将要发送的始终一致。
 	 * 清空时先不处理 —— 需允许擦掉旧值重输，此时的值仍是上一个合法值。
 	 */
@@ -273,7 +273,7 @@ public class MsptMapConfigScreen extends Screen {
 				.selected(selected)
 				.onValueChange((control, value) -> apply.accept(value))
 				.build();
-		// 提示需自行挂载：Builder 的 setTooltip 仅在标签长到要折三行以上时才生效（26.2 的
+		// 提示需自行挂载：Builder 的 setTooltip 仅在标签长到要折三行以上时才生效（
 		// overflowsRowLimit），而这些标签都是一行，走 Builder 提示会被丢弃。
 		if (tooltip != null) {
 			checkbox.setTooltip(Tooltip.create(Component.literal(tooltip)));

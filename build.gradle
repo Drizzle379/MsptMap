@@ -1,5 +1,5 @@
 plugins {
-	// 26.2 的源码未混淆，故用不 remap 的 loom
+	// 源码未混淆，故用不 remap 的 loom
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
@@ -18,7 +18,7 @@ repositories {
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-	// 26.2 未混淆 → 用 implementation 而非 modImplementation
+	// 未混淆 → 用 implementation 而非 modImplementation
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	// 服务端与客户端各自会装 Fabric API，故不打包进 jar（打包只有 include() 会做）。但必须用
 	// implementation 而非 compileOnly：后者只在编译期可见，runServer/runClient 的运行时 classpath

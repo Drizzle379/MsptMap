@@ -13,7 +13,7 @@ import msptmap.MsptMapSettings;
  *
  * 该类仅在装了地毯时被加载：调用点是 MsptMapMod 里那道 isModLoaded 守卫。
  */
-// 地毯 26.2 已把 carpet.settings 标为待删除，但新版 api 没有 desc 字段，用它则 /carpet 列表中的
+// 地毯已把 carpet.settings 标为待删除，但新版 api 没有 desc 字段，用它则 /carpet 列表中的
 // 说明消失（需另配语言文件）。地毯自身的规则也仍在使用这一套。
 @SuppressWarnings("removal")
 public final class CarpetCompat implements CarpetExtension {

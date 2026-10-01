@@ -45,7 +45,7 @@ public class MsptMapMod implements ModInitializer {
 
 		// 仅装了地毯才加载 CarpetCompat：守卫不通过时 JVM 不会解析它引用的那些地毯类。
 		// 再包一层 LinkageError：地毯若移除了 CarpetCompat 依赖的类，这里降级即可，
-		// 不能让整个服务端起不来（地毯 26.2 已把 carpet.settings 标为 forRemoval）。
+		// 不能让整个服务端起不来（地毯已把 carpet.settings 标为 forRemoval）。
 		if (FabricLoader.getInstance().isModLoaded("carpet")) {
 			try {
 				CarpetCompat.register();

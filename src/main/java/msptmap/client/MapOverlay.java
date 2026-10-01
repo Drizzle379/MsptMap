@@ -20,7 +20,7 @@ import xaero.map.graphics.MapRenderHelper;
  * 阈值、透明度、灰底开关均来自 {@link ClientConfig}，每帧现读（静态字段，读取即一次访存）。
  */
 public final class MapOverlay {
-	/** 达到该加载等级即弱加载（26.2 中 ChunkLevel.isBlockTicking 的界线为 32）。 */
+	/** 达到该加载等级即弱加载（ChunkLevel.isBlockTicking 的界线为 32）。 */
 	private static final int WEAK_LOAD_LEVEL = 32;
 
 	/** 弱加载且无耗时的区块铺的淡灰。 */
