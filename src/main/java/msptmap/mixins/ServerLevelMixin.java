@@ -1,5 +1,7 @@
 package msptmap.mixins;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.core.BlockPos;
@@ -97,21 +99,23 @@ public abstract class ServerLevelMixin {
 	/**
 	 * 方块更新：通知某坐标的六个邻居。红石连锁在派发过程中会再绕回本方法，故只记最外层那一次
 	 * （嵌套调用的耗时已含在外层里，逐个记账会重复累加）；区块算最外层那次的位置。
+	 *
+	 * 用 @WrapMethod 而非 HEAD / RETURN 两次 @Inject：深度计数须在 try-finally 里还原 —— 目标方法
+	 * 抛出异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
 	 */
-	@Inject(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
-			+ "Lnet/minecraft/world/level/redstone/Orientation;)V", at = @At("HEAD"))
-	private void msptmapNeighborBegin(BlockPos pos, Block sourceBlock, Orientation orientation, CallbackInfo ci) {
+	@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
+			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
+	private void msptmapNeighbor(BlockPos pos, Block sourceBlock, Orientation orientation, Operation<Void> original) {
 		if (this.msptmapNeighborDepth++ == 0) {
 			this.msptmapNeighborStart = MsptSampler.begin();
 		}
-	}
-
-	@Inject(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
-			+ "Lnet/minecraft/world/level/redstone/Orientation;)V", at = @At("RETURN"))
-	private void msptmapNeighborEnd(BlockPos pos, Block sourceBlock, Orientation orientation, CallbackInfo ci) {
-		if (--this.msptmapNeighborDepth == 0) {
-			MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkPos.pack(pos),
-					this.msptmapNeighborStart);
+		try {
+			original.call(pos, sourceBlock, orientation);
+		} finally {
+			if (--this.msptmapNeighborDepth == 0) {
+				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkPos.pack(pos),
+						this.msptmapNeighborStart);
+			}
 		}
 	}
 

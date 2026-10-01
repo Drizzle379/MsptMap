@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -34,8 +35,11 @@ import xaero.map.world.MapDimension;
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class GuiMapMixin {
 	/** 扫描按钮的框：进度圈贴着它画，故按钮与圈共用这组常量。 */
+	@Unique
 	private static final int SCAN_BUTTON_X = 0;
+	@Unique
 	private static final int SCAN_BUTTON_Y = 40;
+	@Unique
 	private static final int SCAN_BUTTON_SIZE = 20;
 
 	/** 地图显示的维度、地图世界是否可用，均由它取得。 */
@@ -53,9 +57,9 @@ public abstract class GuiMapMixin {
 	private void msptmap$addButton(CallbackInfo ci) {
 		// 左侧那一列：齿轮在 (0,0) 的 30×30，Xaero 自己的按钮都在右边那列和底边，这一段是空的。
 		// 用 Xaero 自己的 GuiTexturedButton：无底框、只有图标，悬停时图标上浮并变亮，无需自行绘制
-		// 尺寸照左下角那一列（20×20 的按钮内画 16×16 图标），贴图见
-		// icons/draw_icons.py。按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示也是
-		// 它自己的 ScreenBase 扫控件画的。提示为 Supplier，悬停时每帧调用一次，故用 lambda。
+		// 尺寸照左下角那一列（20×20 的按钮内画 16×16 图标，白块 11×11 居中、右下 1 px 灰影）。
+		// 按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示也是它自己的 ScreenBase
+		// 扫控件画的。提示为 Supplier，悬停时每帧调用一次，故用 lambda。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
 				Identifier.fromNamespaceAndPath(MsptMapMod.MOD_ID, "textures/gui/scan.png"),

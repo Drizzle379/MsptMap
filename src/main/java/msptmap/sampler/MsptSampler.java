@@ -142,6 +142,9 @@ public final class MsptSampler {
 		} else {
 			logTopChunks();
 		}
+		// 须在 snapshot() / logTopChunks() 之后：外层表的键是 ServerLevel，不清则多世界服务器
+		// 卸载某个世界后，它仍被这张表强引用着，回收不掉。
+		timings.clear();
 	}
 
 	/**

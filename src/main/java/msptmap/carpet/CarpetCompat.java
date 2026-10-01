@@ -5,6 +5,7 @@ import carpet.CarpetServer;
 import carpet.api.settings.RuleCategory;
 import carpet.settings.Rule;
 import carpet.utils.CommandHelper;
+import msptmap.MsptMapMod;
 import msptmap.MsptMapSettings;
 
 /**
@@ -34,9 +35,15 @@ public final class CarpetCompat implements CarpetExtension {
 
 	@Override
 	public void onGameStarted() {
-		// 规则注册进地毯规则表：/carpet 列表里可见、可用 /carpet commandMsptMap 修改
-		CarpetServer.settingsManager.parseSettingsClass(CarpetCompat.class);
-		// 改写门面：每次判定现读规则值，改完立即生效
-		MsptMapSettings.canUse = source -> CommandHelper.canUseCommand(source, commandMsptMap);
+		try {
+			// 规则注册进地毯规则表：/carpet 列表里可见、可用 /carpet commandMsptMap 修改
+			CarpetServer.settingsManager.parseSettingsClass(CarpetCompat.class);
+			// 改写门面：每次判定现读规则值，改完立即生效
+			MsptMapSettings.canUse = source -> CommandHelper.canUseCommand(source, commandMsptMap);
+		} catch (LinkageError | RuntimeException e) {
+			// 地毯移除 carpet.settings 后，上面两句会解析不到字段或注解。此处降级而非崩溃：
+			// 规则不注册 → canUse 保持默认值 → 谁都能用，日志里说明原因。
+			MsptMapMod.LOGGER.warn("地毯不含 carpet.settings，权限规则未注册，MsptMap 对所有人开放", e);
+		}
 	}
 }

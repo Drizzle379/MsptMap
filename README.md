@@ -16,7 +16,7 @@
 
 ## 构建
 
-需要 JDK 25；产物在 `build/libs/`，形如 `MsptMap-Fabric-26.2-v0.2.1.jar`（Windows 用 `gradlew.bat`）。
+需要 JDK 25；产物在 `build/libs/`，形如 `MsptMap-Fabric-26.2-v0.2.2.jar`（Windows 用 `gradlew.bat`）。
 
 ```shell
 ./gradlew build

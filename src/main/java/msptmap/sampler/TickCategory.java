@@ -4,7 +4,7 @@ package msptmap.sampler;
  * 计入耗时的七类工作。
  *
  * 顺序不可变更：ChunkTiming 的数组按下标（ordinal）存储，快照也按此顺序上线。新增类别只能追加在末尾；
- * 界面上的显示顺序另有一套，见 {@link msptmap.client.ChunkTooltip#ORDER}。
+ * 界面上的显示顺序另有一套，见 {@code msptmap.client.ChunkTooltip#ORDER}（包级可见，链接不到，故用 code）。
  */
 public enum TickCategory {
 	/** 随机刻：ServerLevel.tickChunk 整个方法的耗时（其中绝大部分是随机刻）。 */

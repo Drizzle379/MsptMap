@@ -20,8 +20,10 @@ dependencies {
 
 	// 26.2 未混淆 → 用 implementation 而非 modImplementation
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	// 服务端与客户端各自会装 Fabric API，故仅编译时引用
-	compileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// 服务端与客户端各自会装 Fabric API，故不打包进 jar（打包只有 include() 会做）。但必须用
+	// implementation 而非 compileOnly：后者只在编译期可见，runServer/runClient 的运行时 classpath
+	// 上没有它，Fabric Loader 会报 HARD_DEP_NO_CANDIDATE「需要 fabric-api 但没有安装它」。
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
 	// 可选依赖：不写 depends，运行时不打包
 	compileOnly "carpet:fabric-carpet:${project.carpet_core_version}"
@@ -44,6 +46,20 @@ dependencies {
 group = project.maven_group
 base.archivesName = "${project.archives_base_name}-Fabric-${project.minecraft_version}"
 version = "v${project.mod_version}"
+
+// fabric.mod.json 里的 ${version} 由这里填。填 mod_version（不带 v）：jar 文件名那个 v 前缀是另一回事，
+// 由上面的 version 属性决定。这样升版本只改 gradle.properties 一处，不会两边对不上。
+// filteringCharset 须显式写：该文件里有中文描述，靠平台默认编码会乱码。
+processResources {
+	filteringCharset = "UTF-8"
+	// 先取到局部变量：filesMatching 的闭包在【任务执行时】才跑，在那里读 project 会触发 Gradle 的
+	// "invocation-of-task-project-at-execution-time" 弃用警告（Gradle 10 会移除该用法）。
+	def modVersion = project.mod_version
+	inputs.property "version", modVersion
+	filesMatching("fabric.mod.json") {
+		expand "version": modVersion
+	}
+}
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.encoding = "UTF-8"

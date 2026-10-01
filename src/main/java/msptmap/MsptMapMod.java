@@ -43,9 +43,15 @@ public class MsptMapMod implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registryAccess, environment) -> MsptMapCommand.register(dispatcher));
 
-		// 仅装了地毯才加载 CarpetCompat：守卫不通过时 JVM 不会解析它引用的那些地毯类
+		// 仅装了地毯才加载 CarpetCompat：守卫不通过时 JVM 不会解析它引用的那些地毯类。
+		// 再包一层 LinkageError：地毯若移除了 CarpetCompat 依赖的类，这里降级即可，
+		// 不能让整个服务端起不来（地毯 26.2 已把 carpet.settings 标为 forRemoval）。
 		if (FabricLoader.getInstance().isModLoaded("carpet")) {
-			CarpetCompat.register();
+			try {
+				CarpetCompat.register();
+			} catch (LinkageError e) {
+				LOGGER.warn("地毯版本与本模组的地毯兼容层不匹配，权限规则未注册，MsptMap 对所有人开放", e);
+			}
 		}
 
 		// 请求包 客户端 → 服务端，结果包 服务端 → 客户端。
