@@ -1,9 +1,9 @@
 package msptmap.mixins;
 
+import msptmap.ChunkKeys;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -45,7 +45,7 @@ public abstract class BoundTickingBlockEntityMixin {
 		// start 为 0 时 MsptSampler.end 自行忽略，无需重复判断
 		// 客户端也有同一套 ticker（ClientLevel），采样仅在服务端发生
 		if (blockEntity.getLevel() instanceof ServerLevel level) {
-			MsptSampler.end(TickCategory.BLOCK_ENTITY, level, ChunkPos.pack(blockEntity.getBlockPos()), msptmapStart);
+			MsptSampler.end(TickCategory.BLOCK_ENTITY, level, ChunkKeys.pack(blockEntity.getBlockPos()), msptmapStart);
 		}
 	}
 }

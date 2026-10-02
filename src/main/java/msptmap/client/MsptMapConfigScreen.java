@@ -1,7 +1,11 @@
 package msptmap.client;
 
 import msptmap.sampler.TickCategory;
+//? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else {
+/*import net.minecraft.client.gui.GuiGraphics;
+*///?}
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
@@ -186,11 +190,24 @@ public class MsptMapConfigScreen extends Screen {
 	}
 
 	@Override
+	//? if >=26.1 {
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+		//?} else {
+	/*public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		super.render(graphics, mouseX, mouseY, partialTick);
+	*///?}
+		//? if >=26.1 {
 		graphics.centeredText(font, title, width / 2, titleY, TEXT_COLOR);
+		//?} else {
+		/*graphics.drawCenteredString(font, title, width / 2, titleY, TEXT_COLOR);
+		*///?}
 		for (Label label : labels) {
+			//? if >=26.1 {
 			graphics.text(font, label.text(), label.x(), label.y(), label.header() ? HEADER_COLOR : TEXT_COLOR);
+			//?} else {
+			/*graphics.drawString(font, label.text(), label.x(), label.y(), label.header() ? HEADER_COLOR : TEXT_COLOR);
+			*///?}
 		}
 	}
 

@@ -2,13 +2,13 @@ package msptmap.mixins;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import msptmap.ChunkKeys;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockEventData;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.Fluid;
@@ -60,7 +60,7 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickChunk", at = @At("RETURN"))
 	private void msptmapRandomTickEnd(LevelChunk chunk, int tickSpeed, CallbackInfo ci) {
-		MsptSampler.end(TickCategory.RANDOM_TICK, this.msptmapLevel(), chunk.getPos().pack(), this.msptmapRandomTickStart);
+		MsptSampler.end(TickCategory.RANDOM_TICK, this.msptmapLevel(), ChunkKeys.pack(chunk.getPos()), this.msptmapRandomTickStart);
 	}
 
 	/** 计划刻：方块。 */
@@ -71,7 +71,7 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickBlock", at = @At("RETURN"))
 	private void msptmapBlockEnd(BlockPos pos, Block block, CallbackInfo ci) {
-		MsptSampler.end(TickCategory.SCHEDULED, this.msptmapLevel(), ChunkPos.pack(pos), this.msptmapBlockStart);
+		MsptSampler.end(TickCategory.SCHEDULED, this.msptmapLevel(), ChunkKeys.pack(pos), this.msptmapBlockStart);
 	}
 
 	/** 计划刻：流体。开始时刻与方块分开存储，两者嵌套时互不覆盖。 */
@@ -82,7 +82,7 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickFluid", at = @At("RETURN"))
 	private void msptmapFluidEnd(BlockPos pos, Fluid fluid, CallbackInfo ci) {
-		MsptSampler.end(TickCategory.SCHEDULED, this.msptmapLevel(), ChunkPos.pack(pos), this.msptmapFluidStart);
+		MsptSampler.end(TickCategory.SCHEDULED, this.msptmapLevel(), ChunkKeys.pack(pos), this.msptmapFluidStart);
 	}
 
 	/** 实体。 */
@@ -93,7 +93,7 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickNonPassenger", at = @At("RETURN"))
 	private void msptmapEntityEnd(Entity entity, CallbackInfo ci) {
-		MsptSampler.end(TickCategory.ENTITY, this.msptmapLevel(), entity.chunkPosition().pack(), this.msptmapEntityStart);
+		MsptSampler.end(TickCategory.ENTITY, this.msptmapLevel(), ChunkKeys.pack(entity.chunkPosition()), this.msptmapEntityStart);
 	}
 
 	/**
@@ -113,7 +113,7 @@ public abstract class ServerLevelMixin {
 			original.call(pos, sourceBlock, orientation);
 		} finally {
 			if (--this.msptmapNeighborDepth == 0) {
-				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkPos.pack(pos),
+				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
 						this.msptmapNeighborStart);
 			}
 		}
@@ -133,7 +133,7 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "doBlockEvent", at = @At("RETURN"))
 	private void msptmapBlockEventEnd(BlockEventData eventData, CallbackInfoReturnable<Boolean> cir) {
-		MsptSampler.end(TickCategory.BLOCK_EVENT, this.msptmapLevel(), ChunkPos.pack(eventData.pos()),
+		MsptSampler.end(TickCategory.BLOCK_EVENT, this.msptmapLevel(), ChunkKeys.pack(eventData.pos()),
 				this.msptmapBlockEventStart);
 	}
 

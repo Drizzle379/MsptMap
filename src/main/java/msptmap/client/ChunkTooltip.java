@@ -5,7 +5,11 @@ import msptmap.sampler.TicketSources;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+//? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else {
+/*import net.minecraft.client.gui.GuiGraphics;
+*///?}
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.network.chat.Component;
@@ -198,7 +202,11 @@ public final class ChunkTooltip {
 	}
 
 	/** 在鼠标右下方绘制小面板。无行可画时直接返回，不留空框。 */
+	//? if >=26.1 {
 	public static void draw(GuiGraphicsExtractor graphics, int mouseX, int mouseY, List<String> lines) {
+	//?} else {
+	/*public static void draw(GuiGraphics graphics, int mouseX, int mouseY, List<String> lines) {
+	*///?}
 		if (lines.isEmpty()) {
 			return;
 		}
@@ -220,10 +228,19 @@ public final class ChunkTooltip {
 			int y = at[1] + PADDING + i * lineHeight;
 			if (line.equals(NOTE_DOUBTFUL)) {
 				// 附注：斜体、不加粗、比正文暗一档
+				//? if >=26.1 {
 				graphics.text(font, Component.literal(line).withStyle(ChatFormatting.ITALIC),
 						at[0] + PADDING, y, NOTE_COLOR);
+				//?} else {
+				/*graphics.drawString(font, Component.literal(line).withStyle(ChatFormatting.ITALIC),
+						at[0] + PADDING, y, NOTE_COLOR);
+				*///?}
 			} else {
+				//? if >=26.1 {
 				graphics.text(font, line, at[0] + PADDING, y, TEXT_COLOR);
+				//?} else {
+				/*graphics.drawString(font, line, at[0] + PADDING, y, TEXT_COLOR);
+				*///?}
 			}
 		}
 	}

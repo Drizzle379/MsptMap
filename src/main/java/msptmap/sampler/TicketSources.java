@@ -2,6 +2,7 @@ package msptmap.sampler;
 
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import msptmap.ChunkKeys;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -121,7 +122,7 @@ public final class TicketSources {
 					if (dx == 0 && dz == 0) {
 						continue;
 					}
-					long neighbor = ChunkPos.pack(x + dx, z + dz);
+					long neighbor = ChunkKeys.pack(x + dx, z + dz);
 					if (sources.containsKey(neighbor)) {
 						continue;
 					}

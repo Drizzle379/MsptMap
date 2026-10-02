@@ -52,8 +52,14 @@ public class MsptMapMod implements ModInitializer {
 		}
 
 		// 请求包 客户端 → 服务端，结果包 服务端 → 客户端。
+		// 1.21.11 及以前叫 playC2S / playS2C，26.1 起更名为 serverboundPlay / clientboundPlay。
+		//? if >=26.1 {
 		PayloadTypeRegistry.serverboundPlay().register(ScanRequestPayload.TYPE, ScanRequestPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ScanResultPayload.TYPE, ScanResultPayload.CODEC);
+		//?} else {
+		/*PayloadTypeRegistry.playC2S().register(ScanRequestPayload.TYPE, ScanRequestPayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(ScanResultPayload.TYPE, ScanResultPayload.CODEC);
+		*///?}
 
 		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE, (payload, context) -> {
 			ServerPlayer player = context.player();

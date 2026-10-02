@@ -1,5 +1,6 @@
 package msptmap.mixins;
 
+import msptmap.ChunkKeys;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.server.level.ServerLevel;
@@ -34,6 +35,6 @@ public abstract class NaturalSpawnerMixin {
 	@Inject(method = "spawnForChunk", at = @At("RETURN"))
 	private static void msptmapSpawnEnd(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState state,
 			List<MobCategory> spawningCategories, CallbackInfo ci) {
-		MsptSampler.end(TickCategory.SPAWN, level, chunk.getPos().pack(), msptmapSpawnStart);
+		MsptSampler.end(TickCategory.SPAWN, level, ChunkKeys.pack(chunk.getPos()), msptmapSpawnStart);
 	}
 }

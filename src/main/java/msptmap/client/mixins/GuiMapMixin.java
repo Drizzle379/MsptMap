@@ -10,7 +10,11 @@ import msptmap.client.MapOverlay;
 import msptmap.client.MsptMapClient;
 import msptmap.client.ScanProgress;
 import msptmap.client.ScanRing;
+//? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else {
+/*import net.minecraft.client.gui.GuiGraphics;
+*///?}
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.objectweb.asm.Opcodes;
@@ -53,7 +57,12 @@ public abstract class GuiMapMixin {
 	@Shadow
 	private int mouseBlockPosZ;
 
+	// 方法名同 render 那两处：1.21.11 及以前是 Screen.init 的 intermediary 名 method_25426
+	//? if >=26.1 {
 	@Inject(method = "init", at = @At("TAIL"), remap = false)
+	//?} else {
+	/*@Inject(method = "method_25426", at = @At("TAIL"), remap = false)
+	*///?}
 	private void msptmap$addButton(CallbackInfo ci) {
 		// 左侧那一列：齿轮在 (0,0) 的 30×30，Xaero 自己的按钮都在右边那列和底边，这一段是空的。
 		// 用 Xaero 自己的 GuiTexturedButton：无底框、只有图标，悬停时图标上浮并变亮，无需自行绘制
@@ -77,7 +86,11 @@ public abstract class GuiMapMixin {
 	 * 故画进去的方块必被这一帧画出，又不会盖住之后绘制的路标与文字。
 	 *
 	 * 局部变量按名字取（Xaero 的类带有局部变量表），不写死槽位号：槽位号随版本变化，名字不会。
+	 * 注入点的方法名随 MC 版本：1.21.11 及以前是 Screen.render 的 intermediary 名 method_25394
+	 * （Xaero 发布时被重映射成这个），26.1 起 Xaero 随原版改名 extractRenderState。
+	 * 两个形态只差方法名与屏幕类型的写法，绘制体共用 {@link #msptmap$heatmap}。
 	 */
+	//? if >=26.1 {
 	@Inject(method = "extractRenderState",
 			at = @At(value = "FIELD", target = "Lxaero/map/gui/GuiMap;prevLoadingLeaves:Z",
 					opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER),
@@ -89,6 +102,28 @@ public abstract class GuiMapMixin {
 			@Local(name = "flooredCameraX") int flooredCameraX,
 			@Local(name = "flooredCameraZ") int flooredCameraZ,
 			@Local(name = "currentDim") MapDimension currentDim) {
+		msptmap$heatmap(overlayBuffer, matrixStack, flooredCameraX, flooredCameraZ, currentDim);
+	}
+	//?} else {
+	/*@Inject(method = "method_25394",
+			at = @At(value = "FIELD", target = "Lxaero/map/gui/GuiMap;prevLoadingLeaves:Z",
+					opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER),
+			remap = false)
+	private void msptmap$drawHeatmap(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+			CallbackInfo ci,
+			@Local(name = "overlayBuffer") VertexConsumer overlayBuffer,
+			@Local(name = "matrixStack") PoseStack matrixStack,
+			@Local(name = "flooredCameraX") int flooredCameraX,
+			@Local(name = "flooredCameraZ") int flooredCameraZ,
+			@Local(name = "currentDim") MapDimension currentDim) {
+		msptmap$heatmap(overlayBuffer, matrixStack, flooredCameraX, flooredCameraZ, currentDim);
+	}
+	*///?}
+
+	/** 热力图的绘制体（与注入点的方法名 / 屏幕类型无关，两种形态共用）。 */
+	@Unique
+	private void msptmap$heatmap(VertexConsumer overlayBuffer, PoseStack matrixStack, int flooredCameraX,
+			int flooredCameraZ, MapDimension currentDim) {
 		// 维度未定时无可绘制内容（也免得下面取 getDimId() 空指针）
 		if (currentDim == null) {
 			return;
@@ -106,9 +141,27 @@ public abstract class GuiMapMixin {
 	 * Xaero 自己高亮区块用的就是同一个值。鼠标压在控件上时整个不画，判定见
 	 * {@link ChunkTooltip#overWidget}。
 	 */
+	//? if >=26.1 {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
 	private void msptmap$drawHoverTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick,
 			CallbackInfo ci) {
+		msptmap$hoverTooltip(graphics, mouseX, mouseY);
+	}
+	//?} else {
+	/*@Inject(method = "method_25394", at = @At("TAIL"), remap = false)
+	private void msptmap$drawHoverTooltip(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+			CallbackInfo ci) {
+		msptmap$hoverTooltip(graphics, mouseX, mouseY);
+	}
+	*///?}
+
+	/** 悬停详情的绘制体（与注入点的方法名 / 屏幕类型无关，两种形态共用）。 */
+	@Unique
+	//? if >=26.1 {
+	private void msptmap$hoverTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+	//?} else {
+	/*private void msptmap$hoverTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+	*///?}
 		// 按 Xaero「隐藏界面」键时详情随控件一起隐藏（热力图不隐藏，它属于地图内容）
 		if (GuiMap.hiddenUI || mapProcessor == null || !mapProcessor.isMapWorldUsable()) {
 			return;
@@ -141,9 +194,27 @@ public abstract class GuiMapMixin {
 	 * 不自行计算任何数值：进度全部来自服务端每 0.1 秒推送的包（见 {@link ScanProgress}），故单人档
 	 * 地图开着（世界暂停、服务端发不出包）时它不动。
 	 */
+	//? if >=26.1 {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
 	private void msptmap$drawScanRing(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick,
 			CallbackInfo ci) {
+		msptmap$scanRing(graphics);
+	}
+	//?} else {
+	/*@Inject(method = "method_25394", at = @At("TAIL"), remap = false)
+	private void msptmap$drawScanRing(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+			CallbackInfo ci) {
+		msptmap$scanRing(graphics);
+	}
+	*///?}
+
+	/** 进度圈的绘制体（与注入点的方法名 / 屏幕类型无关，两种形态共用）。 */
+	@Unique
+	//? if >=26.1 {
+	private void msptmap$scanRing(GuiGraphicsExtractor graphics) {
+	//?} else {
+	/*private void msptmap$scanRing(GuiGraphics graphics) {
+	*///?}
 		// 按「隐藏界面」键时随按钮一起隐藏（和悬停详情一个规矩）
 		if (GuiMap.hiddenUI || !ScanProgress.active()) {
 			return;

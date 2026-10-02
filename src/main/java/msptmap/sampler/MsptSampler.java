@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import msptmap.ChunkKeys;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
 import msptmap.net.ScanResultPayload;
@@ -221,7 +222,7 @@ public final class MsptSampler {
 		Long2IntOpenHashMap counts = new Long2IntOpenHashMap();
 		for (Entity entity : level.getAllEntities()) {
 			if (!entity.isRemoved()) {
-				counts.addTo(entity.chunkPosition().pack(), 1);
+				counts.addTo(ChunkKeys.pack(entity.chunkPosition()), 1);
 			}
 		}
 		return counts;

@@ -1,7 +1,15 @@
+// Loom 的两种形态各是一个插件 id，按版本择一应用（plugins 块本身不能写条件，故先声明版本再应用）：
+//   net.fabricmc.fabric-loom-remap —— 混淆的 MC（1.20–1.21.11）：需要映射，mod 依赖重映射到该映射
+//   net.fabricmc.fabric-loom       —— 未混淆的 MC（26.x）：无映射，不做任何 remap
 plugins {
-	// 源码未混淆，故用不 remap 的 loom
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
 }
+
+// 1.21.11 及以前的 MC 源码是混淆的（26.x 起才不混淆）。判据用版本号而非配置项：
+// 26.x 的版本串一律以 "26." 开头。
+def obfuscated = !project.minecraft_version.startsWith('26.')
+pluginManager.apply(obfuscated ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom')
 
 repositories {
 	// 地毯（可选依赖：编译时需要，运行时不打包）
@@ -17,24 +25,32 @@ repositories {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	if (obfuscated) {
+		mappings loom.officialMojangMappings()
+	}
 
-	// 未混淆 → 用 implementation 而非 modImplementation
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	// 服务端与客户端各自会装 Fabric API，故不打包进 jar（打包只有 include() 会做）。但必须用
-	// implementation 而非 compileOnly：后者只在编译期可见，runServer/runClient 的运行时 classpath
-	// 上没有它，Fabric Loader 会报 HARD_DEP_NO_CANDIDATE「需要 fabric-api 但没有安装它」。
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// 声明方式随模式：remap 模式下 mod 依赖须走 Loom 的 mod* 配置，Loom 才会把 jar 重映射到
+	// 当前映射空间（fabric-api 的类引用 MC 类型，不重映射就对不上）；未混淆模式无重映射可言，
+	// 用普通配置。两者都进运行时的 classpath。
+	// 另外 loader / fabric-api 都不可用 compileOnly：后者只在编译期可见，runServer/runClient 的
+	// 运行时 classpath 上没有它，Fabric Loader 会报 HARD_DEP_NO_CANDIDATE「需要 … 但没有安装它」。
+	def core = obfuscated ? 'modImplementation' : 'implementation'
+	dependencies.add(core, "net.fabricmc:fabric-loader:${project.loader_version}")
+	// 服务端与客户端各自会装 Fabric API，故不打包进 jar（打包只有 include() 会做）。
+	dependencies.add(core, "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}")
 
-	// 可选依赖：不写 depends，运行时不打包
-	compileOnly "carpet:fabric-carpet:${project.carpet_core_version}"
+	// 可选依赖：不写 depends，运行时不打包。混淆版本须用 modCompileOnly ——
+	// Loom 先把 mod 依赖从 intermediary 重映射到官方映射，源码才能按官方名引用它们。
+	def optional = obfuscated ? 'modCompileOnly' : 'compileOnly'
+	dependencies.add(optional, "carpet:fabric-carpet:${project.carpet_core_version}")
 	// 只需其 API 的两个类（ModMenuApi / ConfigScreenFactory），不引入它依赖的 fabric-api（transitive = false）
-	compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
+	dependencies.add(optional, "com.terraformersmc:modmenu:${project.modmenu_version}") {
 		transitive = false
 	}
 	// Xaero 的坐标自带 MC 版本后缀，故随版本变化
-	compileOnly "xaero.map:xaeroworldmap-fabric-${project.minecraft_version}:${project.xaero_worldmap_version}"
+	dependencies.add(optional, "xaero.map:xaeroworldmap-fabric-${project.minecraft_version}:${project.xaero_worldmap_version}")
 	// 前置库由上面那个包的 pom 带进来，但其版本是区间 [1.7.0,1.8)（会解析成最新 1.7.x），这里钉死实测版本
-	compileOnly("xaero.lib:xaerolib-fabric-${project.minecraft_version}:${project.xaero_lib_version}") {
+	dependencies.add(optional, "xaero.lib:xaerolib-fabric-${project.minecraft_version}:${project.xaero_lib_version}") {
 		version { strictly "${project.xaero_lib_version}" }
 	}
 

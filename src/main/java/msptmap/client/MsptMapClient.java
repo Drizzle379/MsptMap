@@ -8,11 +8,20 @@ import msptmap.net.SnapshotCodec;
 import msptmap.sampler.MsptSampler;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+// 1.21.11 及以前叫 ClientCommandManager，26.1 起更名为 ClientCommands。literal / argument 两个
+// 方法各自静态导入，调用点便无需按版本区分。
+//? if >=26.1 {
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
+//?} else {
+/*import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
+*///?}
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -89,24 +98,33 @@ public class MsptMapClient implements ClientModInitializer {
 		});
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-				ClientCommands.literal("msptmap")
-						.then(ClientCommands.literal("scan")
+				literal("msptmap")
+						.then(literal("scan")
 								.executes(context -> requestScan(context.getSource(), ClientConfig.scanSeconds))
-								.then(ClientCommands.argument("seconds", IntegerArgumentType.integer(1, MsptSampler.MAX_SECONDS))
+								.then(argument("seconds", IntegerArgumentType.integer(1, MsptSampler.MAX_SECONDS))
 										.executes(context -> requestScan(context.getSource(),
 												IntegerArgumentType.getInteger(context, "seconds")))))
 						// 设置界面的备用入口：未装 Mod Menu 时使用
-						.then(ClientCommands.literal("config").executes(context -> openConfig()))));
+						.then(literal("config").executes(context -> openConfig()))));
+	}
+
+	/** 聊天组件：26.2 起挪进了新引入的 Gui.hud，26.1 及以前 Gui 自己就有 getChat()。 */
+	private static ChatComponent chat() {
+		//? if >=26.2 {
+		return Minecraft.getInstance().gui.hud.getChat();
+		//?} else {
+		/*return Minecraft.getInstance().gui.getChat();
+		*///?}
 	}
 
 	/** 在聊天栏说一句。走客户端本地消息，仅自己可见，不发往服务器。传 null 则不说。 */
 	private static void say(String text) {
 		if (text != null) {
-			// 26.2 起 ChatComponent 挪进了新引入的 Gui.hud；26.1 的 Gui 自己就有 getChat()
-			//? if >=26.2 {
-			Minecraft.getInstance().gui.hud.getChat().addClientSystemMessage(Component.literal(text));
+			// 1.21.11 及以前名为 addMessage，26.1 起更名为 addClientSystemMessage
+			//? if >=26.1 {
+			chat().addClientSystemMessage(Component.literal(text));
 			//?} else {
-			/*Minecraft.getInstance().gui.getChat().addClientSystemMessage(Component.literal(text));
+			/*chat().addMessage(Component.literal(text));
 			*///?}
 		}
 	}

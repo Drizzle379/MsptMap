@@ -1,6 +1,10 @@
 package msptmap.client;
 
+//? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else {
+/*import net.minecraft.client.gui.GuiGraphics;
+*///?}
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +52,11 @@ public final class ScanRing {
 	}
 
 	/** 把圈画在按钮边框上：先铺整圈暗轨道，再覆盖已走过的部分。 */
+	//? if >=26.1 {
 	public static void draw(GuiGraphicsExtractor graphics, float fraction, int x, int y, int size) {
+	//?} else {
+	/*public static void draw(GuiGraphics graphics, float fraction, int x, int y, int size) {
+	*///?}
 		for (int[] side : segments(1f, x, y, size)) {
 			graphics.fill(side[0], side[1], side[2], side[3], TRACK_COLOR);
 		}
