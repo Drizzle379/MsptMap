@@ -8,6 +8,7 @@
 		"Drizzle"
 	],
 	"license": "MIT",
+	"icon": "assets/msptmap/icon.png",
 	"contact": {
 		"homepage": "https://github.com/Drizzle379/MsptMap",
 		"sources": "https://github.com/Drizzle379/MsptMap",
