@@ -61,8 +61,10 @@ dependencies {
 }
 
 group = project.maven_group
-base.archivesName = "${project.archives_base_name}-Fabric-${project.minecraft_version}"
-version = "v${project.mod_version}"
+// jar 名 = MsptMap-Fabric-v<mod 版本>+<最高支持版本>.jar（生态惯例，与 sodium-fabric-…+mc26.2r1 同构）：
+// 版本号在前、最高支持版本在后，覆盖范围见 fabric.mod.json 的 depends.minecraft
+base.archivesName = "${project.archives_base_name}-Fabric"
+version = "v${project.mod_version}+${project.jar_mc}"
 
 // fabric.mod.json 里的占位符由这里填，让该文件与具体版本脱钩：升版本、换 MC 版本都只改
 // gradle.properties，不会两边对不上。filteringCharset 须显式写：该文件里有中文描述，
