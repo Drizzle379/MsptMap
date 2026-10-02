@@ -28,7 +28,7 @@ Requires JDK 25; the artifact is written to `build/libs/` as `MsptMap-Fabric-26.
 
 Drop the jar into `mods/`. Sampling runs on the server, so **the server needs it too**; the client additionally needs Xaero's World Map. In single-player both sides run on the same machine, so one copy is enough.
 
-The server and the client must run the **same version** of MsptMap: the packet format changes between versions, and a mismatch only produces a line in chat — it does not disconnect you.
+The server and the client may run different versions of MsptMap: a mismatch still yields a result, with a note in chat that it may be inaccurate. An incompatible packet is reported in chat as a failure — it never disconnects you.
 
 ## Usage
 

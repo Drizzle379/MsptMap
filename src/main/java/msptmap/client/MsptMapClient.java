@@ -28,8 +28,10 @@ public class MsptMapClient implements ClientModInitializer {
 	static final String STARTING_MESSAGE = "分析中…";
 	/** 包发不出去：服务端未装本模组，或装的是协议不同的另一版本（Fabric 只告诉「对面不认识这个包 ID」）。 */
 	static final String NO_MOD_MESSAGE = "分析失败，服务端未安装 MsptMap 或版本不一致";
-	/** 包收到了而魔数对不上：对面装的是协议不同的另一版本。 */
+	/** 结果包读不出内容：对面格式与本端不兼容，本次作废。 */
 	static final String MISMATCH_MESSAGE = "分析失败，MsptMap 客户端与服务端版本不一致";
+	/** 版本不同但包读得动：照常出结果，只附一句提醒。 */
+	static final String VERSION_MISMATCH_MESSAGE = "MsptMap 客户端与服务端版本不一致，结果可能不准";
 
 	@Override
 	public void onInitializeClient() {
@@ -44,10 +46,9 @@ public class MsptMapClient implements ClientModInitializer {
 		});
 
 		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE, (payload, context) -> {
-			if (payload.protocol() != MsptMapMod.PROTOCOL) {
-				// 对面是别版本的服务端：字段含义已不同（状态码还可能越界），整包丢弃
-				MsptMapMod.LOGGER.warn("服务端 MsptMap 协议不一致（收到 {}，本端 {}），结果已丢弃",
-						payload.protocol(), MsptMapMod.PROTOCOL);
+			if (payload.protocol() == ScanResultPayload.MISMATCH) {
+				// 包体读不出来：对面格式与本端差得太多，本次作废
+				MsptMapMod.LOGGER.warn("服务端 MsptMap 的结果包解析不了（本端 {}），已丢弃", MsptMapMod.PROTOCOL);
 				say(MISMATCH_MESSAGE);
 				return;
 			}
@@ -80,6 +81,11 @@ public class MsptMapClient implements ClientModInitializer {
 			}
 			// 收尾的三种状态在聊天栏说一句，START 与 PROGRESS 不说话
 			say(statusMessage(payload.status()));
+			// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
+			// START 时还不知道跑不跑得完，都不提示
+			if (payload.status() == ScanResultPayload.Status.DONE && payload.protocol() != MsptMapMod.PROTOCOL) {
+				say(VERSION_MISMATCH_MESSAGE);
+			}
 		});
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(

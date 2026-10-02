@@ -13,20 +13,21 @@ import net.minecraft.resources.Identifier;
  * （{@code MsptMapSettings.seconds}）：该分支服务端仍支持，自己的客户端已不再发送；
  * 服务端实际采用的秒数由结果包的 START 状态带回。
  *
- * 版本一致性有两道闸：包 ID 带协议后缀（两端协议不同则 Fabric 视为「不认识的包」，
- * 发送方的 canSend 为假、一个字节都不发出），以及包体开头的魔数（防同名不同格式的包解出乱码）。
+ * 版本不同的两端也允许互发：包 ID 不带版本号，包体开头的魔数是**标记**而非闸门 ——
+ * 收到别的值照读下去，能读出来就照常处理，由接收方自行决定怎么提示。
  */
 public record ScanRequestPayload(int protocol, int seconds) implements CustomPacketPayload {
-	/** 魔数对不上时的占位值：服务端见此即忽略该请求。 */
+	/** 包体读不出内容时的占位值：服务端见此即忽略该请求。 */
 	public static final int MISMATCH = -1;
 
 	/**
 	 * 包 ID。用 {@code Identifier.fromNamespaceAndPath}，不用
 	 * {@code CustomPacketPayload.createType(String)}：后者只吃路径段（带冒号即抛异常），
-	 * {@code minecraft:} 前缀由它内部补上。后缀与 {@link MsptMapMod#PROTOCOL} 同进同退。
+	 * {@code minecraft:} 前缀由它内部补上。不带版本号：两端版本不同也应当能互相送达，
+	 * 能不能读由包体的魔数判定。
 	 */
 	public static final Type<ScanRequestPayload> TYPE = new Type<>(
-			Identifier.fromNamespaceAndPath(MsptMapMod.MOD_ID, "scan_request" + MsptMapMod.CHANNEL_SUFFIX));
+			Identifier.fromNamespaceAndPath(MsptMapMod.MOD_ID, "scan_request"));
 
 	public static final StreamCodec<FriendlyByteBuf, ScanRequestPayload> CODEC = StreamCodec.of(
 			(buf, payload) -> {
@@ -34,12 +35,24 @@ public record ScanRequestPayload(int protocol, int seconds) implements CustomPac
 				buf.writeVarInt(payload.seconds());
 			},
 			buf -> {
-				if (buf.readVarInt() != MsptMapMod.PROTOCOL) {
-					// 余下的按本端格式解会读出乱码，直接跳过
+				try {
+					// 魔数只当标记：是别的值也照读。请求包只有秒数一个字段，各版本一致；
+					// 读得出来就按它走，读不出来（对面格式差得太多）才判 MISMATCH
+					int peer = buf.readVarInt();
+					if (!buf.isReadable()) {
+						return new ScanRequestPayload(MISMATCH, 0);
+					}
+					int seconds = buf.readVarInt();
+					// 对面版本若在尾部多带字段：不解析、直接丢弃。出口处缓冲必须读干净——
+					// PacketDecoder 见到解码后仍有剩余字节就报 IOException 断线（PLAN 坑 24）
+					buf.skipBytes(buf.readableBytes());
+					return new ScanRequestPayload(peer, seconds);
+				} catch (Exception e) {
+					// 解码器抛出的异常会一路冒到网络层、把玩家踢下线，这里兜住；残余字节同样
+					// 要跳过，否则上层照样断线
 					buf.skipBytes(buf.readableBytes());
 					return new ScanRequestPayload(MISMATCH, 0);
 				}
-				return new ScanRequestPayload(MsptMapMod.PROTOCOL, buf.readVarInt());
 			});
 
 	/** 按本端协议构造一个请求。 */

@@ -26,16 +26,13 @@ public class MsptMapMod implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	/**
-	 * 协议版本（魔数，"MSP3" 的十六进制）。两个包都以它打头。
+	 * 本端能读的字节格式版本（魔数，"MSP3" 的十六进制）。两个包都以它打头。
 	 *
-	 * 改动包的字节格式（字段增删、顺序调整、类别增删）时必须同时 +1 并改
-	 * {@link #CHANNEL_SUFFIX}：包 ID 不同，两端协议不同的包根本不会互相送达；
-	 * 魔数则是第二道闸，防的是包 ID 相同而格式不同（漏改后缀）的情况。
+	 * 改动包的字节格式（字段增删、顺序调整、类别增删）时 +1。两端都把它当**标记**而非闸门：
+	 * 收到不同的值只提示版本可能不一致，仍照常尝试解析（见两个 Payload 的解码器），
+	 * 真读不出来才判本次失败。包 ID 不带版本号，两端只要能互相送达就允许一试。
 	 */
 	public static final int PROTOCOL = 0x4D535033;
-
-	/** 两个包 ID 共同的协议后缀，与 {@link #PROTOCOL} 同进同退。 */
-	public static final String CHANNEL_SUFFIX = "_v3";
 
 	@Override
 	public void onInitialize() {
@@ -60,11 +57,16 @@ public class MsptMapMod implements ModInitializer {
 
 		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE, (payload, context) -> {
 			ServerPlayer player = context.player();
-			if (payload.protocol() != PROTOCOL) {
-				// 包名对得上而魔数对不上：对面是别版本的客户端。什么都不回（它可能读不懂本端的状态码）
-				LOGGER.warn("玩家 {} 的 MsptMap 协议不一致（收到 {}，本端 {}），已忽略其请求",
-						player.getGameProfile().name(), payload.protocol(), PROTOCOL);
+			if (payload.protocol() == ScanRequestPayload.MISMATCH) {
+				// 包体读不出来：无从知道对面要什么，只能不作声
+				LOGGER.warn("玩家 {} 的 MsptMap 请求包解析不了，已忽略", player.getGameProfile().name());
 				return;
+			}
+			if (payload.protocol() != PROTOCOL) {
+				// 对面版本不同：只记一笔，照常往下走。请求包的字段各版本一致，扫描本身跑得起来；
+				// 结果包格式对不对由对面自己判（它的解码器会兜住不成形的包）
+				LOGGER.warn("玩家 {} 的 MsptMap 版本与本端不一致（对面 {}，本端 {}），仍按其请求执行",
+						player.getGameProfile().name(), payload.protocol(), PROTOCOL);
 			}
 			// 权限闸门，同 MsptMapCommand
 			if (!MsptMapSettings.canUse.test(player.createCommandSourceStack())) {
