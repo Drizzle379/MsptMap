@@ -102,7 +102,12 @@ public class MsptMapClient implements ClientModInitializer {
 	/** 在聊天栏说一句。走客户端本地消息，仅自己可见，不发往服务器。传 null 则不说。 */
 	private static void say(String text) {
 		if (text != null) {
+			// 26.2 起 ChatComponent 挪进了新引入的 Gui.hud；26.1 的 Gui 自己就有 getChat()
+			//? if >=26.2 {
 			Minecraft.getInstance().gui.hud.getChat().addClientSystemMessage(Component.literal(text));
+			//?} else {
+			/*Minecraft.getInstance().gui.getChat().addClientSystemMessage(Component.literal(text));
+			*///?}
 		}
 	}
 

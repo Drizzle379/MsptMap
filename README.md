@@ -10,7 +10,7 @@ The server samples the time spent on seven kinds of tick work — random ticks, 
 
 | Dependency | Required | Notes |
 |---|---|---|
-| Minecraft 26.2 + Fabric Loader ≥ 0.19.3 | Yes | |
+| Minecraft 26.1.2 / 26.2 / 26.3 + Fabric Loader ≥ 0.19.3 | Yes | |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | Yes | |
 | [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map) | Yes, on the client | |
 | [Carpet](https://modrinth.com/mod/carpet) | Optional | Enables permission management for the command |
@@ -18,7 +18,7 @@ The server samples the time spent on seven kinds of tick work — random ticks, 
 
 ## Building
 
-Requires JDK 25; the artifact is written to `build/libs/` as `MsptMap-Fabric-26.2-v0.2.3.jar` (use `gradlew.bat` on Windows).
+Requires JDK 25. `./gradlew build` produces one jar per supported Minecraft version, under `versions/<minecraft-version>/build/libs/` (use `gradlew.bat` on Windows).
 
 ```shell
 ./gradlew build

@@ -4,8 +4,29 @@ pluginManagement {
 			name = 'Fabric'
 			url = 'https://maven.fabricmc.net/'
 		}
+		// Stonecutter 的插件仓库
+		maven {
+			name = 'KikuGie Snapshots'
+			url = 'https://maven.kikugie.dev/snapshots'
+		}
 		mavenCentral()
 		gradlePluginPortal()
+	}
+}
+
+plugins {
+	id 'dev.kikugie.stonecutter' version '0.9.7'
+}
+
+// 一份源码、一份构建脚本，按版本条件注释产出多个 jar。
+// 每个注册的版本是一个子项目（目录 versions/<版本>/），里面放该版本独有的属性。
+// vcsVersion 决定 src/ 在 git 里保持哪一版的形态：提交前须让活跃版本停在它上面。
+stonecutter {
+	kotlinController = false
+	centralScript = "build.gradle"
+	create(getRootProject()) {
+		versions "26.1.2", "26.2", "26.3"
+		vcsVersion = "26.2"
 	}
 }
 

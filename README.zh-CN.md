@@ -10,7 +10,7 @@
 
 | 依赖 | 必需性 | 说明 |
 |---|---|---|
-| Minecraft 26.2 + Fabric Loader ≥ 0.19.3 | 必需 | |
+| Minecraft 26.1.2 / 26.2 / 26.3 + Fabric Loader ≥ 0.19.3 | 必需 | |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | 必需 | |
 | [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 客户端必需 | |
 | [Carpet](https://modrinth.com/mod/carpet) | 可选 | 安装后可以管理指令使用权限 |
@@ -18,7 +18,7 @@
 
 ## 构建
 
-需要 JDK 25；产物在 `build/libs/`，形如 `MsptMap-Fabric-26.2-v0.2.3.jar`（Windows 用 `gradlew.bat`）。
+需要 JDK 25；`./gradlew build` 为每个支持的 Minecraft 版本各产出一个 jar，在 `versions/<MC 版本>/build/libs/` 下（Windows 用 `gradlew.bat`）。
 
 ```shell
 ./gradlew build
