@@ -10,7 +10,7 @@ import java.util.function.Predicate;
  */
 public final class MsptMapSettings {
 	/** 未指定秒数时的默认值（客户端请求的秒数由客户端决定）。 */
-	public static IntSupplier seconds = () -> 5;
+	public static IntSupplier seconds = () -> 2;
 
 	/** 权限判定：地图按钮与服务端命令共用。没装地毯时恒为可用。 */
 	public static Predicate<CommandSourceStack> canUse = source -> true;

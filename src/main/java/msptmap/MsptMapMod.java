@@ -65,14 +65,14 @@ public class MsptMapMod implements ModInitializer {
 			ServerPlayer player = context.player();
 			if (payload.protocol() == ScanRequestPayload.MISMATCH) {
 				// 包体读不出来：无从知道对面要什么，只能不作声
-				LOGGER.warn("玩家 {} 的 MsptMap 请求包解析不了，已忽略", player.getGameProfile().name());
+				LOGGER.warn("玩家 {} 的 MsptMap 请求包解析不了，已忽略", playerName(player));
 				return;
 			}
 			if (payload.protocol() != PROTOCOL) {
 				// 对面版本不同：只记一笔，照常往下走。请求包的字段各版本一致，扫描本身跑得起来；
 				// 结果包格式对不对由对面自己判（它的解码器会兜住不成形的包）
 				LOGGER.warn("玩家 {} 的 MsptMap 版本与本端不一致（对面 {}，本端 {}），仍按其请求执行",
-						player.getGameProfile().name(), payload.protocol(), PROTOCOL);
+						playerName(player), payload.protocol(), PROTOCOL);
 			}
 			// 权限闸门，同 MsptMapCommand
 			if (!MsptMapSettings.canUse.test(player.createCommandSourceStack())) {
@@ -92,5 +92,11 @@ public class MsptMapMod implements ModInitializer {
 		});
 
 		LOGGER.info("msptmap loaded");
+	}
+
+	/** 玩家名（供日志）。走 Scoreboard 名而非 GameProfile：后者在 1.21 系列内两度更名（getName/name），
+	 * 而 getScoreboardName() 全版本稳定，语义也更准（纯玩家名，不含显示名装饰）。 */
+	private static String playerName(ServerPlayer player) {
+		return player.getScoreboardName();
 	}
 }

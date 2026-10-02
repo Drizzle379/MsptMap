@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import msptmap.ChunkKeys;
+import msptmap.Ids;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
 import msptmap.net.ScanResultPayload;
@@ -12,6 +13,7 @@ import msptmap.net.SnapshotCodec;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkLevel;
+import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -163,7 +165,8 @@ public final class MsptSampler {
 
 	private static SnapshotCodec.DimensionData snapshotDimension(ServerLevel level, Long2ObjectOpenHashMap<ChunkTiming> chunks,
 			int budget) {
-		DistanceManager distanceManager = level.getChunkSource().chunkMap.getDistanceManager();
+		ChunkMap chunkMap = level.getChunkSource().chunkMap;
+		DistanceManager distanceManager = chunkMap.getDistanceManager();
 		Long2IntOpenHashMap entityCounts = entityCounts(level);
 		// 两条链各推一遍：同一个区块上，加载票与模拟票可能不是同一张
 		Long2IntOpenHashMap loadTickets = TicketSources.resolve(level, false);
@@ -172,30 +175,46 @@ public final class MsptSampler {
 		List<SnapshotCodec.ChunkData> out = new ArrayList<>(chunks.size());
 		chunks.forEach((key, timing) -> {
 			measured.add(key);
+			//? if >=1.21.5 {
 			// simulate=false 取加载等级，true 取计算等级（和 /chunkloadinfo 同一个方法）
 			int loadLevel = distanceManager.getChunkLevel(key, false);
 			int computeLevel = distanceManager.getChunkLevel(key, true);
+			//?} else {
+			/*// 1.21.4 及以前：DistanceManager 没有按坐标取等级的接口，改用 ChunkHolder 的
+			// ticketLevel（加载）与 queueLevel（计算）。33 = 完整生成但不刻，与快照上限一致。
+			// ChunkMap.getVisibleChunkIfPresent 在 1.21.4 是 protected，走自己的 accessor。
+			ChunkHolder holder = ((ChunkMapAccessor) (Object) chunkMap).getVisibleChunks().get(key);
+			int loadLevel = holder != null ? holder.getTicketLevel() : 33;
+			int computeLevel = holder != null ? holder.getQueueLevel() : 33;
+			*///?}
 			out.add(new SnapshotCodec.ChunkData(
 					ChunkPos.getX(key),
 					ChunkPos.getZ(key),
 					timing.nanosArray(),
 					timing.countsArray(),
-					entityCounts.get(key),
+					// 显式转 long 走原始版 get(long)（缺省值 0）；装箱版 get(Object) 对不存在的键
+					// 在部分 fastutil 版本上返回 null，拆箱即 NPE（1.21.8 实机踩过）
+					entityCounts.get((long) key),
 					loadLevel,
 					computeLevel,
+					//? if >=1.21.5 {
 					ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
 					ticketCode(simTickets, key, ChunkLevel.isBlockTicking(computeLevel))));
+					//?} else {
+					/*TicketSources.NONE,
+					TicketSources.NONE));
+					*///?}
 		});
 		// 按重量降序：装不下时移除的必然是尾部最轻的
 		out.sort(Comparator.comparingLong(SnapshotCodec.ChunkData::totalNanos).reversed());
 		int used = SnapshotCodec.fitToBudget(out, budget);
 		if (out.size() < chunks.size()) {
 			MsptMapMod.LOGGER.info("维度 {} 超出字节预算：{} 个干过活的区块没带上（最轻的那些）",
-					level.dimension().identifier(), chunks.size() - out.size());
+					Ids.id(level.dimension()), chunks.size() - out.size());
 		}
 		// 有计时的收完，再补「加载着、窗口内无计时」的那些
 		addLoadedChunks(level, distanceManager, measured, entityCounts, loadTickets, simTickets, out, budget - used);
-		return new SnapshotCodec.DimensionData(level.dimension().identifier(), out);
+		return new SnapshotCodec.DimensionData(Ids.id(level.dimension()), out);
 	}
 
 	/**
@@ -251,12 +270,21 @@ public final class MsptSampler {
 			if (!ChunkLevel.isBlockTicking(loadLevel)) {
 				continue;
 			}
+			//? if >=1.21.5 {
 			int computeLevel = distanceManager.getChunkLevel(key, true);
+			//?} else {
+			/*int computeLevel = entry.getValue().getQueueLevel();
+			*///?}
 			SnapshotCodec.ChunkData chunk = new SnapshotCodec.ChunkData(ChunkPos.getX(key), ChunkPos.getZ(key),
 					new long[TickCategory.values().length], new int[TickCategory.values().length],
 					entityCounts.get(key), loadLevel, computeLevel,
+					//? if >=1.21.5 {
 					ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
 					ticketCode(simTickets, key, ChunkLevel.isBlockTicking(computeLevel)));
+					//?} else {
+					/*TicketSources.NONE,
+					TicketSources.NONE);
+					*///?}
 			int size = SnapshotCodec.encodedSize(chunk);
 			if (used + size > budget) {
 				full = true;
@@ -266,7 +294,7 @@ public final class MsptSampler {
 			out.add(chunk);
 		}
 		if (full) {
-			MsptMapMod.LOGGER.info("维度 {} 超出字节预算：一部分只加载着的区块没带上", level.dimension().identifier());
+			MsptMapMod.LOGGER.info("维度 {} 超出字节预算：一部分只加载着的区块没带上", Ids.id(level.dimension()));
 		}
 	}
 
@@ -284,7 +312,7 @@ public final class MsptSampler {
 			MsptMapMod.LOGGER.info("  #{} {} ({}, {})  {} mspt [随机刻 {} 计划刻 {} 方块更新 {} 方块事件 {} "
 							+ "方块实体 {} 实体 {} 刷怪 {}]",
 					i + 1,
-					row.level.dimension().identifier(),
+					Ids.id(row.level.dimension()),
 					ChunkPos.getX(row.key),
 					ChunkPos.getZ(row.key),
 					ms(row.timing.totalNanos()),

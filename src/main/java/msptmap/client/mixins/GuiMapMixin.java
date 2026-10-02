@@ -3,6 +3,7 @@ package msptmap.client.mixins;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import msptmap.Ids;
 import msptmap.MsptMapMod;
 import msptmap.client.ChunkTooltip;
 import msptmap.client.ClientSnapshot;
@@ -16,7 +17,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -71,12 +71,12 @@ public abstract class GuiMapMixin {
 		// 扫控件画的。提示为 Supplier，悬停时每帧调用一次，故用 lambda。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
-				Identifier.fromNamespaceAndPath(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
+				Ids.of(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
 				button -> MsptMapClient.onButtonPress(),
 				() -> new Tooltip(Component.literal(MsptMapClient.scanButtonHint())), 16, 16));
 		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(0, 62, 20, 20, 0, 0, 16, 16,
-				Identifier.fromNamespaceAndPath(MsptMapMod.MOD_ID, "textures/gui/close.png"),
+				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
 				new Tooltip(Component.literal("清空Mspt地图")), 16, 16));
 	}
@@ -129,7 +129,7 @@ public abstract class GuiMapMixin {
 			return;
 		}
 		MapOverlay.draw(matrixStack.last().pose(), overlayBuffer, flooredCameraX, flooredCameraZ,
-				currentDim.getDimId().identifier());
+				Ids.id(currentDim.getDimId()));
 	}
 
 	/**
@@ -175,7 +175,7 @@ public abstract class GuiMapMixin {
 		if (dimension == null) {
 			return;
 		}
-		Identifier dimId = dimension.getDimId().identifier();
+		String dimId = Ids.id(dimension.getDimId());
 		// 该维度从未扫描则不显示：没有热力图的地方不应出现「未采样」
 		if (ClientSnapshot.get(dimId) == null) {
 			return;

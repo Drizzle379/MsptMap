@@ -1,10 +1,10 @@
 package msptmap.net;
 
+import msptmap.Ids;
 import msptmap.MsptMapMod;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
@@ -38,13 +38,13 @@ public record ScanResultPayload(int protocol, Status status, int seconds, int wi
 	}
 
 	/**
-	 * 包 ID。用 {@code Identifier.fromNamespaceAndPath}，不用
+	 * 包 ID。用 {@link Ids#of}（资源位置构造），不用
 	 * {@code CustomPacketPayload.createType(String)}：后者只吃路径段（带冒号即抛异常），
 	 * {@code minecraft:} 前缀由它内部补上。不带版本号：两端版本不同也应当能互相送达，
 	 * 能不能读由包体的魔数判定。
 	 */
 	public static final Type<ScanResultPayload> TYPE = new Type<>(
-			Identifier.fromNamespaceAndPath(MsptMapMod.MOD_ID, "scan_result"));
+			Ids.of(MsptMapMod.MOD_ID, "scan_result"));
 
 	public static final StreamCodec<FriendlyByteBuf, ScanResultPayload> CODEC = StreamCodec.of(
 			(buf, payload) -> {

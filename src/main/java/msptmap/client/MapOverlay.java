@@ -1,7 +1,6 @@
 package msptmap.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import xaero.map.graphics.MapRenderHelper;
 
@@ -42,7 +41,7 @@ public final class MapOverlay {
 	 * @param dimension 地图当前显示的维度，非玩家所在维度 —— 切到地狱地图即绘制地狱的数据
 	 */
 	public static void draw(Matrix4f matrix, VertexConsumer buffer, int flooredCameraX, int flooredCameraZ,
-			Identifier dimension) {
+			String dimension) {
 		ClientSnapshot.Chunk[] chunks = ClientSnapshot.get(dimension);
 		if (chunks == null) {
 			return;

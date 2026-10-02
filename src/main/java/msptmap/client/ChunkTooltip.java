@@ -154,7 +154,7 @@ public final class ChunkTooltip {
 			case TicketSources.FORCED -> "强制加载";
 			case TicketSources.PORTAL -> "传送门";
 			case TicketSources.ENDER_PEARL -> "末影珍珠";
-			case TicketSources.PLAYER_SPAWN -> "玩家出生点";
+			case TicketSources.PLAYER_SPAWN -> "出生点";
 			case TicketSources.SPAWN_SEARCH -> "出生点搜索";
 			case TicketSources.DRAGON -> "末影龙";
 			default -> "未知";

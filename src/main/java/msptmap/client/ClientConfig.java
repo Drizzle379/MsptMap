@@ -82,7 +82,7 @@ public final class ClientConfig {
 
 	/** 恢复全部出厂默认（设置界面的「恢复默认」按钮同样走这里）。 */
 	public static void resetToDefaults() {
-		scanSeconds = 5;
+		scanSeconds = 2;
 		redAt = 1.5;
 		relativeColor = false;
 		fillAlpha = 0.35;
@@ -143,7 +143,7 @@ public final class ClientConfig {
 		clamp();
 		StringBuilder text = new StringBuilder();
 		text.append("# MsptMap 客户端设置。游戏里改：模组菜单 → MsptMap → 设置（备用入口 /msptmap config）。\n");
-		text.append("# 这里只存客户端偏好；服务端的默认秒数由服务端自己决定（不带秒数的扫描固定 5 秒）。\n");
+		text.append("# 这里只存客户端偏好；服务端的默认秒数由服务端自己决定（不带秒数的扫描固定 2 秒）。\n");
 		text.append("# 值越界会被自动夹回来，手改坏了也不会崩游戏。\n\n");
 		text.append("scan.seconds=").append(scanSeconds).append('\n');
 		text.append("color.redAt=").append(redAt).append('\n');

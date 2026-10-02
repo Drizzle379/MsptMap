@@ -3,7 +3,7 @@
 	"id": "msptmap",
 	"version": "${version}",
 	"name": "MsptMap",
-	"description": "在 Xaero 的世界地图上，把每个区块的 MSPT 画成绿黄红热力图。",
+	"description": "在 Xaero 的世界地图上，绘制区块 mspt 热力图。",
 	"authors": [
 		"Drizzle"
 	],

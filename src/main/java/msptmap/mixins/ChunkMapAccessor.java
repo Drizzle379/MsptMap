@@ -3,7 +3,9 @@ package msptmap.mixins;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkMap;
+//? if >=1.21.5 {
 import net.minecraft.world.level.TicketStorage;
+//?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -25,6 +27,10 @@ public interface ChunkMapAccessor {
 	@Accessor("visibleChunkMap")
 	Long2ObjectLinkedOpenHashMap<ChunkHolder> getVisibleChunks();
 
+	// 加载票表：1.21.5 起才有 TicketStorage 字段（1.21.4 及以前的票表在 DistanceManager 里，
+	// 体系不同，本模组暂不支持，见 TicketSources）。
+	//? if >=1.21.5 {
 	@Accessor("ticketStorage")
 	TicketStorage getTicketStorage();
+	//?}
 }

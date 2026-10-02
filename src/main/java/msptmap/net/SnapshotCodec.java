@@ -5,7 +5,6 @@ import msptmap.sampler.TickCategory;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
@@ -41,8 +40,8 @@ public final class SnapshotCodec {
 		}
 	}
 
-	/** 一个维度的一批区块。 */
-	public record DimensionData(Identifier dimension, List<ChunkData> chunks) {
+	/** 一个维度的一批区块。维度用全名字符串（如 {@code minecraft:overworld}）标识，与资源位置的更名无关。 */
+	public record DimensionData(String dimension, List<ChunkData> chunks) {
 	}
 
 	public static final StreamCodec<FriendlyByteBuf, ChunkData> CHUNK = StreamCodec.of(
@@ -85,13 +84,10 @@ public final class SnapshotCodec {
 
 	public static final StreamCodec<FriendlyByteBuf, DimensionData> DIMENSION = StreamCodec.of(
 			(buf, dimension) -> {
-				Identifier.STREAM_CODEC.encode(buf, dimension.dimension());
+				buf.writeUtf(dimension.dimension());
 				CHUNKS.encode(buf, dimension.chunks());
 			},
-			buf -> {
-				Identifier dimension = Identifier.STREAM_CODEC.decode(buf);
-				return new DimensionData(dimension, CHUNKS.decode(buf));
-			});
+			buf -> new DimensionData(buf.readUtf(), CHUNKS.decode(buf)));
 
 	/** 一次扫描的全部维度。字节上限由采样器控制（见 MsptSampler.MAX_SNAPSHOT_BYTES）。 */
 	public static final StreamCodec<FriendlyByteBuf, List<DimensionData>> DIMENSIONS =

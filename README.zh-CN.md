@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-在 [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map)上，把每个区块的 MSPT（每 tick 毫秒数）画成绿黄红热力图。
+在 [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map)上，绘制区块 mspt（每 tick 毫秒数）热力图。
 
 服务端采样随机刻、计划刻、方块更新、方块事件、方块实体、实体、刷怪七类工作的耗时，结果发给发起扫描的客户端，按区块铺色。
 

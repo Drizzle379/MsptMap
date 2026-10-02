@@ -141,8 +141,7 @@ public class MsptMapConfigScreen extends Screen {
 				value -> ClientConfig.showWeakGray = value);
 		leftY += ROW;
 
-		// 右列：悬停详情。两个子列，自上而下与悬停详情中的行序一致：
-		// 左子列是四条单行信息，右子列是各类明细
+		// 右列：悬停详情。两个子列，自上而下排列：左子列是单行信息的开关，右子列是合计与各类明细
 		int subWidth = (rightWidth - SUB_GAP) / 2;
 		int columnB = rightX + subWidth + SUB_GAP;
 		labels.add(new Label("悬停详情", rightX, bodyTop + 4, true));
@@ -160,14 +159,14 @@ public class MsptMapConfigScreen extends Screen {
 		addCheckbox(rightX, rightY, "计算票", ClientConfig.tooltipTicketSim,
 				value -> ClientConfig.tooltipTicketSim = value);
 		rightY += ROW;
-		addCheckbox(rightX, rightY, "合计", ClientConfig.tooltipTotal,
-				value -> ClientConfig.tooltipTotal = value);
-		rightY += ROW;
 		addCheckbox(rightX, rightY, "实体数", ClientConfig.tooltipEntities,
 				value -> ClientConfig.tooltipEntities = value);
 
-		// 各类明细：按显示顺序逐行排，标签与开关都取自同一份定义
+		// 右子列：合计在最前，其后各类明细按显示顺序逐行排，标签与开关都取自同一份定义
 		int categoryY = bodyTop + HEADER;
+		addCheckbox(columnB, categoryY, "合计", ClientConfig.tooltipTotal,
+				value -> ClientConfig.tooltipTotal = value);
+		categoryY += ROW;
 		for (TickCategory category : ChunkTooltip.ORDER) {
 			addCheckbox(columnB, categoryY, ChunkTooltip.label(category), ClientConfig.tooltipCategory(category),
 					value -> ClientConfig.tooltipCategories[category.ordinal()] = value);
@@ -227,7 +226,12 @@ public class MsptMapConfigScreen extends Screen {
 		if (parent == null) {
 			super.onClose();
 		} else {
+			// 1.21.11 及以前叫 setScreen，26.1 起更名为 setScreenAndShow
+			//? if >=26.1 {
 			minecraft.setScreenAndShow(parent);
+			//?} else {
+			/*minecraft.setScreen(parent);
+			*///?}
 		}
 	}
 
@@ -241,12 +245,12 @@ public class MsptMapConfigScreen extends Screen {
 	}
 
 	/**
-	 * 右列总高度：一个分组标题 + 较高的那个子列（左子列六条单行信息、右子列各类明细各占一行）。
+	 * 右列总高度：一个分组标题 + 较高的那个子列（左子列五条单行信息、右子列是合计 + 各类明细）。
 	 *
 	 * 同 {@link #leftColumnHeight()}，仅用于整块居中，增删行时同步修改。
 	 */
 	private static int rightColumnHeight() {
-		return HEADER + ROW * Math.max(6, ChunkTooltip.ORDER.size());
+		return HEADER + ROW * Math.max(5, ChunkTooltip.ORDER.size() + 1);
 	}
 
 	/** 右列宽度：两个子列，各按最长标签计算（宽度为 Checkbox 的框 + 4 + 文字）。 */

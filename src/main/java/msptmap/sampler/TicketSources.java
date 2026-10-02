@@ -3,10 +3,10 @@ package msptmap.sampler;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import msptmap.ChunkKeys;
+import msptmap.Ids;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.ChunkMap;
@@ -15,7 +15,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.Ticket;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
+//? if >=1.21.5 {
 import net.minecraft.world.level.TicketStorage;
+//?}
 
 import java.util.ArrayDeque;
 import java.util.List;
@@ -76,6 +78,11 @@ public final class TicketSources {
 	 * @return 区块坐标 → 编码后的来源；该链一条票都没覆盖到的区块不在表里，由调用方判为存疑
 	 */
 	public static Long2IntOpenHashMap resolve(ServerLevel level, boolean simulation) {
+		//? if <1.21.5 {
+		/*// 1.21.4 及以前的票体系与 1.21.5+ 不同（票表在 DistanceManager、无 doesLoad/doesSimulate、
+		// 类型集合也不同），加载票来源暂不支持：返回空表，客户端只显示等级、不显示来源。
+		return new Long2IntOpenHashMap();
+		*///?} else {
 		ChunkMap chunkMap = level.getChunkSource().chunkMap;
 		ChunkMapAccessor accessor = (ChunkMapAccessor) (Object) chunkMap;
 		TicketStorage storage = accessor.getTicketStorage();
@@ -141,11 +148,13 @@ public final class TicketSources {
 		// 那么多个；覆盖数应接近快照里的区块数（淡灰的那些弱加载区块也在覆盖内）。对不上就说明
 		// 这儿算错了，不必对着地图猜。
 		MsptMapMod.LOGGER.info("维度 {} 加载票（{}）：持票区块 {} 个、覆盖 {} 个区块。前几个持票区块：{}",
-				level.dimension().identifier(), simulation ? "模拟链" : "加载链", anchors, sources.size(),
+				Ids.id(level.dimension()), simulation ? "模拟链" : "加载链", anchors, sources.size(),
 				sample.isEmpty() ? "（无）" : sample);
 		return sources;
+		//?}
 	}
 
+	//? if >=1.21.5 {
 	/**
 	 * 该区块在本链上的持票信息：{类型序号, 票等级}，无票返回 null。
 	 *
@@ -174,6 +183,7 @@ public final class TicketSources {
 		}
 		return bestType == NONE ? null : new int[] {bestType, bestLevel};
 	}
+	//?}
 
 	/**
 	 * 等级相同时的取舍顺序：数值越小越优先。
@@ -196,6 +206,7 @@ public final class TicketSources {
 		};
 	}
 
+	//? if >=1.21.5 {
 	/** 这张票参不参与本条链：加载链看 doesLoad，模拟链看 doesSimulate。 */
 	private static boolean belongsTo(TicketType type, boolean simulation) {
 		return simulation ? type.doesSimulate() : type.doesLoad();
@@ -209,16 +220,20 @@ public final class TicketSources {
 	 * （都是 0 / 2），用 equals 会把前者认成后者。名字才是唯一的。
 	 */
 	private static int indexOf(TicketType type) {
-		Identifier id = BuiltInRegistries.TICKET_TYPE.getKey(type);
-		if (id == null) {
+		String path = Ids.path(BuiltInRegistries.TICKET_TYPE, type);
+		if (path == null) {
 			return UNRECOGNIZED;
 		}
-		return switch (id.getPath()) {
+		return switch (path) {
 			case "player_loading" -> PLAYER_LOADING;
+			// 1.21.4 及以前玩家票未拆分（该区间票来源已降级，此处仅保底）
+			case "player" -> PLAYER_LOADING;
 			case "player_simulation" -> PLAYER_SIMULATION;
 			case "forced" -> FORCED;
 			case "portal" -> PORTAL;
 			case "ender_pearl" -> ENDER_PEARL;
+			// 出生点票：1.21.10 及以前叫 start，1.21.11 拆成 player_spawn + spawn_search
+			case "start" -> PLAYER_SPAWN;
 			case "player_spawn" -> PLAYER_SPAWN;
 			case "spawn_search" -> SPAWN_SEARCH;
 			case "dragon" -> DRAGON;
@@ -226,6 +241,7 @@ public final class TicketSources {
 			default -> UNRECOGNIZED;
 		};
 	}
+	//?}
 
 	/** 编码：0~3 位类型，4~10 位与 11~17 位是源头相对本区块的偏移，18 位存疑。 */
 	public static int encode(int type, int offsetX, int offsetZ, boolean doubtful) {

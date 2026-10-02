@@ -1,7 +1,6 @@
 package msptmap.client;
 
 import msptmap.net.SnapshotCodec;
-import net.minecraft.resources.Identifier;
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +30,7 @@ public final class ClientSnapshot {
 		int loadTicket, int simTicket, boolean timed, long[] nanos, int[] counts) {
 	}
 
-	private static final Map<Identifier, Chunk[]> byDimension = new HashMap<>();
+	private static final Map<String, Chunk[]> byDimension = new HashMap<>();
 
 	/** 本次窗口实际经过的 tick 数：各类纳秒换算 ms/tick 的分母。 */
 	private static int windowTicks;
@@ -86,7 +85,7 @@ public final class ClientSnapshot {
 	}
 
 	/** 该维度的数据；本次未扫到（或从未扫描）时为 null。 */
-	public static Chunk[] get(Identifier dimension) {
+	public static Chunk[] get(String dimension) {
 		return byDimension.get(dimension);
 	}
 
@@ -100,7 +99,7 @@ public final class ClientSnapshot {
 	 *
 	 * 线性查找：一个维度最多几千个（上限由服务端字节预算决定），比热力图每帧绘制一遍更便宜。
 	 */
-	public static Chunk find(Identifier dimension, int chunkX, int chunkZ) {
+	public static Chunk find(String dimension, int chunkX, int chunkZ) {
 		Chunk[] chunks = byDimension.get(dimension);
 		if (chunks == null) {
 			return null;
