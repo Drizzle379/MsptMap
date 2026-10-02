@@ -164,19 +164,26 @@ public final class MsptSampler {
 			int budget) {
 		DistanceManager distanceManager = level.getChunkSource().chunkMap.getDistanceManager();
 		Long2IntOpenHashMap entityCounts = entityCounts(level);
+		// 两条链各推一遍：同一个区块上，加载票与模拟票可能不是同一张
+		Long2IntOpenHashMap loadTickets = TicketSources.resolve(level, false);
+		Long2IntOpenHashMap simTickets = TicketSources.resolve(level, true);
 		LongOpenHashSet measured = new LongOpenHashSet(chunks.size());
 		List<SnapshotCodec.ChunkData> out = new ArrayList<>(chunks.size());
 		chunks.forEach((key, timing) -> {
 			measured.add(key);
+			// simulate=false 取加载等级，true 取计算等级（和 /chunkloadinfo 同一个方法）
+			int loadLevel = distanceManager.getChunkLevel(key, false);
+			int computeLevel = distanceManager.getChunkLevel(key, true);
 			out.add(new SnapshotCodec.ChunkData(
 					ChunkPos.getX(key),
 					ChunkPos.getZ(key),
 					timing.nanosArray(),
 					timing.countsArray(),
 					entityCounts.get(key),
-					// simulate=false 取加载等级，true 取计算等级（和 /chunkloadinfo 同一个方法）
-					distanceManager.getChunkLevel(key, false),
-					distanceManager.getChunkLevel(key, true)));
+					loadLevel,
+					computeLevel,
+					ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
+					ticketCode(simTickets, key, ChunkLevel.isBlockTicking(computeLevel))));
 		});
 		// 按重量降序：装不下时移除的必然是尾部最轻的
 		out.sort(Comparator.comparingLong(SnapshotCodec.ChunkData::totalNanos).reversed());
@@ -186,8 +193,23 @@ public final class MsptSampler {
 					level.dimension().identifier(), chunks.size() - out.size());
 		}
 		// 有计时的收完，再补「加载着、窗口内无计时」的那些
-		addLoadedChunks(level, distanceManager, measured, entityCounts, out, budget - used);
+		addLoadedChunks(level, distanceManager, measured, entityCounts, loadTickets, simTickets, out, budget - used);
 		return new SnapshotCodec.DimensionData(level.dimension().identifier(), out);
+	}
+
+	/**
+	 * 该区块在某条链上的加载来源。
+	 *
+	 * 表里没有它时分两种情形，「该链本该覆盖到本区块」是分界线：本该覆盖却没有源，说明正推漏了
+	 * 一个锚点，标成存疑让客户端显示一个星号；本就不覆盖（模拟链出了模拟距离）时，无来源是正常
+	 * 状态，不该报成异常 —— 否则视距内、模拟距离外的那一圈会星号满屏，真出问题时反而看不出。
+	 *
+	 * @param expected 该链本该覆盖到本区块吗
+	 */
+	private static int ticketCode(Long2IntOpenHashMap sources, long key, boolean expected) {
+		int code = sources.get(key);
+		// 表里不存 NONE（0），所以取出 0 即代表没有
+		return code == 0 ? TicketSources.encode(TicketSources.NONE, 0, 0, expected) : code;
 	}
 
 	/**
@@ -214,7 +236,8 @@ public final class MsptSampler {
 	 * 这批区块没有轻重可挑，装不下即中止，并留一行日志。
 	 */
 	private static void addLoadedChunks(ServerLevel level, DistanceManager distanceManager, LongOpenHashSet measured,
-			Long2IntOpenHashMap entityCounts, List<SnapshotCodec.ChunkData> out, int budget) {
+			Long2IntOpenHashMap entityCounts, Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets,
+			List<SnapshotCodec.ChunkData> out, int budget) {
 		int used = 0;
 		boolean full = false;
 		for (Long2ObjectMap.Entry<ChunkHolder> entry : ((ChunkMapAccessor) (Object) level.getChunkSource().chunkMap)
@@ -227,9 +250,12 @@ public final class MsptSampler {
 			if (!ChunkLevel.isBlockTicking(loadLevel)) {
 				continue;
 			}
+			int computeLevel = distanceManager.getChunkLevel(key, true);
 			SnapshotCodec.ChunkData chunk = new SnapshotCodec.ChunkData(ChunkPos.getX(key), ChunkPos.getZ(key),
 					new long[TickCategory.values().length], new int[TickCategory.values().length],
-					entityCounts.get(key), loadLevel, distanceManager.getChunkLevel(key, true));
+					entityCounts.get(key), loadLevel, computeLevel,
+					ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
+					ticketCode(simTickets, key, ChunkLevel.isBlockTicking(computeLevel)));
 			int size = SnapshotCodec.encodedSize(chunk);
 			if (used + size > budget) {
 				full = true;

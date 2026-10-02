@@ -23,9 +23,12 @@ public final class ClientSnapshot {
 	 * 「未测到」与「测到 0」不同。
 	 *
 	 * {@code entities} 是服务端出快照那一刻该区块的实体数（含乘客），不是窗口内的平均值。
+	 *
+	 * {@code loadTicket} / {@code simTicket} 是两条链各自的加载来源（编码见
+	 * {@link msptmap.sampler.TicketSources}），供悬停详情写出「 · 玩家加载中心」这样的后缀。
 	 */
 	public record Chunk(int x1, int z1, int x2, int z2, float mspt, int loadLevel, int computeLevel, int entities,
-		boolean timed, long[] nanos, int[] counts) {
+		int loadTicket, int simTicket, boolean timed, long[] nanos, int[] counts) {
 	}
 
 	private static final Map<Identifier, Chunk[]> byDimension = new HashMap<>();
@@ -58,6 +61,8 @@ public final class ClientSnapshot {
 						chunk.loadLevel(),
 						chunk.computeLevel(),
 						chunk.entities(),
+						chunk.loadTicket(),
+						chunk.simTicket(),
 						timed(chunk.counts()),
 						chunk.nanos(),
 						chunk.counts());

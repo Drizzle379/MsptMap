@@ -149,6 +149,13 @@ public class MsptMapConfigScreen extends Screen {
 		addCheckbox(rightX, rightY, "等级", ClientConfig.tooltipLevels,
 				value -> ClientConfig.tooltipLevels = value);
 		rightY += ROW;
+		// 两个票开关紧跟在「等级」之后：它们是等级行的一部分，不是独立行
+		addCheckbox(rightX, rightY, "加载票", ClientConfig.tooltipTicketLoad,
+				value -> ClientConfig.tooltipTicketLoad = value);
+		rightY += ROW;
+		addCheckbox(rightX, rightY, "计算票", ClientConfig.tooltipTicketSim,
+				value -> ClientConfig.tooltipTicketSim = value);
+		rightY += ROW;
 		addCheckbox(rightX, rightY, "合计", ClientConfig.tooltipTotal,
 				value -> ClientConfig.tooltipTotal = value);
 		rightY += ROW;
@@ -217,12 +224,12 @@ public class MsptMapConfigScreen extends Screen {
 	}
 
 	/**
-	 * 右列总高度：一个分组标题 + 较高的那个子列（左子列四条单行信息、右子列各类明细各占一行）。
+	 * 右列总高度：一个分组标题 + 较高的那个子列（左子列六条单行信息、右子列各类明细各占一行）。
 	 *
 	 * 同 {@link #leftColumnHeight()}，仅用于整块居中，增删行时同步修改。
 	 */
 	private static int rightColumnHeight() {
-		return HEADER + ROW * Math.max(4, ChunkTooltip.ORDER.size());
+		return HEADER + ROW * Math.max(6, ChunkTooltip.ORDER.size());
 	}
 
 	/** 右列宽度：两个子列，各按最长标签计算（宽度为 Checkbox 的框 + 4 + 文字）。 */

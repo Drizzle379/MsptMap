@@ -26,16 +26,16 @@ public class MsptMapMod implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	/**
-	 * 协议版本（魔数，"MSP2" 的十六进制）。两个包都以它打头。
+	 * 协议版本（魔数，"MSP3" 的十六进制）。两个包都以它打头。
 	 *
 	 * 改动包的字节格式（字段增删、顺序调整、类别增删）时必须同时 +1 并改
 	 * {@link #CHANNEL_SUFFIX}：包 ID 不同，两端协议不同的包根本不会互相送达；
 	 * 魔数则是第二道闸，防的是包 ID 相同而格式不同（漏改后缀）的情况。
 	 */
-	public static final int PROTOCOL = 0x4D535032;
+	public static final int PROTOCOL = 0x4D535033;
 
 	/** 两个包 ID 共同的协议后缀，与 {@link #PROTOCOL} 同进同退。 */
-	public static final String CHANNEL_SUFFIX = "_v2";
+	public static final String CHANNEL_SUFFIX = "_v3";
 
 	@Override
 	public void onInitialize() {

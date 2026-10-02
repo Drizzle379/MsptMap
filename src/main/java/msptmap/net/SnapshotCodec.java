@@ -25,8 +25,12 @@ public final class SnapshotCodec {
 	 *
 	 * {@code entities} 是出快照那一刻该区块的实体数，与窗口内是否计时无关。
 	 * 耗时与次数全为 0 表示该区块仅被加载（见 MsptSampler.addLoadedChunks），客户端据此铺淡灰。
+	 *
+	 * {@code loadTicket} / {@code simTicket} 是两条链各自的加载来源，由
+	 * {@link msptmap.sampler.TicketSources} 编码（类型序号 + 距离 + 存疑位）。两条链独立，源头可能不同。
 	 */
-	public record ChunkData(int x, int z, long[] nanos, int[] counts, int entities, int loadLevel, int computeLevel) {
+	public record ChunkData(int x, int z, long[] nanos, int[] counts, int entities, int loadLevel, int computeLevel,
+			int loadTicket, int simTicket) {
 		/** 各类耗时之和。除以窗口 tick 数即 ms/tick，故不单独传输。 */
 		public long totalNanos() {
 			long total = 0L;
@@ -52,6 +56,8 @@ public final class SnapshotCodec {
 				buf.writeVarInt(chunk.entities());
 				buf.writeVarInt(chunk.loadLevel());
 				buf.writeVarInt(chunk.computeLevel());
+				buf.writeVarInt(chunk.loadTicket());
+				buf.writeVarInt(chunk.simTicket());
 			},
 			buf -> {
 				int x = buf.readVarInt();
@@ -65,7 +71,9 @@ public final class SnapshotCodec {
 				int entities = buf.readVarInt();
 				int loadLevel = buf.readVarInt();
 				int computeLevel = buf.readVarInt();
-				return new ChunkData(x, z, nanos, counts, entities, loadLevel, computeLevel);
+				int loadTicket = buf.readVarInt();
+				int simTicket = buf.readVarInt();
+				return new ChunkData(x, z, nanos, counts, entities, loadLevel, computeLevel, loadTicket, simTicket);
 			});
 
 	/**

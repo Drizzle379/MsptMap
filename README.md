@@ -18,7 +18,7 @@ The server samples the time spent on seven kinds of tick work — random ticks, 
 
 ## Building
 
-Requires JDK 25; the artifact is written to `build/libs/` as `MsptMap-Fabric-26.2-v0.2.2.jar` (use `gradlew.bat` on Windows).
+Requires JDK 25; the artifact is written to `build/libs/` as `MsptMap-Fabric-26.2-v0.2.3.jar` (use `gradlew.bat` on Windows).
 
 ```shell
 ./gradlew build
@@ -34,7 +34,7 @@ The server and the client must run the **same version** of MsptMap: the packet f
 
 1. Open the world map and click the bar-chart button in the top-left corner to start a scan (or run `/msptmap scan [seconds]`)
 2. Once sampling finishes, chunks are painted by how much they lag: green → yellow → red; weakly-loaded chunks are pale grey
-3. Hover any chunk for details: coordinates, load level, total mspt, entity count and a per-category breakdown
+3. Hover any chunk for details: coordinates, load level, load ticket, total mspt, entity count and a per-category breakdown. The load ticket names what keeps that chunk loaded — `玩家加载` for a nearby player, `强制加载` for `/forceload`, `末影珍珠` for a thrown pearl, and so on; an `@x,z` after it is the chunk the ticket sits on
 4. The ✕ button clears the heatmap
 5. Settings: Mod Menu → Settings, or `/msptmap config`; stored in `config/msptmap-client.properties`
 

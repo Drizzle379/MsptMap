@@ -61,6 +61,14 @@ public final class ClientConfig {
 	/** 「实体数 N」是否显示。与耗时无关，故不占明细那一组开关。 */
 	public static boolean tooltipEntities;
 
+	/**
+	 * 「加载等级」「计算等级」两行各自是否附带加载票来源（形如「 · 玩家加载中心」「 · 玩家加载 @12,-34」）。
+	 *
+	 * 两者不是独立行，故不参与 {@link #anyTooltipLine()}：等级行不显示时它们自然也没了。
+	 */
+	public static boolean tooltipTicketLoad;
+	public static boolean tooltipTicketSim;
+
 	/** 各类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
 	public static final boolean[] tooltipCategories = new boolean[TickCategory.values().length];
 
@@ -83,6 +91,8 @@ public final class ClientConfig {
 		tooltipLevels = true;
 		tooltipTotal = true;
 		tooltipEntities = true;
+		tooltipTicketLoad = true;
+		tooltipTicketSim = true;
 		Arrays.fill(tooltipCategories, true);
 	}
 
@@ -119,6 +129,8 @@ public final class ClientConfig {
 		tooltipLevels = readBoolean(properties, "tooltip.levels", tooltipLevels);
 		tooltipTotal = readBoolean(properties, "tooltip.total", tooltipTotal);
 		tooltipEntities = readBoolean(properties, "tooltip.entities", tooltipEntities);
+		tooltipTicketLoad = readBoolean(properties, "tooltip.ticketLoad", tooltipTicketLoad);
+		tooltipTicketSim = readBoolean(properties, "tooltip.ticketSim", tooltipTicketSim);
 		for (TickCategory category : TickCategory.values()) {
 			tooltipCategories[category.ordinal()] =
 					readBoolean(properties, "tooltip.category." + category.name(), tooltipCategories[category.ordinal()]);
@@ -142,6 +154,8 @@ public final class ClientConfig {
 		text.append("tooltip.levels=").append(tooltipLevels).append('\n');
 		text.append("tooltip.total=").append(tooltipTotal).append('\n');
 		text.append("tooltip.entities=").append(tooltipEntities).append('\n');
+		text.append("tooltip.ticketLoad=").append(tooltipTicketLoad).append('\n');
+		text.append("tooltip.ticketSim=").append(tooltipTicketSim).append('\n');
 		for (TickCategory category : TickCategory.values()) {
 			text.append("tooltip.category.").append(category.name()).append('=')
 					.append(tooltipCategories[category.ordinal()]).append('\n');
