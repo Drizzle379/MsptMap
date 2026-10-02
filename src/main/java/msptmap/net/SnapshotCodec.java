@@ -3,9 +3,8 @@ package msptmap.net;
 import io.netty.buffer.Unpooled;
 import msptmap.sampler.TickCategory;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,6 +12,9 @@ import java.util.List;
  *
  * 一次扫描的结果按维度分组，每个区块含坐标、七类耗时与次数、实体数、加载等级与计算等级。
  * 字节上统一使用 varint/varlong：耗时为纳秒，多数在数千至数百万之间，比定长 long 省约一半流量。
+ *
+ * 只提供静态的 write/read 方法，不用原版的 StreamCodec（1.20.5 才引入）；1.20.4 及以前的
+ * FabricPacket 体系直接手写缓冲区，两代共用这一套方法，字节格式也因此天然一致。
  */
 public final class SnapshotCodec {
 	private SnapshotCodec() {
@@ -44,54 +46,81 @@ public final class SnapshotCodec {
 	public record DimensionData(String dimension, List<ChunkData> chunks) {
 	}
 
-	public static final StreamCodec<FriendlyByteBuf, ChunkData> CHUNK = StreamCodec.of(
-			(buf, chunk) -> {
-				buf.writeVarInt(chunk.x());
-				buf.writeVarInt(chunk.z());
-				for (int i = 0; i < TickCategory.values().length; i++) {
-					buf.writeVarLong(chunk.nanos()[i]);
-					buf.writeVarInt(chunk.counts()[i]);
-				}
-				buf.writeVarInt(chunk.entities());
-				buf.writeVarInt(chunk.loadLevel());
-				buf.writeVarInt(chunk.computeLevel());
-				buf.writeVarInt(chunk.loadTicket());
-				buf.writeVarInt(chunk.simTicket());
-			},
-			buf -> {
-				int x = buf.readVarInt();
-				int z = buf.readVarInt();
-				long[] nanos = new long[TickCategory.values().length];
-				int[] counts = new int[TickCategory.values().length];
-				for (int i = 0; i < nanos.length; i++) {
-					nanos[i] = buf.readVarLong();
-					counts[i] = buf.readVarInt();
-				}
-				int entities = buf.readVarInt();
-				int loadLevel = buf.readVarInt();
-				int computeLevel = buf.readVarInt();
-				int loadTicket = buf.readVarInt();
-				int simTicket = buf.readVarInt();
-				return new ChunkData(x, z, nanos, counts, entities, loadLevel, computeLevel, loadTicket, simTicket);
-			});
+	/** 写一个区块。 */
+	public static void writeChunk(FriendlyByteBuf buf, ChunkData chunk) {
+		buf.writeVarInt(chunk.x());
+		buf.writeVarInt(chunk.z());
+		for (int i = 0; i < TickCategory.values().length; i++) {
+			buf.writeVarLong(chunk.nanos()[i]);
+			buf.writeVarInt(chunk.counts()[i]);
+		}
+		buf.writeVarInt(chunk.entities());
+		buf.writeVarInt(chunk.loadLevel());
+		buf.writeVarInt(chunk.computeLevel());
+		buf.writeVarInt(chunk.loadTicket());
+		buf.writeVarInt(chunk.simTicket());
+	}
 
-	/**
-	 * 一串区块。{@code ByteBufCodecs.list()} 先写入元素个数、再逐个写入元素，无需手写循环；
-	 * 尖括号内的类型必须显式写出，否则编译失败。
-	 */
-	private static final StreamCodec<FriendlyByteBuf, List<ChunkData>> CHUNKS =
-			ByteBufCodecs.<FriendlyByteBuf, ChunkData>list().apply(CHUNK);
+	/** 读一个区块。 */
+	public static ChunkData readChunk(FriendlyByteBuf buf) {
+		int x = buf.readVarInt();
+		int z = buf.readVarInt();
+		long[] nanos = new long[TickCategory.values().length];
+		int[] counts = new int[TickCategory.values().length];
+		for (int i = 0; i < nanos.length; i++) {
+			nanos[i] = buf.readVarLong();
+			counts[i] = buf.readVarInt();
+		}
+		int entities = buf.readVarInt();
+		int loadLevel = buf.readVarInt();
+		int computeLevel = buf.readVarInt();
+		int loadTicket = buf.readVarInt();
+		int simTicket = buf.readVarInt();
+		return new ChunkData(x, z, nanos, counts, entities, loadLevel, computeLevel, loadTicket, simTicket);
+	}
 
-	public static final StreamCodec<FriendlyByteBuf, DimensionData> DIMENSION = StreamCodec.of(
-			(buf, dimension) -> {
-				buf.writeUtf(dimension.dimension());
-				CHUNKS.encode(buf, dimension.chunks());
-			},
-			buf -> new DimensionData(buf.readUtf(), CHUNKS.decode(buf)));
+	/** 一串区块：先个数、再逐个。 */
+	public static void writeChunks(FriendlyByteBuf buf, List<ChunkData> chunks) {
+		buf.writeVarInt(chunks.size());
+		for (ChunkData chunk : chunks) {
+			writeChunk(buf, chunk);
+		}
+	}
+
+	public static List<ChunkData> readChunks(FriendlyByteBuf buf) {
+		int size = buf.readVarInt();
+		List<ChunkData> chunks = new ArrayList<>(size);
+		for (int i = 0; i < size; i++) {
+			chunks.add(readChunk(buf));
+		}
+		return chunks;
+	}
+
+	public static void writeDimension(FriendlyByteBuf buf, DimensionData dimension) {
+		buf.writeUtf(dimension.dimension());
+		writeChunks(buf, dimension.chunks());
+	}
+
+	public static DimensionData readDimension(FriendlyByteBuf buf) {
+		return new DimensionData(buf.readUtf(), readChunks(buf));
+	}
 
 	/** 一次扫描的全部维度。字节上限由采样器控制（见 MsptSampler.MAX_SNAPSHOT_BYTES）。 */
-	public static final StreamCodec<FriendlyByteBuf, List<DimensionData>> DIMENSIONS =
-			ByteBufCodecs.<FriendlyByteBuf, DimensionData>list().apply(DIMENSION);
+	public static void writeDimensions(FriendlyByteBuf buf, List<DimensionData> dimensions) {
+		buf.writeVarInt(dimensions.size());
+		for (DimensionData dimension : dimensions) {
+			writeDimension(buf, dimension);
+		}
+	}
+
+	public static List<DimensionData> readDimensions(FriendlyByteBuf buf) {
+		int size = buf.readVarInt();
+		List<DimensionData> dimensions = new ArrayList<>(size);
+		for (int i = 0; i < size; i++) {
+			dimensions.add(readDimension(buf));
+		}
+		return dimensions;
+	}
 
 	/** {@link #encodedSize} 复用的缓冲。仅服务端主线程使用。 */
 	private static final FriendlyByteBuf SCRATCH = new FriendlyByteBuf(Unpooled.buffer(64));
@@ -99,12 +128,12 @@ public final class SnapshotCodec {
 	/**
 	 * 计算单个区块编码后的字节数。
 	 *
-	 * 用真实编解码器写入临时缓冲后取长度，不自行计算 varint 位数：后者重复实现字节格式，
+	 * 用真实写入方法写进临时缓冲后取长度，不自行计算 varint 位数：后者重复实现字节格式，
 	 * 字段变更时不会同步。
 	 */
 	public static int encodedSize(ChunkData chunk) {
 		SCRATCH.clear();
-		CHUNK.encode(SCRATCH, chunk);
+		writeChunk(SCRATCH, chunk);
 		return SCRATCH.readableBytes();
 	}
 

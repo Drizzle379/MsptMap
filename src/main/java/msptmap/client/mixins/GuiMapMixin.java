@@ -69,16 +69,33 @@ public abstract class GuiMapMixin {
 		// 尺寸照左下角那一列（20×20 的按钮内画 16×16 图标，白块 11×11 居中、右下 1 px 灰影）。
 		// 按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示也是它自己的 ScreenBase
 		// 扫控件画的。提示为 Supplier，悬停时每帧调用一次，故用 lambda。
+		// GuiTexturedButton 的构造器两代不同：1.21.1 及以前是 11 参，贴图边长由 Xaero 写死为 256
+		// （其内部经 GuiGraphics.blit 的 7 参重载绘制，该重载固定按 256×256 的纹理基准采样——
+		// 若给 16×16 的贴图，只会采到左上 1/16 区域、图标不可见）；1.21.3 起尾部多两个数，
+		// 边长由调用方给出。故贴图统一为 256×256（16×16 的图标画在左上角），两代采样同一区域。
+		//? if >=1.21.3 {
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
 				button -> MsptMapClient.onButtonPress(),
-				() -> new Tooltip(Component.literal(MsptMapClient.scanButtonHint())), 16, 16));
+				() -> new Tooltip(Component.literal(MsptMapClient.scanButtonHint())), 256, 256));
 		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(0, 62, 20, 20, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
-				new Tooltip(Component.literal("清空Mspt地图")), 16, 16));
+				new Tooltip(Component.literal("清空Mspt地图")), 256, 256));
+		//?} else {
+		/*((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
+				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
+				Ids.of(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
+				button -> MsptMapClient.onButtonPress(),
+				() -> new Tooltip(Component.literal(MsptMapClient.scanButtonHint()))));
+		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
+		((GuiMap) (Object) this).addButton(new GuiTexturedButton(0, 62, 20, 20, 0, 0, 16, 16,
+				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
+				button -> MsptMapClient.onClearPress(),
+				new Tooltip(Component.literal("清空Mspt地图"))));
+		*///?}
 	}
 
 	/**

@@ -1,5 +1,6 @@
 package msptmap.client;
 
+import msptmap.Clamp;
 import msptmap.sampler.MsptSampler;
 
 /**
@@ -54,6 +55,6 @@ public final class ScanProgress {
 		if (!active) {
 			return 0f;
 		}
-		return Math.clamp((float) elapsedTicks / totalTicks, 0f, 1f);
+		return Clamp.of((float) elapsedTicks / totalTicks, 0f, 1f);
 	}
 }

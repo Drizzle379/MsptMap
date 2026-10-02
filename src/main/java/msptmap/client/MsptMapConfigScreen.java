@@ -1,5 +1,6 @@
 package msptmap.client;
 
+import msptmap.Clamp;
 import msptmap.sampler.TickCategory;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -88,7 +89,7 @@ public class MsptMapConfigScreen extends Screen {
 
 		int rightWidth = rightColumnWidth();
 		// 窗口不够宽时压窄滑块，避免把右列挤出屏幕
-		int control = Math.clamp(width - MARGIN * 2 - LABEL_WIDTH - COLUMN_GAP - rightWidth,
+		int control = Clamp.of(width - MARGIN * 2 - LABEL_WIDTH - COLUMN_GAP - rightWidth,
 				MIN_CONTROL_WIDTH, CONTROL_WIDTH);
 		int leftWidth = LABEL_WIDTH + control;
 		int panelWidth = leftWidth + COLUMN_GAP + rightWidth;
@@ -194,6 +195,10 @@ public class MsptMapConfigScreen extends Screen {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 		//?} else {
 	/*public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		// 1.20.1 及以前：框架不会调 renderBackground，背景由各屏自行绘制（原版与 Mod Menu 同此约定）
+		//? if <1.20.2 {
+		renderDirtBackground(graphics);
+		//?}
 		super.render(graphics, mouseX, mouseY, partialTick);
 	*///?}
 		//? if >=26.1 {
@@ -209,6 +214,21 @@ public class MsptMapConfigScreen extends Screen {
 			*///?}
 		}
 	}
+
+	/**
+	 * 1.20.4 及以前的原版没有菜单模糊：世界内打开时，默认的半透明背景会把下层界面清晰透出
+	 * （且旧内容不被覆盖，会留下残影）。改为画泥土（与原版无世界场景一致），两层界面不再互相干扰；
+	 * 1.20.5 起原版自带模糊，不覆写。
+	 *
+	 * 绘制方式随版本：1.20.2–1.20.4 的框架会调 renderBackground，覆写即可；1.20.1 及以前不调
+	 * （各屏自行绘制背景，Mod Menu 亦如此），那个版本段改在 render 覆写里画。
+	 */
+	//? if >=1.20.2 && <1.20.5 {
+	/*@Override
+	public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		renderDirtBackground(graphics);
+	}
+	*///?}
 
 	/**
 	 * 窗口改大小走这条路径：{@code init(int, int)} 只在首次调用 {@link #init()}，之后都调这里。
@@ -259,7 +279,12 @@ public class MsptMapConfigScreen extends Screen {
 		for (TickCategory category : ChunkTooltip.ORDER) {
 			widest = Math.max(widest, font.width(ChunkTooltip.label(category)));
 		}
+		// 1.20.4 及以前没有公开的盒子尺寸接口（getBoxSize 1.20.5 起才有），盒子 + 间距按 24 估计
+		//? if >=1.20.5 {
 		int subWidth = Checkbox.getBoxSize(font) + 4 + widest;
+		//?} else {
+		/*int subWidth = 24 + widest;
+		*///?}
 		return subWidth * 2 + SUB_GAP;
 	}
 
@@ -296,11 +321,18 @@ public class MsptMapConfigScreen extends Screen {
 
 	private void addCheckbox(int x, int y, String label, boolean selected, String tooltip,
 			Consumer<Boolean> apply) {
+		//? if >=1.20.3 {
 		Checkbox checkbox = Checkbox.builder(Component.literal(label), font)
 				.pos(x, y)
 				.selected(selected)
 				.onValueChange((control, value) -> apply.accept(value))
 				.build();
+		//?} else {
+		/*// 1.20.2 及以前没有 Builder：构造器直接收位置与宽度，值变化由 MsptCheckbox 上报。
+		// 宽度 = 盒子 20 + 间距 4 + 文字
+		Checkbox checkbox = new MsptCheckbox(x, y, font.width(label) + 24,
+				Component.literal(label), selected, apply);
+		*///?}
 		// 提示需自行挂载：Builder 的 setTooltip 仅在标签长到要折三行以上时才生效（
 		// overflowsRowLimit），而这些标签都是一行，走 Builder 提示会被丢弃。
 		if (tooltip != null) {
@@ -354,4 +386,23 @@ public class MsptMapConfigScreen extends Screen {
 			apply.accept(current());
 		}
 	}
+
+	//? if <1.20.3 {
+	/*// 1.20.2 及以前：Checkbox 没有值变化回调，覆写 onPress 上报新值 —— 由 super 先翻转选择，
+	// 再读 selected()（此时已是新值）
+	private static class MsptCheckbox extends Checkbox {
+		private final Consumer<Boolean> apply;
+
+		MsptCheckbox(int x, int y, int width, Component message, boolean selected, Consumer<Boolean> apply) {
+			super(x, y, width, WIDGET_HEIGHT, message, selected);
+			this.apply = apply;
+		}
+
+		@Override
+		public void onPress() {
+			super.onPress();
+			apply.accept(selected());
+		}
+	}
+	*///?}
 }

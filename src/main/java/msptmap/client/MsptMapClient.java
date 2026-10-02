@@ -54,48 +54,14 @@ public class MsptMapClient implements ClientModInitializer {
 			ScanProgress.stop();
 		});
 
-		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE, (payload, context) -> {
-			if (payload.protocol() == ScanResultPayload.MISMATCH) {
-				// 包体读不出来：对面格式与本端差得太多，本次作废
-				MsptMapMod.LOGGER.warn("服务端 MsptMap 的结果包解析不了（本端 {}），已丢弃", MsptMapMod.PROTOCOL);
-				say(MISMATCH_MESSAGE);
-				return;
-			}
-			switch (payload.status()) {
-				case START -> {
-					MsptMapMod.LOGGER.info("收到 开始：服务端要扫 {} 秒", payload.seconds());
-					// 圈的总刻数用服务端报的秒数（请求里的可能被夹取），进度取决于后续推送的包
-					ScanProgress.start(payload.seconds());
-				}
-				// 每 0.1 秒一个，仅用于画圈，不写日志
-				case PROGRESS -> ScanProgress.update(payload.windowTicks());
-				case DONE -> {
-					ScanProgress.stop();
-					ClientSnapshot.accept(payload.windowTicks(), payload.dimensions());
-					MsptMapMod.LOGGER.info("收到 完成：窗口 {} tick、{} 个维度",
-							payload.windowTicks(), payload.dimensions().size());
-					for (SnapshotCodec.DimensionData dimension : payload.dimensions()) {
-						MsptMapMod.LOGGER.info("收到 {} 个区块、维度 {}",
-								dimension.chunks().size(), dimension.dimension());
-					}
-				}
-				case DENIED -> {
-					ScanProgress.stop();
-					MsptMapMod.LOGGER.info("收到 拒绝：服务端没给权限");
-				}
-				case BUSY -> {
-					ScanProgress.stop();
-					MsptMapMod.LOGGER.info("收到 忙碌：服务端正在扫另一次");
-				}
-			}
-			// 收尾的三种状态在聊天栏说一句，START 与 PROGRESS 不说话
-			say(statusMessage(payload.status()));
-			// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
-			// START 时还不知道跑不跑得完，都不提示
-			if (payload.status() == ScanResultPayload.Status.DONE && payload.protocol() != MsptMapMod.PROTOCOL) {
-				say(VERSION_MISMATCH_MESSAGE);
-			}
-		});
+		//? if >=1.20.5 {
+		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE,
+				(payload, context) -> handleScanResult(payload));
+		//?} else {
+		/*// 1.20.4 及以前：handler 为三参数（包、客户端、回包器）
+		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE,
+				(payload, client, sender) -> handleScanResult(payload));
+		*///?}
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
 				literal("msptmap")
@@ -106,6 +72,50 @@ public class MsptMapClient implements ClientModInitializer {
 												IntegerArgumentType.getInteger(context, "seconds")))))
 						// 设置界面的备用入口：未装 Mod Menu 时使用
 						.then(literal("config").executes(context -> openConfig()))));
+	}
+
+	/** 收结果包：按状态更新进度圈、快照与聊天栏。 */
+	private static void handleScanResult(ScanResultPayload payload) {
+		if (payload.protocol() == ScanResultPayload.MISMATCH) {
+			// 包体读不出来：对面格式与本端差得太多，本次作废
+			MsptMapMod.LOGGER.warn("服务端 MsptMap 的结果包解析不了（本端 {}），已丢弃", MsptMapMod.PROTOCOL);
+			say(MISMATCH_MESSAGE);
+			return;
+		}
+		switch (payload.status()) {
+			case START -> {
+				MsptMapMod.LOGGER.info("收到 开始：服务端要扫 {} 秒", payload.seconds());
+				// 圈的总刻数用服务端报的秒数（请求里的可能被夹取），进度取决于后续推送的包
+				ScanProgress.start(payload.seconds());
+			}
+			// 每 0.1 秒一个，仅用于画圈，不写日志
+			case PROGRESS -> ScanProgress.update(payload.windowTicks());
+			case DONE -> {
+				ScanProgress.stop();
+				ClientSnapshot.accept(payload.windowTicks(), payload.dimensions());
+				MsptMapMod.LOGGER.info("收到 完成：窗口 {} tick、{} 个维度",
+						payload.windowTicks(), payload.dimensions().size());
+				for (SnapshotCodec.DimensionData dimension : payload.dimensions()) {
+					MsptMapMod.LOGGER.info("收到 {} 个区块、维度 {}",
+							dimension.chunks().size(), dimension.dimension());
+				}
+			}
+			case DENIED -> {
+				ScanProgress.stop();
+				MsptMapMod.LOGGER.info("收到 拒绝：服务端没给权限");
+			}
+			case BUSY -> {
+				ScanProgress.stop();
+				MsptMapMod.LOGGER.info("收到 忙碌：服务端正在扫另一次");
+			}
+		}
+		// 收尾的三种状态在聊天栏说一句，START 与 PROGRESS 不说话
+		say(statusMessage(payload.status()));
+		// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
+		// START 时还不知道跑不跑得完，都不提示
+		if (payload.status() == ScanResultPayload.Status.DONE && payload.protocol() != MsptMapMod.PROTOCOL) {
+			say(VERSION_MISMATCH_MESSAGE);
+		}
 	}
 
 	/** 聊天组件：26.2 起挪进了新引入的 Gui.hud，26.1 及以前 Gui 自己就有 getChat()。 */
@@ -196,7 +206,7 @@ public class MsptMapClient implements ClientModInitializer {
 		MsptMapMod.LOGGER.info("清屏：丢掉 {} 个维度的热力图", ClientSnapshot.clear());
 	}
 
-	/** 未装 Mod Menu 时打开设置界面的命令。parent 为 null：关闭后直接回游戏。只开界面，不往聊天栏发东西。 */
+	/** 未装 Mod Menu 时打开设置界面的命令。parent 为 null：关闭后直接回游戏。只开界面，不发送消息。 */
 	private static int openConfig() {
 		// 1.21.11 及以前叫 setScreen，26.1 起更名为 setScreenAndShow
 		//? if >=26.1 {

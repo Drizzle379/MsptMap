@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import msptmap.ChunkKeys;
+import msptmap.Clamp;
 import msptmap.Ids;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
@@ -73,7 +74,7 @@ public final class MsptSampler {
 	 * 否则进度圈的分母与真实窗口不符。
 	 */
 	public static int clampSeconds(int seconds) {
-		return Math.clamp(seconds, 1, MAX_SECONDS);
+		return Clamp.of(seconds, 1, MAX_SECONDS);
 	}
 
 	/**
@@ -193,7 +194,7 @@ public final class MsptSampler {
 					timing.nanosArray(),
 					timing.countsArray(),
 					// 显式转 long 走原始版 get(long)（缺省值 0）；装箱版 get(Object) 对不存在的键
-					// 在部分 fastutil 版本上返回 null，拆箱即 NPE（1.21.8 实机踩过）
+					// 在部分 fastutil 版本上返回 null，拆箱即 NPE（1.21.8 实机曾触发）
 					entityCounts.get((long) key),
 					loadLevel,
 					computeLevel,

@@ -25,9 +25,13 @@ public final class Ids {
 	public static Identifier of(String namespace, String path) {
 		return Identifier.fromNamespaceAndPath(namespace, path);
 	}
-	//?} else {
+	//?} else if >=1.21 {
 	/*public static ResourceLocation of(String namespace, String path) {
 		return ResourceLocation.fromNamespaceAndPath(namespace, path);
+	}
+	*///?} else {
+	/*public static ResourceLocation of(String namespace, String path) {
+		return new ResourceLocation(namespace, path);
 	}
 	*///?}
 

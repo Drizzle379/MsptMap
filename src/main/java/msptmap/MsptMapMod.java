@@ -8,7 +8,10 @@ import msptmap.sampler.MsptSampler;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+// 1.20.5 起才有这个类；1.20.4 及以前的 FabricPacket 体系由 registerGlobalReceiver 隐式注册，不需要它
+//? if >=1.20.5 {
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+//?}
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerPlayer;
@@ -52,46 +55,57 @@ public class MsptMapMod implements ModInitializer {
 		}
 
 		// 请求包 客户端 → 服务端，结果包 服务端 → 客户端。
-		// 1.21.11 及以前叫 playC2S / playS2C，26.1 起更名为 serverboundPlay / clientboundPlay。
+		// 包类型的注册：1.20.5 起走 PayloadTypeRegistry（1.21.11 及以前叫 playC2S / playS2C，
+		// 26.1 起更名为 serverboundPlay / clientboundPlay）；1.20.4 及以前的 FabricPacket
+		// 体系无需这一步，registerGlobalReceiver 时一并完成。
 		//? if >=26.1 {
 		PayloadTypeRegistry.serverboundPlay().register(ScanRequestPayload.TYPE, ScanRequestPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ScanResultPayload.TYPE, ScanResultPayload.CODEC);
-		//?} else {
+		//?} else if >=1.20.5 {
 		/*PayloadTypeRegistry.playC2S().register(ScanRequestPayload.TYPE, ScanRequestPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(ScanResultPayload.TYPE, ScanResultPayload.CODEC);
 		*///?}
 
-		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE, (payload, context) -> {
-			ServerPlayer player = context.player();
-			if (payload.protocol() == ScanRequestPayload.MISMATCH) {
-				// 包体读不出来：无从知道对面要什么，只能不作声
-				LOGGER.warn("玩家 {} 的 MsptMap 请求包解析不了，已忽略", playerName(player));
-				return;
-			}
-			if (payload.protocol() != PROTOCOL) {
-				// 对面版本不同：只记一笔，照常往下走。请求包的字段各版本一致，扫描本身跑得起来；
-				// 结果包格式对不对由对面自己判（它的解码器会兜住不成形的包）
-				LOGGER.warn("玩家 {} 的 MsptMap 版本与本端不一致（对面 {}，本端 {}），仍按其请求执行",
-						playerName(player), payload.protocol(), PROTOCOL);
-			}
-			// 权限闸门，同 MsptMapCommand
-			if (!MsptMapSettings.canUse.test(player.createCommandSourceStack())) {
-				ServerPlayNetworking.send(player, ScanResultPayload.denied());
-				return;
-			}
-			// 非 0 为客户端指定的秒数，0 表示用服务端默认值
-			int requested = payload.seconds() > 0 ? payload.seconds() : MsptMapSettings.seconds.getAsInt();
-			int seconds = MsptSampler.clampSeconds(requested);
-
-			if (MsptSampler.start(seconds, player)) {
-				// 先回 START：秒数以服务端为准，客户端据此计算进度圈
-				ServerPlayNetworking.send(player, ScanResultPayload.start(seconds));
-			} else {
-				ServerPlayNetworking.send(player, ScanResultPayload.busy());
-			}
-		});
+		//? if >=1.20.5 {
+		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE,
+				(payload, context) -> handleScanRequest(payload, context.player()));
+		//?} else {
+		/*// 1.20.4 及以前：handler 为三参数（包、玩家、回包器）
+		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE,
+				(payload, player, sender) -> handleScanRequest(payload, player));
+		*///?}
 
 		LOGGER.info("msptmap loaded");
+	}
+
+	/** 收扫描请求：校魔数、查权限、开窗口。结果由结果包回发，不在这里。 */
+	private static void handleScanRequest(ScanRequestPayload payload, ServerPlayer player) {
+		if (payload.protocol() == ScanRequestPayload.MISMATCH) {
+			// 包体读不出来：无从知道对面要什么，只能不作声
+			LOGGER.warn("玩家 {} 的 MsptMap 请求包解析不了，已忽略", playerName(player));
+			return;
+		}
+		if (payload.protocol() != PROTOCOL) {
+			// 对面版本不同：只记一笔，照常往下走。请求包的字段各版本一致，扫描本身跑得起来；
+			// 结果包格式对不对由对面自己判（它的解码器会兜住不成形的包）
+			LOGGER.warn("玩家 {} 的 MsptMap 版本与本端不一致（对面 {}，本端 {}），仍按其请求执行",
+					playerName(player), payload.protocol(), PROTOCOL);
+		}
+		// 权限闸门，同 MsptMapCommand
+		if (!MsptMapSettings.canUse.test(player.createCommandSourceStack())) {
+			ServerPlayNetworking.send(player, ScanResultPayload.denied());
+			return;
+		}
+		// 非 0 为客户端指定的秒数，0 表示用服务端默认值
+		int requested = payload.seconds() > 0 ? payload.seconds() : MsptMapSettings.seconds.getAsInt();
+		int seconds = MsptSampler.clampSeconds(requested);
+
+		if (MsptSampler.start(seconds, player)) {
+			// 先回 START：秒数以服务端为准，客户端据此计算进度圈
+			ServerPlayNetworking.send(player, ScanResultPayload.start(seconds));
+		} else {
+			ServerPlayNetworking.send(player, ScanResultPayload.busy());
+		}
 	}
 
 	/** 玩家名（供日志）。走 Scoreboard 名而非 GameProfile：后者在 1.21 系列内两度更名（getName/name），

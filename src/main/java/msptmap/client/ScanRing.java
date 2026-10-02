@@ -1,5 +1,7 @@
 package msptmap.client;
 
+import msptmap.Clamp;
+
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
@@ -35,9 +37,9 @@ public final class ScanRing {
 	 */
 	public static List<int[]> segments(float fraction, int x, int y, int size) {
 		List<int[]> out = new ArrayList<>(4);
-		int done = Math.round(Math.clamp(fraction, 0f, 1f) * size * 4);
+		int done = Math.round(Clamp.of(fraction, 0f, 1f) * size * 4);
 		for (int side = 0; side < 4; side++) {
-			int steps = Math.clamp(done - side * size, 0, size);
+			int steps = Clamp.of(done - side * size, 0, size);
 			if (steps == 0) {
 				continue;
 			}

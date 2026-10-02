@@ -92,12 +92,12 @@ public final class ChunkTooltip {
 			doubtful = ticketDoubtful(chunk.loadTicket(), ClientConfig.tooltipTicketLoad)
 					|| ticketDoubtful(chunk.simTicket(), ClientConfig.tooltipTicketSim);
 		}
-		if (ClientConfig.tooltipTotal) {
-			lines.add("合计 " + format(chunk.mspt()) + " mspt");
-		}
 		if (ClientConfig.tooltipEntities) {
 			// 与耗时无关的瞬时值：方块实体 / 实体 / 刷怪那几类耗时的成因多半在这里
 			lines.add("实体数 " + chunk.entities());
+		}
+		if (ClientConfig.tooltipTotal) {
+			lines.add("合计 " + format(chunk.mspt()) + " mspt");
 		}
 		for (TickCategory category : ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {

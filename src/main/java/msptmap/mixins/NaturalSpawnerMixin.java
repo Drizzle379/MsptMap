@@ -4,7 +4,9 @@ import msptmap.ChunkKeys;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.server.level.ServerLevel;
+//? if >=1.21.2 {
 import net.minecraft.world.entity.MobCategory;
+//?}
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,7 +15,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+//? if >=1.21.2 {
 import java.util.List;
+//?}
 
 /**
  * 刷怪的计时。
@@ -26,6 +30,8 @@ public abstract class NaturalSpawnerMixin {
 	@Unique
 	private static long msptmapSpawnStart;
 
+	// 1.21.2 起参数由三个 boolean 改为 MobCategory 列表；两个形态各自分叉。
+	//? if >=1.21.2 {
 	@Inject(method = "spawnForChunk", at = @At("HEAD"))
 	private static void msptmapSpawnBegin(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState state,
 			List<MobCategory> spawningCategories, CallbackInfo ci) {
@@ -37,4 +43,17 @@ public abstract class NaturalSpawnerMixin {
 			List<MobCategory> spawningCategories, CallbackInfo ci) {
 		MsptSampler.end(TickCategory.SPAWN, level, ChunkKeys.pack(chunk.getPos()), msptmapSpawnStart);
 	}
+	//?} else {
+	/*@Inject(method = "spawnForChunk", at = @At("HEAD"))
+	private static void msptmapSpawnBegin(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState state,
+			boolean spawnFriendlies, boolean spawnMonsters, boolean rareSpawn, CallbackInfo ci) {
+		msptmapSpawnStart = MsptSampler.begin();
+	}
+
+	@Inject(method = "spawnForChunk", at = @At("RETURN"))
+	private static void msptmapSpawnEnd(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState state,
+			boolean spawnFriendlies, boolean spawnMonsters, boolean rareSpawn, CallbackInfo ci) {
+		MsptSampler.end(TickCategory.SPAWN, level, ChunkKeys.pack(chunk.getPos()), msptmapSpawnStart);
+	}
+	*///?}
 }

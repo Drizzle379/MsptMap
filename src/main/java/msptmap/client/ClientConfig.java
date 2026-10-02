@@ -1,5 +1,6 @@
 package msptmap.client;
 
+import msptmap.Clamp;
 import msptmap.MsptMapMod;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
@@ -223,13 +224,13 @@ public final class ClientConfig {
 
 	/** 各值夹回合法区间。 */
 	private static void clamp() {
-		scanSeconds = Math.clamp(scanSeconds, MIN_SECONDS, MAX_SECONDS);
+		scanSeconds = Clamp.of(scanSeconds, MIN_SECONDS, MAX_SECONDS);
 		redAt = clampRange(redAt, MIN_RED_AT, MAX_RED_AT);
 		fillAlpha = clampRange(fillAlpha, MIN_FILL_ALPHA, 1.0);
 	}
 
 	private static double clampRange(double value, double min, double max) {
-		return round2(Math.clamp(value, min, max));
+		return round2(Clamp.of(value, min, max));
 	}
 
 	private static boolean readBoolean(Properties properties, String key, boolean fallback) {

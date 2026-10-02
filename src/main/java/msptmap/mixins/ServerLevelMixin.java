@@ -12,7 +12,9 @@ import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.Fluid;
+//? if >=1.21.2 {
 import net.minecraft.world.level.redstone.Orientation;
+//?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -103,6 +105,8 @@ public abstract class ServerLevelMixin {
 	 * 用 @WrapMethod 而非 HEAD / RETURN 两次 @Inject：深度计数须在 try-finally 里还原 —— 目标方法
 	 * 抛出异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
 	 */
+	// 1.21.2 起目标方法多了 Orientation 参数；两个形态只差它，注入方法随之分叉。
+	//? if >=1.21.2 {
 	@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
 			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
 	private void msptmapNeighbor(BlockPos pos, Block sourceBlock, Orientation orientation, Operation<Void> original) {
@@ -118,6 +122,22 @@ public abstract class ServerLevelMixin {
 			}
 		}
 	}
+	//?} else {
+	/*@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;)V")
+	private void msptmapNeighbor(BlockPos pos, Block sourceBlock, Operation<Void> original) {
+		if (this.msptmapNeighborDepth++ == 0) {
+			this.msptmapNeighborStart = MsptSampler.begin();
+		}
+		try {
+			original.call(pos, sourceBlock);
+		} finally {
+			if (--this.msptmapNeighborDepth == 0) {
+				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
+						this.msptmapNeighborStart);
+			}
+		}
+	}
+	*///?}
 
 	/**
 	 * 方块事件：由 {@code ServerLevel.tick} 里的 runBlockEvents 调起，不在 tickChunk 内，与本类其余各点不重叠。
