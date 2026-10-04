@@ -16,13 +16,13 @@ import java.util.List;
 /**
  * 服务端 → 客户端：扫描的进展与结果。
  *
- * 六种状态共用这一个包，客户端因此只需一个接收器、状态判断只写一遍。
- * 除 DONE 外都不带区块数据（空列表）；PROGRESS 复用 DONE 的 {@code windowTicks} 表示窗口已过的刻数。
+ * <p>六种状态共用这一个包，客户端因此只需一个接收器、状态判断只写一遍。除 DONE 外都不带区块数据
+ * （空列表）；PROGRESS 复用 DONE 的 {@code windowTicks} 表示窗口已过的刻数。
  *
- * 版本不同的两端也允许互发：包 ID 不带版本号，包体开头的魔数是**标记**而非闸门。
- * 这个包的字段多，遇到读不动的格式才判 {@link #MISMATCH}，由客户端提示版本不一致。
+ * <p>版本不同的两端也允许互发：包 ID 不带版本号，包体开头的魔数是标记而非闸门。这个包字段较多，
+ * 遇到读不动的格式才判 {@link #MISMATCH}，由客户端提示版本不一致。
  *
- * 1.20.4 及以前是 Fabric Loader 的 FabricPacket 体系（PacketType + write），1.20.5 起换成
+ * <p>1.20.4 及以前是 Fabric Loader 的 FabricPacket 体系（PacketType + write），1.20.5 起换成
  * 原版的 CustomPacketPayload（StreamCodec）；包体编解码共用，仅接口与注册方式分叉。
  */
 public record ScanResultPayload(int protocol, Status status, int seconds, int windowTicks,
@@ -58,10 +58,9 @@ public record ScanResultPayload(int protocol, Status status, int seconds, int wi
 	}
 
 	/**
-	 * 包 ID。用 {@link Ids#of}（资源位置构造），不用
-	 * {@code CustomPacketPayload.createType(String)}：后者只吃路径段（带冒号即抛异常），
-	 * {@code minecraft:} 前缀由它内部补上。不带版本号：两端版本不同也应当能互相送达，
-	 * 能不能读由包体的魔数判定。
+	 * 包 ID。用 {@link Ids#of} 构造资源位置，不用 {@code CustomPacketPayload.createType(String)}：
+	 * 后者只接受路径段（带冒号即抛异常），{@code minecraft:} 前缀由其内部补上。不带版本号：两端
+	 * 版本不同也应能互相送达，能否读取由包体的魔数判定。
 	 */
 	//? if >=1.20.5 {
 	public static final Type<ScanResultPayload> TYPE = new Type<>(
@@ -94,13 +93,13 @@ public record ScanResultPayload(int protocol, Status status, int seconds, int wi
 					buf.readVarInt(),
 					buf.readVarInt(),
 					SnapshotCodec.readDimensions(buf));
-			// 对面版本若在尾部多带字段：不解析、直接丢弃。出口处缓冲必须读干净——
-			// PacketDecoder 见到解码后仍有剩余字节就报 IOException 断线（PLAN 坑 24）
+			// 对面版本若在尾部多带字段：不解析，直接丢弃。出口处缓冲必须读干净——
+			// PacketDecoder 见到解码后仍有剩余字节即报 IOException 断线
 			buf.skipBytes(buf.readableBytes());
 			return result;
 		} catch (Exception e) {
-			// 对面格式与本端差得多，读到一半就垮了。异常冒到网络层会踢人，这里兜住，
-			// 换成 MISMATCH 交给客户端提示；状态用 START 占位（客户端只看 protocol 字段）。
+			// 对面格式与本端差异过大，读到一半即失败。异常冒到网络层会踢出玩家，故在此捕获并
+			// 返回 MISMATCH 交由客户端提示；状态用 START 占位（客户端只看 protocol 字段）。
 			// 残余字节同样要跳过，否则上层照样断线
 			buf.skipBytes(buf.readableBytes());
 			return new ScanResultPayload(MISMATCH, Status.START, 0, 0, List.of());

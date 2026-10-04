@@ -14,15 +14,17 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * 方块实体的计时。
+ * 方块实体计时。
  *
- * 挂在真正执行 tick 的那个 ticker 上，不 redirect 循环中的 TickingBlockEntity.tick()：后者是方块实体
- * 循环里唯一的计时位置，同类模组都会抢占，而 @Redirect 互斥 —— 后到的被静默跳过并在启动时崩溃。
+ * <p>挂在真正执行 tick 的 ticker 上，不 redirect 循环中的 TickingBlockEntity.tick()：后者是方块
+ * 实体循环里唯一的计时位置，同类模组都会抢占，而 {@code @Redirect} 互斥——后到者被静默跳过并在
+ * 启动时崩溃。
  *
- * 全游戏仅 3 个类实现 TickingBlockEntity：LevelChunk$1.tick() 为空方法（占位）、
+ * <p>全游戏仅 3 个类实现 TickingBlockEntity：{@code LevelChunk$1.tick()} 为空方法（占位）、
  * RebindableTickingBlockEntityWrapper 仅转发给被包装者，真正 tick 方块实体的只有这一个。
  *
- * 目标类为包私有，源码中无法书写 LevelChunk.BoundTickingBlockEntity.class，只能用 targets 字符串。
+ * <p>目标类为包私有，源码中无法书写 {@code LevelChunk.BoundTickingBlockEntity.class}，只能用
+ * targets 字符串。
  */
 @Mixin(targets = "net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity")
 public abstract class BoundTickingBlockEntityMixin {
@@ -37,15 +39,15 @@ public abstract class BoundTickingBlockEntityMixin {
 
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void msptmapStartTick(CallbackInfo ci) {
-		// 只认服务端：客户端也有同一套 ticker（ClientLevel），若走到 begin() 就是渲染线程读服务端
-		// 主线程写的采样状态 —— 唯一的跨线程读点，客户端一律记 0
+		// 只认服务端：客户端也有同一套 ticker（ClientLevel），若走到 begin() 即为渲染线程读取服务端
+		// 主线程写入的采样状态——这是唯一的跨线程读点，客户端一律记 0
 		msptmapStart = blockEntity.getLevel() instanceof ServerLevel ? MsptSampler.begin() : 0L;
 	}
 
 	@Inject(method = "tick", at = @At("RETURN"))
 	private void msptmapEndTick(CallbackInfo ci) {
 		// 未采样（含客户端）直接跳过：不再做 getLevel 与 instanceof，也不求坐标（end 本就忽略 0）。
-		// start 非 0 时维度必是服务端（HEAD 只给服务端记时间），这里的 instanceof 仍留着防 null
+		// start 非 0 时维度必为服务端（HEAD 只为服务端记时间），此处 instanceof 仍保留以防御 null
 		if (msptmapStart != 0L && blockEntity.getLevel() instanceof ServerLevel level) {
 			MsptSampler.end(TickCategory.BLOCK_ENTITY, level, ChunkKeys.pack(blockEntity.getBlockPos()), msptmapStart);
 		}

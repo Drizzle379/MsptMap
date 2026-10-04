@@ -15,13 +15,13 @@ import java.util.Arrays;
 import java.util.Properties;
 
 /**
- * 客户端的可调值：扫描秒数、颜色阈值、悬停详情显示什么。
+ * 客户端的可调值：扫描秒数、颜色阈值、悬停详情显示内容。
  *
- * 不并入 {@link msptmap.MsptMapSettings}：那个是服务端门面（地毯规则改写它），这里全是客户端偏好，
- * 存 config/msptmap-client.properties，两个文件互不覆盖。
+ * <p>不并入 {@link msptmap.MsptMapSettings}：后者是服务端门面（地毯规则改写它），这里全是客户端
+ * 偏好，存 config/msptmap-client.properties，两个文件互不覆盖。
  *
- * 值直接存静态字段：绘制与拼悬停文字的热路径直接读；设置界面改完立即生效，落盘交给 {@link #save()}。
- * 读盘与存盘共用 {@link #clamp()} 夹取区间：文件可手改，外部输入一律不信任。
+ * <p>值直接存静态字段：绘制与拼接悬停文字的热路径直接读取；设置界面改完立即生效，落盘交给
+ * {@link #save()}。读盘与存盘共用 {@link #clamp()} 夹取区间：文件可手改，外部输入一律不信任。
  */
 public final class ClientConfig {
 	/** 秒数的合法区间（数字输入框与服务端的夹取是同一个口径）。 */
@@ -188,10 +188,10 @@ public final class ClientConfig {
 	}
 
 	/**
-	 * 数字输入框中的文本 → 秒数。不是 {@link #MIN_SECONDS} ~ {@link #MAX_SECONDS} 的整数则返回 -1，
+	 * 数字输入框中的文本 → 秒数。不是 {@link #MIN_SECONDS}~{@link #MAX_SECONDS} 的整数则返回 -1，
 	 * 调用方据此不改动任何值。
 	 *
-	 * 与滑块换算一样置于此处而非设置界面：这是「界面文本 ↔ 配置数值」的规则，需能离线断言。
+	 * <p>与滑块换算一样置于此处而非设置界面：这是「界面文本 ↔ 配置数值」的规则，需能离线断言。
 	 */
 	public static int parseSeconds(String text) {
 		int seconds;

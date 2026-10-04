@@ -1,16 +1,15 @@
 package msptmap.sampler;
 
 /**
- * 一个区块的账本：各类工作各累计的纳秒数与调用次数。
+ * 单个区块的采样账本：按类别累计耗时（纳秒）与调用次数。
  *
- * 以 long 存纳秒而非 double 存毫秒：热路径只做加法与自增，换算成 mspt 留到窗口结束时做一次
- * （少几千次除法，也不丢精度）。
+ * <p>以 long 存纳秒而非 double 存毫秒，使热路径只需加法与自增，单位换算留到窗口结束时统一进行。
  */
 public final class ChunkTiming {
 	private final long[] nanos = new long[TickCategory.COUNT];
 	private final int[] counts = new int[TickCategory.COUNT];
 
-	/** 记一笔。热路径，禁止分配对象与除法。 */
+	/** 记一笔。热路径，不得分配对象或做除法。 */
 	public void add(TickCategory category, long durationNanos) {
 		int index = category.ordinal();
 		this.nanos[index] += durationNanos;
@@ -21,7 +20,7 @@ public final class ChunkTiming {
 		return this.nanos[category.ordinal()];
 	}
 
-	/** 内部数组直接给出（下标 = {@link TickCategory#ordinal()}）。仅供快照使用：编码一次即弃，不复制。 */
+	/** 内部数组，下标为 {@link TickCategory#ordinal()}；仅供编码快照时只读使用，不复制。 */
 	public long[] nanosArray() {
 		return this.nanos;
 	}
@@ -30,6 +29,7 @@ public final class ChunkTiming {
 		return this.counts;
 	}
 
+	/** 各类耗时之和（纳秒）。 */
 	public long totalNanos() {
 		long total = 0L;
 		for (long value : this.nanos) {

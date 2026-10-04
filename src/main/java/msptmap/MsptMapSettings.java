@@ -6,7 +6,7 @@ import java.util.function.IntSupplier;
 import java.util.function.Predicate;
 
 /**
- * 门面：核心代码只认这个类，不依赖地毯（地毯在 carpet/ 包里改写这里的字段）。
+ * 服务端设置门面：核心代码只依赖本类，不直接依赖地毯（地毯在 carpet/ 包中改写这里的字段）。
  */
 public final class MsptMapSettings {
 	/** 未指定秒数时的默认值（客户端请求的秒数由客户端决定）。 */

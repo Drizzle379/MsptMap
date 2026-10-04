@@ -10,10 +10,10 @@ import java.util.List;
 /**
  * 快照的数据形状与字节格式。两者同处一个文件：字段变更必然连带编解码。
  *
- * 一次扫描的结果按维度分组，每个区块含坐标、七类耗时与次数、实体数、加载等级与计算等级。
- * 字节上统一使用 varint/varlong：耗时为纳秒，多数在数千至数百万之间，比定长 long 省约一半流量。
+ * <p>一次扫描的结果按维度分组，每个区块含坐标、七类耗时与次数、实体数、加载等级与计算等级。
+ * 字节上统一使用 varint/varlong：耗时为纳秒，多在数千至数百万之间，比定长 long 省约一半流量。
  *
- * 只提供静态的 write/read 方法，不用原版的 StreamCodec（1.20.5 才引入）；1.20.4 及以前的
+ * <p>只提供静态的 write/read 方法，不用原版的 StreamCodec（1.20.5 才引入）；1.20.4 及以前的
  * FabricPacket 体系直接手写缓冲区，两代共用这一套方法，字节格式也因此天然一致。
  */
 public final class SnapshotCodec {
@@ -21,14 +21,14 @@ public final class SnapshotCodec {
 	}
 
 	/**
-	 * 单个区块的全部数据。数组下标 = {@link TickCategory#ordinal()}，顺序不可变更；数组直接引用采样器
-	 * 实例，不复制。
+	 * 单个区块的全部数据。数组下标 = {@link TickCategory#ordinal()}，顺序不可变更；数组直接引用
+	 * 采样器实例，不复制。
 	 *
-	 * {@code entities} 是出快照那一刻该区块的实体数，与窗口内是否计时无关。
-	 * 耗时与次数全为 0 表示该区块仅被加载（见 MsptSampler.addLoadedChunks），客户端据此铺淡灰。
+	 * <p>{@code entities} 是出快照那一刻该区块的实体数，与窗口内是否计时无关。耗时与次数全为 0
+	 * 表示该区块仅被加载（见 MsptSampler.addLoadedChunks），客户端据此铺淡灰。
 	 *
-	 * {@code loadTicket} / {@code simTicket} 是两条链各自的加载来源，由
-	 * {@link msptmap.sampler.TicketSources} 编码（类型序号 + 距离 + 存疑位）。两条链独立，源头可能不同。
+	 * <p>{@code loadTicket}/{@code simTicket} 是两条链各自的加载来源，由
+	 * {@link msptmap.sampler.TicketSources} 编码（类型序号 + 距离 + 存疑位）；两条链独立，源头可能不同。
 	 */
 	public record ChunkData(int x, int z, long[] nanos, int[] counts, int entities, int loadLevel, int computeLevel,
 			int loadTicket, int simTicket) {
@@ -47,8 +47,8 @@ public final class SnapshotCodec {
 	}
 
 	/**
-	 * 「仅加载」区块共用的全零数组：只有这里持有，且只读地交给 ChunkData。一次扫描里这类区块
-	 * 可达数万个，逐个分配两个数组是纯浪费。
+	 * 「仅加载」区块共用的全零数组：只在此处持有，并以只读方式交给 ChunkData。一次扫描里这类区块
+	 * 可达数万个，逐个分配两个数组纯属浪费。
 	 */
 	public static final long[] ZERO_NANOS = new long[TickCategory.COUNT];
 
@@ -104,7 +104,8 @@ public final class SnapshotCodec {
 	public static List<ChunkData> readChunks(FriendlyByteBuf buf) {
 		int size = buf.readVarInt();
 		// 先按剩余字节数把关再分配：对端声明几亿个区块时 new ArrayList<>(size) 抛的是 OOM（Error），
-		// ScanResultPayload.decode 的 catch (Exception) 兜不住、会直接崩；换成运行时异常走 MISMATCH 降级路
+		// ScanResultPayload.decode 的 catch (Exception) 无法捕获、会直接崩溃；换成运行时异常
+		// 即可走 MISMATCH 降级路径
 		if (size < 0 || size > buf.readableBytes() / MIN_CHUNK_BYTES) {
 			throw new IllegalArgumentException("区块个数 " + size + " 与剩余 " + buf.readableBytes() + " 字节不符");
 		}
@@ -149,10 +150,8 @@ public final class SnapshotCodec {
 	private static final FriendlyByteBuf SCRATCH = new FriendlyByteBuf(Unpooled.buffer(64));
 
 	/**
-	 * 计算单个区块编码后的字节数。
-	 *
-	 * 用真实写入方法写进临时缓冲后取长度，不自行计算 varint 位数：后者重复实现字节格式，
-	 * 字段变更时不会同步。
+	 * 计算单个区块编码后的字节数。用真实写入方法写进临时缓冲后取长度，不自行计算 varint 位数：
+	 * 后者等于重复实现字节格式，字段变更时不会同步。
 	 */
 	public static int encodedSize(ChunkData chunk) {
 		SCRATCH.clear();
@@ -163,7 +162,7 @@ public final class SnapshotCodec {
 	/**
 	 * 按字节预算裁剪区块列表（就地移除尾部放不下的部分），返回保留部分占用的字节数。
 	 *
-	 * 调用方保证列表已按重量降序排列，被移除的必然是尾部最轻的区块。返回值作为下一批
+	 * <p>调用方保证列表已按重量降序排列，被移除的必然是尾部最轻的区块。返回值作为下一批
 	 * （仅加载、无计时的区块）的剩余预算。
 	 */
 	public static int fitToBudget(List<ChunkData> chunks, int budgetBytes) {

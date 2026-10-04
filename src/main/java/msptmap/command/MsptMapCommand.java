@@ -9,10 +9,10 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 
 /**
- * 服务端的 /msptmap 命令：只有 scan 一条子命令，不向来源回话，结果打到服务端控制台。
- * 玩家看地图热力图用的是客户端那条同名的 /msptmap scan（本地执行，走不到这里）。
+ * 服务端的 {@code /msptmap} 命令：只有 scan 一条子命令，不向来源回话，结果打到服务端控制台。
+ * 玩家看地图热力图用的是客户端那条同名的 {@code /msptmap scan}（本地执行，走不到这里）。
  *
- * 权限用 Brigadier 的 requires：装了地毯按 commandMsptMap 规则判，没装地毯谁都能用。
+ * <p>权限经 Brigadier 的 requires 判定：装了地毯按 commandMsptMap 规则，未装则所有人可用。
  */
 public final class MsptMapCommand {
 	private MsptMapCommand() {

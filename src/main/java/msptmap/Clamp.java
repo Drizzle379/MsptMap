@@ -1,10 +1,8 @@
 package msptmap;
 
 /**
- * 数值夹取。
- *
- * {@code Math.clamp} 是 Java 21 才有的 API，而本模组的 1.20 – 1.20.4 以 Java 17 为目标；
- * 统一走这里，调用点不必按版本分叉。
+ * 数值夹取。{@code Math.clamp} 仅 Java 21 起可用，而本模组的 1.20–1.20.4 以 Java 17 为目标，
+ * 故统一由本类提供，调用点无需按版本分叉。
  */
 public final class Clamp {
 	private Clamp() {

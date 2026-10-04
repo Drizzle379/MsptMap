@@ -7,24 +7,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 客户端手上最后一份扫描结果：按维度分好，且已换成绘制用的形状。
+ * 客户端持有的最后一份扫描结果：按维度分组，且已转换为绘制用的形状。
  *
- * 该类不涉及任何 Xaero 代码（坐标只到世界方块坐标）：将来若要同步显示到小地图，只需另写绘制入口
- * 写入只发生在收到 DONE 包时，且为客户端主线程（Fabric 把客户端 play 包派发到
+ * <p>本类不涉及任何 Xaero 代码（坐标只到世界方块坐标），将来若要同步显示到小地图，只需另写绘制
+ * 入口。写入只发生在收到 DONE 包时，且在客户端主线程（Fabric 将客户端 play 包派发到
  * packetProcessor 线程，即主线程），故渲染时读取无需加锁。
  */
 public final class ClientSnapshot {
 	/**
 	 * 一个区块在屏幕上的矩形。坐标为世界方块坐标（chunkX << 4 到 +16）：不减相机（相机每帧才确定，
-	 * 提前算进去等于固定），也不做维度缩放（依据见 {@link MapOverlay}）。
+	 * 提前计入等于固定），也不做维度缩放（依据见 {@link MapOverlay}）。
 	 *
-	 * {@code timed} = 本段窗口内测到过耗时：false 表示只被服务端加载、整段窗口无计时，铺淡灰 ——
+	 * <p>{@code timed} = 本段窗口内测到过耗时；false 表示仅被服务端加载、整段窗口无计时，铺淡灰——
 	 * 「未测到」与「测到 0」不同。
 	 *
-	 * {@code entities} 是服务端出快照那一刻该区块的实体数（含乘客），不是窗口内的平均值。
+	 * <p>{@code entities} 是服务端出快照那一刻该区块的实体数（含乘客），不是窗口内的平均值。
 	 *
-	 * {@code loadTicket} / {@code simTicket} 是两条链各自的加载来源（编码见
-	 * {@link msptmap.sampler.TicketSources}），供悬停详情写出「 · 玩家加载中心」这样的后缀。
+	 * <p>{@code loadTicket}/{@code simTicket} 是两条链各自的加载来源（编码见
+	 * {@link msptmap.sampler.TicketSources}），供悬停详情写出「 · 玩家加载中心」一类的后缀。
 	 */
 	public record Chunk(int x1, int z1, int x2, int z2, float mspt, int loadLevel, int computeLevel, int entities,
 		int loadTicket, int simTicket, boolean timed, long[] nanos, int[] counts) {
@@ -33,8 +33,8 @@ public final class ClientSnapshot {
 	private static final Map<String, Chunk[]> byDimension = new HashMap<>();
 
 	/**
-	 * 每个维度本次快照里最重的区块耗时（ms/tick）。相对模式下红点取它 —— 绘制每帧都要读，
-	 * 故收快照时随转换循环一并算好，不从 {@link #byDimension} 里现扫。
+	 * 每个维度本次快照里最重的区块耗时（ms/tick）。相对模式下红点取它——绘制每帧都要读取，故收
+	 * 快照时随转换循环一并算好，不从 {@link #byDimension} 中现扫。
 	 */
 	private static final Map<String, Float> heaviestByDimension = new HashMap<>();
 
@@ -56,7 +56,7 @@ public final class ClientSnapshot {
 		for (SnapshotCodec.DimensionData dimension : dimensions) {
 			List<SnapshotCodec.ChunkData> chunks = dimension.chunks();
 			Chunk[] converted = new Chunk[chunks.size()];
-			// 顺手取最重的一个（见 heaviestByDimension）：再过一遍是白扫
+			// 一并取出最重的一个（见 heaviestByDimension）；否则需再遍历一遍
 			float heaviest = 0.0f;
 			for (int i = 0; i < converted.length; i++) {
 				SnapshotCodec.ChunkData chunk = chunks.get(i);
@@ -83,9 +83,9 @@ public final class ClientSnapshot {
 	}
 
 	/**
-	 * 清屏：丢弃当前结果，地图立即恢复未上色状态（地图上那个 ✕ 按钮即此操作）。
+	 * 清屏：丢弃当前结果，地图立即恢复未上色状态（地图上的 ✕ 按钮即此操作）。
 	 *
-	 * 悬停详情无需另行通知：它先查 {@link #get}，无该维度数据即不显示。窗口 tick 数一并归零。
+	 * <p>悬停详情无需另行通知：它先查 {@link #get}，无该维度数据即不显示。窗口 tick 数一并归零。
 	 *
 	 * @return 丢弃的维度数（供调用方区分「按了没反应」与「本来就是空的」）
 	 */

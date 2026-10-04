@@ -26,12 +26,12 @@ import java.util.function.IntConsumer;
 /**
  * 设置界面。两个入口：模组菜单（{@link ModMenuIntegration}）与命令 {@code /msptmap config}。
  *
- * 布局为两列（左：扫描 + 颜色；右：悬停详情），窗口过窄则压窄滑块并整块居中。控件位置在 {@link #init()}
- * 中算好，文字在 {@link #extractRenderState} 中绘制 —— 框架顺序是 extractBackground →
+ * <p>布局为两列（左：扫描 + 颜色；右：悬停详情），窗口过窄则压窄滑块并整块居中。控件位置在
+ * {@link #init()} 中算好，文字在 {@link #extractRenderState} 中绘制——框架顺序是 extractBackground →
  * extractRenderState → 绘制控件，故 super 之后再画会压在控件底层（文字只写在控件旁的空白处，不重叠）。
  *
- * 落盘只有一处：{@link #onClose()}。滑块拖动、勾选框点击、秒数框输入都立刻写入内存字段（地图下一帧即
- * 按新值绘制），「完成」与 Esc 均为保存退出 —— 没有取消按钮。
+ * <p>落盘只有一处：{@link #onClose()}。滑块拖动、勾选框点击、秒数框输入都立刻写入内存字段（地图下一帧
+ * 即按新值绘制），「完成」与 Esc 均为保存退出——没有取消按钮。
  */
 public class MsptMapConfigScreen extends Screen {
 	/** 滑块与按钮的标准高度。 */
@@ -88,7 +88,7 @@ public class MsptMapConfigScreen extends Screen {
 	/**
 	 * 布局计划里的一行：高度 + 「在给定 y 上摆放控件」的动作。
 	 *
-	 * 列高由计划本身求和而来（见 {@link #init()}），增删一行只动计划，不再有第二处行数要手工同步。
+	 * <p>列高由计划本身求和而来（见 {@link #init()}），增删一行只动计划，不再有第二处行数要手工同步。
 	 */
 	private record Row(int height, IntConsumer place) {
 	}
@@ -106,8 +106,7 @@ public class MsptMapConfigScreen extends Screen {
 		int panelX = Math.max(MARGIN, (width - panelWidth) / 2);
 		int rightX = panelX + leftWidth + COLUMN_GAP;
 
-		// 先组三份排布计划，再由计划求和出列高、居中、逐行摆放（「先量后摆」）：
-		// 增删一行只改计划本身，居中用的高度自动跟随，不再有第二处行数要手工同步
+		// 先组三份排布计划，再由计划求和出列高、居中、逐行摆放（「先量后摆」）
 		List<Row> leftPlan = leftColumnPlan(panelX, control);
 		List<Row> infoPlan = rightInfoPlan(rightX);
 		int subWidth = (rightWidth - SUB_GAP) / 2;
@@ -125,7 +124,7 @@ public class MsptMapConfigScreen extends Screen {
 		applyPlan(infoPlan, bodyTop + HEADER);
 		applyPlan(categoryPlan, bodyTop + HEADER);
 
-		// 底部两个按钮。两列高度不等，取较低的那列（明细比单行信息多，右列通常更长）
+		// 底部两个按钮：置于两列下方（bodyHeight 已取两列中的较大者）
 		int buttonY = bodyTop + bodyHeight + BUTTON_GAP;
 		addRenderableWidget(Button.builder(Component.literal("恢复默认"), button -> {
 					ClientConfig.resetToDefaults();
@@ -167,11 +166,11 @@ public class MsptMapConfigScreen extends Screen {
 	}
 
 	/**
-	 * 1.20.4 及以前的原版没有菜单模糊：世界内打开时，默认的半透明背景会把下层界面清晰透出
-	 * （且旧内容不被覆盖，会留下残影）。改为画泥土（与原版无世界场景一致），两层界面不再互相干扰；
-	 * 1.20.5 起原版自带模糊，不覆写。
+	 * 1.20.4 及以前的原版没有菜单模糊：世界内打开时，默认的半透明背景会把下层界面清晰透出（且旧内容
+	 * 不被覆盖，会留下残影）。改为画泥土（与原版无世界场景一致），两层界面不再互相干扰；1.20.5 起原版
+	 * 自带模糊，不覆写。
 	 *
-	 * 绘制方式随版本：1.20.2–1.20.4 的框架会调 renderBackground，覆写即可；1.20.1 及以前不调
+	 * <p>绘制方式随版本：1.20.2–1.20.4 的框架会调 renderBackground，覆写即可；1.20.1 及以前不调
 	 * （各屏自行绘制背景，Mod Menu 亦如此），那个版本段改在 render 覆写里画。
 	 */
 	//? if >=1.20.2 && <1.20.5 {
@@ -318,9 +317,9 @@ public class MsptMapConfigScreen extends Screen {
 	/**
 	 * 秒数输入框。
 	 *
-	 * EditBox 没有 setFilter，合法范围自行把关：输入非法则把框内文本改回当前
-	 * 生效值（改回的文本必然合法，故 responder 不会递归多层），使框内显示与将要发送的始终一致。
-	 * 清空时先不处理 —— 需允许擦掉旧值重输，此时的值仍是上一个合法值。
+	 * <p>EditBox 没有 setFilter，合法范围自行把关：输入非法则把框内文本改回当前生效值（改回的文本必然
+	 * 合法，故 responder 不会递归多层），使框内显示与将要发送的始终一致。清空时先不处理——需允许擦掉
+	 * 旧值重输，此时的值仍是上一个合法值。
 	 */
 	private void addSecondsBox(int x, int y) {
 		EditBox box = new EditBox(font, x, y, SECONDS_BOX_WIDTH, WIDGET_HEIGHT, Component.literal("扫描秒数"));
@@ -360,8 +359,8 @@ public class MsptMapConfigScreen extends Screen {
 		Checkbox checkbox = new MsptCheckbox(x, y, font.width(label) + 24,
 				Component.literal(label), selected, apply);
 		*///?}
-		// 提示需自行挂载：Builder 的 setTooltip 仅在标签长到要折三行以上时才生效（
-		// overflowsRowLimit），而这些标签都是一行，走 Builder 提示会被丢弃。
+		// 提示需自行挂载：Builder 的 setTooltip 仅在标签长到要折三行以上时（overflowsRowLimit）
+		// 才生效，而这些标签都是一行，走 Builder 会被丢弃。
 		if (tooltip != null) {
 			checkbox.setTooltip(Tooltip.create(Component.literal(tooltip)));
 		}

@@ -23,15 +23,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 随机刻 / 计划刻 / 方块更新 / 方块事件 / 实体五类工作的计时。
+ * 随机刻、计划刻、方块更新、方块事件、实体五类工作的计时。
  *
- * 每个点都是 HEAD 记开始、RETURN 记结束，差值即该方法自身的耗时。开始时刻存 @Unique 字段而不用
- * ThreadLocal：这几个方法只在服务端主线程调用，而 ThreadLocal 每次读写都要装箱一个 Long。
+ * <p>每个注入点均以 HEAD 记开始、RETURN 记结束，差值即该方法自身的耗时。开始时刻存 {@code @Unique}
+ * 字段而不用 ThreadLocal：这些方法只在服务端主线程调用，而 ThreadLocal 每次读写都要装箱一个 Long。
  *
- * 各 RETURN 注入点先判「开始时刻为 0（未在采样）」即提前返回：否则每次收尾都要白算一遍区块坐标
- * 打包与维度转换（{@link MsptSampler#end} 本就忽略 0，只是参数已经求了值）。
- *
- * 乘客不会重复计时，其耗时记在**载具所在的那个区块**上。
+ * <p>各 RETURN 注入点先判「开始时刻为 0（未在采样）」并提前返回，否则每次收尾都要白算一遍区块坐标
+ * 打包与维度转换（{@link MsptSampler#end} 本就忽略 0，但参数已经求值）。乘客不重复计时，其耗时记在
+ * 载具所在区块。
  */
 @Mixin(ServerLevel.class)
 public abstract class ServerLevelMixin {
@@ -57,7 +56,6 @@ public abstract class ServerLevelMixin {
 	@Unique
 	private long msptmapBlockEventStart;
 
-	/** 随机刻。 */
 	@Inject(method = "tickChunk", at = @At("HEAD"))
 	private void msptmapRandomTickBegin(LevelChunk chunk, int tickSpeed, CallbackInfo ci) {
 		this.msptmapRandomTickStart = MsptSampler.begin();
@@ -71,7 +69,6 @@ public abstract class ServerLevelMixin {
 		MsptSampler.end(TickCategory.RANDOM_TICK, this.msptmapLevel(), ChunkKeys.pack(chunk.getPos()), this.msptmapRandomTickStart);
 	}
 
-	/** 计划刻：方块。 */
 	@Inject(method = "tickBlock", at = @At("HEAD"))
 	private void msptmapBlockBegin(BlockPos pos, Block block, CallbackInfo ci) {
 		this.msptmapBlockStart = MsptSampler.begin();
@@ -99,7 +96,6 @@ public abstract class ServerLevelMixin {
 		MsptSampler.end(TickCategory.SCHEDULED, this.msptmapLevel(), ChunkKeys.pack(pos), this.msptmapFluidStart);
 	}
 
-	/** 实体。 */
 	@Inject(method = "tickNonPassenger", at = @At("HEAD"))
 	private void msptmapEntityBegin(Entity entity, CallbackInfo ci) {
 		this.msptmapEntityStart = MsptSampler.begin();
@@ -115,12 +111,12 @@ public abstract class ServerLevelMixin {
 
 	/**
 	 * 方块更新：通知某坐标的六个邻居。红石连锁在派发过程中会再绕回本方法，故只记最外层那一次
-	 * （嵌套调用的耗时已含在外层里，逐个记账会重复累加）；区块算最外层那次的位置。
+	 * （嵌套调用的耗时已含在外层中，逐个记账会重复累加），区块取最外层那次的位置。
 	 *
-	 * 用 @WrapMethod 而非 HEAD / RETURN 两次 @Inject：深度计数须在 try-finally 里还原 —— 目标方法
-	 * 抛出异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
+	 * <p>用 {@code @WrapMethod} 而非两次 {@code @Inject}（HEAD / RETURN）：深度计数须在 try-finally
+	 * 中还原——目标方法抛异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
 	 */
-	// 1.21.2 起目标方法多了 Orientation 参数；两个形态只差它，注入方法随之分叉。
+	// 1.21.2 起目标方法多了 Orientation 参数；两个形态仅差此项，注入方法随之分叉。
 	//? if >=1.21.2 {
 	@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
 			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
@@ -155,11 +151,12 @@ public abstract class ServerLevelMixin {
 	*///?}
 
 	/**
-	 * 方块事件：由 {@code ServerLevel.tick} 里的 runBlockEvents 调起，不在 tickChunk 内，与本类其余各点不重叠。
+	 * 方块事件：由 {@code ServerLevel.tick} 中的 runBlockEvents 调起，不在 tickChunk 内，与本类其余
+	 * 各注入点不重叠。
 	 *
-	 * 这个方法返回 boolean（事件有没有被处理掉），所以回调必须是 {@link CallbackInfoReturnable}：
-	 * 目标有返回值而回调写成 CallbackInfo，Mixin 会在 Bootstrap 阶段直接报 InvalidInjectionException。
-	 * 我们只要时间，不碰那个返回值（没写 cancellable，改不了它）。
+	 * <p>该方法返回 boolean（事件是否被处理），故回调必须是 {@link CallbackInfoReturnable}：目标有
+	 * 返回值而回调写成 CallbackInfo 时，Mixin 会在 Bootstrap 阶段报 InvalidInjectionException。
+	 * 此处只要时间，不修改返回值（未声明 cancellable）。
 	 */
 	@Inject(method = "doBlockEvent", at = @At("HEAD"))
 	private void msptmapBlockEventBegin(BlockEventData eventData, CallbackInfoReturnable<Boolean> cir) {

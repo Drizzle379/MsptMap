@@ -12,12 +12,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 扫描按钮四周的进度圈：自左上角起顺时针，转满一圈 = 本次扫描结束。
+ * 扫描按钮四周的进度圈：自左上角起顺时针，转满一圈即本次扫描结束。
  *
- * 圈画在按钮自身的边框上，不向外扩：按钮贴屏幕左边缘（x=0），外扩会使左边那条被裁掉；按钮内
+ * <p>圈画在按钮自身的边框上，不向外扩：按钮贴屏幕左边缘（x=0），外扩会使左边那条被裁掉；按钮内
  * 16×16 的图标居中，四周各有 2 像素空当，正好容纳这一像素宽的圈。
  *
- * 与 {@link ChunkTooltip} 同理：{@link #segments} 只算矩形（可离线断言），{@link #draw} 才接触屏幕。
+ * <p>与 {@link ChunkTooltip} 同理：{@link #segments} 只算矩形（可离线断言），{@link #draw} 才接触屏幕。
  */
 public final class ScanRing {
 	/** 未走到的部分：半透明黑轨道。 */
@@ -31,7 +31,7 @@ public final class ScanRing {
 	/**
 	 * 顺时针走过 {@code fraction} 圈需要填充的矩形。
 	 *
-	 * 一圈分四条边（上 → 右 → 下 → 左），每边 {@code size} 步；每个 {@code int[]} 为
+	 * <p>一圈分四条边（上 → 右 → 下 → 左），每边 {@code size} 步；每个 {@code int[]} 为
 	 * {@code {x1, y1, x2, y2}}，可直接传给 {@code graphics.fill}（左闭右开，宽度恰为 1 像素）。
 	 * 最多四个矩形，不做逐像素碎块。四角各被两条边重复计入，颜色相同，不可见。
 	 */
@@ -89,7 +89,7 @@ public final class ScanRing {
 	/**
 	 * 逐条边填充；不走 {@link #segments}（每帧省下列表与 int[] 的分配），几何算式与之共用。
 	 *
-	 * 声明行分叉（{@code GuiGraphics} 在 26.1 更名为 {@code GuiGraphicsExtractor}），方法体共用；
+	 * <p>声明行分叉（{@code GuiGraphics} 在 26.1 更名为 {@code GuiGraphicsExtractor}），方法体共用；
 	 * else 段的注释里不能再放以星号斜杠收尾的注释（javadoc 也算），那会提前关上包装注释。
 	 */
 	//? if >=26.1 {

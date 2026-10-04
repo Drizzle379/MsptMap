@@ -29,35 +29,34 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 采样核心：每个区块的耗时记在一张表里，开一个 N 秒的窗口，窗口结束出结果。
+ * 采样核心：逐区块累计耗时，开一个 N 秒的窗口，窗口结束出结果。
  *
- * 只有一个开关 + 一张表，没有后台线程：未采样时注入点只读一个 boolean，
- * 采样时每个事件只记两笔（纳秒、次数），不做除法、不分配对象。
+ * <p>无后台线程，只有开关与数据表：未采样时注入点只读一个 boolean；采样时每个事件仅记两笔
+ * （纳秒、次数），不做除法、不分配对象。
  *
- * 窗口按**服务端 tick 数**收尾（挂在 Fabric API 的 END_SERVER_TICK 上），不看现实时间。
- *
- * 两次窗口之间隔 {@link #COOLDOWN_SECONDS} 秒冷却；服务器停止时由 {@link #reset()} 清空状态。
+ * <p>窗口按服务端 tick 数收尾（挂在 Fabric API 的 END_SERVER_TICK 上），不看现实时间。两次窗口
+ * 之间隔 {@link #COOLDOWN_SECONDS} 秒冷却；服务器停止时由 {@link #reset()} 清空状态。
  */
 public final class MsptSampler {
 	/** 采样秒数上限。 */
 	public static final int MAX_SECONDS = 60;
 
 	/**
-	 * 一次扫描**所有维度合计**的字节预算。原版自定义包上限 1MB，这里留一倍余量；
-	 * 一个区块编码后 14~28 字节。
+	 * 一次扫描所有维度合计的字节预算：原版自定义包上限 1MB，此处留一倍余量（单区块编码后约
+	 * 14~28 字节）。
 	 */
 	public static final int MAX_SNAPSHOT_BYTES = 700 * 1024;
 
-	/** 正在采样 = true。热路径只读这一个字段。 */
+	/** 正在采样。热路径只读这一个字段。 */
 	private static boolean sampling;
 
-	/** 一秒多少刻。窗口长度与客户端进度圈（ScanProgress）的分母共用这一个口径。 */
+	/** 每秒刻数，窗口长度与客户端进度圈（ScanProgress）共用此口径。 */
 	public static final int TICKS_PER_SECOND = 20;
 
-	/** 进度包每这么多刻发一次：2 刻 = 0.1 秒。 */
+	/** 进度包发送间隔：2 刻 = 0.1 秒。 */
 	private static final int PROGRESS_EVERY_TICKS = 2;
 
-	/** 窗口内已过的服务端 tick 数：换算 mspt 的分母，数够 {@code 秒数 × TICKS_PER_SECOND} 即收尾。 */
+	/** 窗口内已过的服务端 tick 数：mspt 的分母，数够「秒数 × TICKS_PER_SECOND」即收尾。 */
 	private static int windowTicks;
 
 	/** 本次窗口的秒数（已夹取），随「开始」包发回客户端。 */
@@ -77,17 +76,14 @@ public final class MsptSampler {
 	/** 上次扫描结束的时刻，用于冷却；0 = 还没扫过。服务器停止时复位。 */
 	private static long lastEndNanos;
 
-	/**
-	 * 上一条记账的来源缓存：事件按区块聚集（方块实体、实体、随机刻都是逐区块走），命中时
-	 * 免掉两次哈希查找。换维度或清表时作废（见 {@link #clearTimings()}）。
-	 */
+	/** 上一条记账的来源缓存：事件按区块聚集，命中时免掉两次哈希查找。换维度或清表时作废。 */
 	private static ServerLevel lastLevel;
 	private static Long2ObjectOpenHashMap<ChunkTiming> lastChunks;
 	private static long lastKey;
 	private static ChunkTiming lastTiming;
 
 	/**
-	 * 距上次服务端 tick 超过这么多现实秒，视为服务端没有在运行（空载自动暂停 / 世界暂停 / 长时间卡顿）。
+	 * 超过这么多现实秒没有服务端 tick 即视为服务端未在运行（空载自动暂停 / 世界暂停 / 长时间卡顿）。
 	 * 正常一刻 50 毫秒，5 秒有 100 倍余量，普通卡顿不会误判。
 	 */
 	private static final int STALL_SECONDS = 5;
@@ -98,10 +94,10 @@ public final class MsptSampler {
 	private static long lastTickNanos;
 
 	/**
-	 * 上一 tick 收尾、本 tick 才发的完成包（见 {@link #finish()}）。没有待发时为 null。
+	 * 上一 tick 收尾、本 tick 才发的完成包（见 {@link #finish()}）；没有待发时为 null。
 	 *
-	 * 压后一 tick 是为了让客户端有整整一 tick 把进度圈画满：窗口最后一刻直接发完成包的话，
-	 * 圈从 90% 跳到消失，观感像「没转满就中断」（PLAN 坑 21）。
+	 * <p>压后一 tick 是为了让客户端有整整一 tick 把进度圈画满：窗口最后一刻直接发送的话，圈会从
+	 * 90% 跳到消失，观感如同未转满即中断。
 	 */
 	private static ServerPlayer pendingPlayer;
 	private static ScanResultPayload pendingDone;
@@ -115,8 +111,8 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 把请求的秒数夹进合法区间。调用方须用它的返回值：回给客户端的「开始」包要报夹取后的秒数，
-	 * 否则进度圈的分母与真实窗口不符。
+	 * 把请求秒数夹进合法区间。调用方须使用返回值：回给客户端的「开始」包要报夹取后的秒数，
+	 * 否则进度圈分母与真实窗口不符。
 	 */
 	public static int clampSeconds(int seconds) {
 		return Clamp.of(seconds, 1, MAX_SECONDS);
@@ -146,18 +142,18 @@ public final class MsptSampler {
 			if (!stalled) {
 				return StartResult.BUSY;
 			}
-			// 服务端已很久没有 tick：旧窗口是僵死的（发起人掉线、世界暂停后一直没恢复）；
-			// 作废重开，否则它会一直占着，之后所有请求都被回「忙」
+			// 服务端已很久没有 tick：旧窗口僵死（发起人掉线、世界暂停后未恢复）。作废重开，
+			// 否则它将一直占用，后续请求均被判为「忙」
 			MsptMapMod.LOGGER.info("上一个采样窗口已停滞（服务端 {} 秒没有 tick），已作废",
 					(now - lastTickNanos) / 1_000_000_000L);
 			reset();
 		}
-		// 冷却从上次结束算起：若从开始算，间隔 ≤ 窗口长度时冷却永远在窗口内过期，等于没有冷却
+		// 冷却从上次结束算起；若从开始算，间隔 ≤ 窗口长度时冷却会在窗口内提前过期，等于没有冷却
 		if (lastEndNanos != 0L && now - lastEndNanos < COOLDOWN_NANOS) {
 			return StartResult.COOLDOWN;
 		}
-		// 服务端当前没在运行：窗口数不到刻，控制台（无发起人）拿不到结果，说清楚即可；玩家请求照旧
-		// 开窗等待 —— 单人档在地图上点按钮时世界本就暂停，关掉地图自然会开始数刻（见 PLAN 坑 20）
+		// 服务端当前未运行：窗口数不到刻，控制台（无发起人）拿不到结果，直接拒绝；玩家请求照旧
+		// 开窗等待 —— 单人档在地图上点按钮时世界本就暂停，关掉地图即会开始数刻
 		if (stalled && requester == null) {
 			return StartResult.STALLED;
 		}
@@ -172,8 +168,8 @@ public final class MsptSampler {
 	/**
 	 * 服务器停止：丢弃采样状态与表、复位冷却。
 	 *
-	 * 静态字段跨世界存活（单人档退回主菜单再进是同一个 JVM）：不复位则旧窗口继续往下数刻，
-	 * 重进后的扫描请求会被回成「忙」，而整个服务器里并没有别人在扫。
+	 * <p>静态字段跨世界存活（单人档退回主菜单再进是同一个 JVM），不复位则旧窗口继续数刻，
+	 * 重进后的扫描请求会被误判为「忙」，而服务器中并无他人扫描。
 	 */
 	public static void reset() {
 		sampling = false;
@@ -187,9 +183,9 @@ public final class MsptSampler {
 
 	/**
 	 * 每个服务端 tick 结束时调用一次：数够窗口刻数即收尾，收尾前每 0.1 秒推一次进度包
-	 * （最后一刻改在 {@link #finish()} 里推满格，完成包再压后一 tick）。
+	 * （最后一刻改在 {@link #finish()} 中推满格，完成包再压后一 tick）。
 	 *
-	 * 时间戳与是否采样无关：未采样时也要记，停滞判定（{@link #stalled}）靠它。
+	 * <p>时间戳与是否采样无关：未采样时也要记录，停滞判定（{@link #stalled}）依赖它。
 	 */
 	public static void onServerTick() {
 		lastTickNanos = System.nanoTime();
@@ -222,8 +218,8 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 把「窗口已过的刻数」推给发起人：客户端只画服务端报过的数。
-	 * 控制台 / 命令方块发起的扫描没有发起人，不发。
+	 * 把窗口已过的刻数推给发起人：客户端只画服务端报过的数。控制台 / 命令方块发起的扫描没有
+	 * 发起人，不发。
 	 */
 	private static void sendProgress() {
 		if (windowTicks % PROGRESS_EVERY_TICKS != 0) {
@@ -267,8 +263,8 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 清表并作废来源缓存。缓存指向的表一旦被换掉，再写入就写进已废弃的表 —— 三个清表入口
-	 * （start / finish / reset）一律走这里，不直接调 {@code timings.clear()}。
+	 * 清表并作废来源缓存。缓存指向的表一旦被换掉，再写入就会写进已废弃的表；三个清表入口
+	 * （start / finish / reset）一律走这里，不直接调用 {@code timings.clear()}。
 	 */
 	private static void clearTimings() {
 		timings.clear();
@@ -295,20 +291,20 @@ public final class MsptSampler {
 				logTopChunks();
 			}
 		} finally {
-			// 须在 snapshot() / logTopChunks() 之后，且发送路径抛异常时也要执行：外层表的键是
-			// ServerLevel，不清则多世界服务器卸载某个世界后，它仍被这张表强引用着，回收不掉。
+			// 须在 snapshot()/logTopChunks() 之后执行，且发送路径抛异常时也要执行：外层表的键是
+			// ServerLevel，不清则多世界服务器卸载某世界后它仍被强引用，无法回收。
 			clearTimings();
 		}
-		// 收尾（实体遍历、两条链 BFS、排序、逐块编码量尺寸、提交发送）全部同步在本 tick 上，
-		// 这里量化它的成本；编码与真正的发送在网络线程，不在计量范围内
+		// 收尾（实体遍历、两条链 BFS、排序、逐块编码）全部同步在本 tick 上，此处计量其成本；
+		// 编码与实际的发送在网络线程，不在计量范围内
 		MsptMapMod.LOGGER.info("收尾耗时 {} ms", (System.nanoTime() - finishStartNanos) / 1_000_000L);
 	}
 
 	/**
-	 * 把采样表变成可发送的快照，同时取两个等级 —— 取的是**出快照这一刻**的值（它随时在变，
-	 * 每问一次是一次哈希查找，不适合放在采样热路径上）。
+	 * 把采样表转换为可发送的快照，同时取两个等级；取的是出快照这一刻的值（随时在变，每次查询
+	 * 都是一次哈希查找，不宜放入采样热路径）。
 	 *
-	 * 字节预算按维度平分，避免外层表的遍历顺序决定谁先吃光预算。
+	 * <p>字节预算按维度平分，避免外层表的遍历顺序决定谁先吃光预算。
 	 */
 	private static List<SnapshotCodec.DimensionData> snapshot() {
 		List<SnapshotCodec.DimensionData> dimensions = new ArrayList<>(timings.size());
@@ -334,9 +330,9 @@ public final class MsptSampler {
 			int loadLevel = distanceManager.getChunkLevel(key, false);
 			int computeLevel = distanceManager.getChunkLevel(key, true);
 			//?} else {
-			/*// 1.21.4 及以前：DistanceManager 没有按坐标取等级的接口，改用 ChunkHolder 的
-			// ticketLevel（加载）与 queueLevel（计算）。33 = 完整生成但不刻，与快照上限一致。
-			// ChunkMap.getVisibleChunkIfPresent 在 1.21.4 是 protected，走自己的 accessor。
+			/*// 1.21.4 及以前：DistanceManager 没有按坐标取等级的接口，改用 ChunkHolder 的 ticketLevel
+			// （加载）与 queueLevel（计算）。33 = 完整生成但不刻，与快照上限一致。ChunkMap 的
+			// getVisibleChunkIfPresent 在 1.21.4 为 protected，故走自己的 accessor。
 			ChunkHolder holder = ((ChunkMapAccessor) (Object) chunkMap).getVisibleChunks().get(key);
 			int loadLevel = holder != null ? holder.getTicketLevel() : 33;
 			int computeLevel = holder != null ? holder.getQueueLevel() : 33;
@@ -359,8 +355,8 @@ public final class MsptSampler {
 					TicketSources.NONE));
 					*///?}
 		});
-		// 按重量降序：装不下时移除的必然是尾部最轻的。重量先一次算好再排 —— 比较器里现算
-		// totalNanos() 的话，每次比较都要把那七个数重加一遍，数万区块时是数十万次重复求和
+		// 按重量降序：装不下时移除的必然是尾部最轻的。重量先一次算好再排；若在比较器中现算
+		// totalNanos()，每次比较都要重加那七个数，数万区块时即为数十万次重复求和
 		List<Weighted> weighted = new ArrayList<>(out.size());
 		for (SnapshotCodec.ChunkData chunk : out) {
 			weighted.add(new Weighted(chunk, chunk.totalNanos()));
@@ -380,13 +376,11 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 该区块在某条链上的加载来源。
+	 * 该区块在某条链上的加载来源。表里没有它时，以「该链是否本该覆盖本区块」区分：本该覆盖却无源，
+	 * 说明正推漏了锚点，标为存疑（客户端显示星号）；本就不覆盖（模拟链超出模拟距离）时无源属正常，
+	 * 不应报为异常，否则视距内、模拟距离外的一圈会星号满屏。
 	 *
-	 * 表里没有它时分两种情形，「该链本该覆盖到本区块」是分界线：本该覆盖却没有源，说明正推漏了
-	 * 一个锚点，标成存疑让客户端显示一个星号；本就不覆盖（模拟链出了模拟距离）时，无来源是正常
-	 * 状态，不该报成异常 —— 否则视距内、模拟距离外的那一圈会星号满屏，真出问题时反而看不出。
-	 *
-	 * @param expected 该链本该覆盖到本区块吗
+	 * @param expected 该链是否本该覆盖本区块
 	 */
 	private static int ticketCode(Long2IntOpenHashMap sources, long key, boolean expected) {
 		int code = sources.get(key);
@@ -395,9 +389,8 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 出快照那一刻每个区块的实体数（含乘客）。
-	 *
-	 * 与耗时不同，这是瞬时值而非窗口内的累计，故不放进热路径：每维度遍历一遍全部实体，只在收尾时做一次。
+	 * 出快照那一刻每个区块的实体数（含乘客）。与耗时不同，这是瞬时值而非窗口内的累计，故不放入
+	 * 热路径：每维度遍历一遍全部实体，只在收尾时进行一次。
 	 */
 	private static Long2IntOpenHashMap entityCounts(ServerLevel level) {
 		Long2IntOpenHashMap counts = new Long2IntOpenHashMap();
@@ -410,12 +403,11 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 把「加载着但窗口内无计时」的区块补进快照，耗时与次数全填 0 —— 客户端据此铺淡灰。
+	 * 把「加载着但窗口内无计时」的区块补进快照，耗时与次数全填 0，客户端据此铺淡灰。
 	 *
-	 * 只收加载等级 ≤ 32 的（31 实体刻 / 32 方块刻）；33 及以上完全不 tick。等级直接读
-	 * {@code ChunkHolder.getTicketLevel()}，与 {@code getChunkLevel(key, false)} 同源。
-	 *
-	 * 这批区块没有轻重可挑，装不下即中止，并留一行日志。
+	 * <p>只收加载等级 ≤ 32 的（31 实体刻 / 32 方块刻）；33 及以上完全不 tick。等级直接读
+	 * {@code ChunkHolder.getTicketLevel()}，与 {@code getChunkLevel(key, false)} 同源。这批区块
+	 * 没有轻重可挑，装不下即中止，并留一行日志。
 	 */
 	private static void addLoadedChunks(ServerLevel level, DistanceManager distanceManager, LongOpenHashSet measured,
 			Long2IntOpenHashMap entityCounts, Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets,
@@ -490,7 +482,7 @@ public final class MsptSampler {
 		}
 	}
 
-	/** 纳秒 → mspt 文本，仅供打印（精度与固定 Locale 见 {@link Decimals}）。 */
+	/** 纳秒 → mspt 文本，仅供打印（精度与 Locale 见 {@link Decimals}）。 */
 	private static String ms(long nanos) {
 		return Decimals.format3(nanos / 1_000_000.0 / windowTicks);
 	}

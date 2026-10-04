@@ -31,10 +31,10 @@ import xaero.map.gui.GuiTexturedButton;
 import xaero.map.world.MapDimension;
 
 /**
- * Xaero 世界地图上的挂点：两个按钮（扫描 / 清屏）、每帧一次的热力图、悬停详情、扫描进度圈。
+ * Xaero 世界地图上的挂点：两个按钮（扫描 / 清屏）、每帧一次的热力图、悬停详情与扫描进度圈。
  *
- * 目标类及其引用的类型全在 Xaero 中，故该 mixin 单独放在客户端配置（msptmap.client.mixins.json，
- * required:false）：未装世界地图时不至于起不来，最多是没有热力图。
+ * <p>目标类及其引用的类型全在 Xaero 中，故该 mixin 单独放在客户端配置
+ * （msptmap.client.mixins.json，required:false）：未装世界地图时不至于起不来，最多是没有热力图。
  */
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class GuiMapMixin {
@@ -47,8 +47,8 @@ public abstract class GuiMapMixin {
 	private static final int SCAN_BUTTON_SIZE = 20;
 
 	/**
-	 * 维度 ID 字符串的按对象缓存：同一帧里热力图与悬停详情各要取一次 ID，而两次拿到的是同一个维度
-	 * 对象，第二次直接复用。维度切换（换世界、走传送门）后对象随之更换，引用比较自然失效，无需手工清理。
+	 * 维度 ID 字符串的按对象缓存：同一帧中热力图与悬停详情各要取一次 ID，而两次拿到的是同一个维度
+	 * 对象，第二次直接复用。维度切换（换世界、走传送门）后对象随之更换，引用比较自然失效，无需清理。
 	 */
 	@Unique
 	private static MapDimension msptmapLastDimension;
@@ -83,15 +83,14 @@ public abstract class GuiMapMixin {
 	/*@Inject(method = "method_25426", at = @At("TAIL"), remap = false)
 	*///?}
 	private void msptmap$addButton(CallbackInfo ci) {
-		// 左侧那一列：齿轮在 (0,0) 的 30×30，Xaero 自己的按钮都在右边那列和底边，这一段是空的。
-		// 用 Xaero 自己的 GuiTexturedButton：无底框、只有图标，悬停时图标上浮并变亮，无需自行绘制
-		// 尺寸照左下角那一列（20×20 的按钮内画 16×16 图标，白块 11×11 居中、右下 1 px 灰影）。
-		// 按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示也是它自己的 ScreenBase
-		// 扫控件画的。提示为 Supplier，悬停时每帧调用一次，故用 lambda。
-		// GuiTexturedButton 的构造器两代不同：1.21.1 及以前是 11 参，贴图边长由 Xaero 写死为 256
-		// （其内部经 GuiGraphics.blit 的 7 参重载绘制，该重载固定按 256×256 的纹理基准采样——
-		// 若给 16×16 的贴图，只会采到左上 1/16 区域、图标不可见）；1.21.3 起尾部多两个数，
-		// 边长由调用方给出。故贴图统一为 256×256（16×16 的图标画在左上角），两代采样同一区域。
+		// 左侧空置的一列：齿轮在 (0,0) 的 30×30，Xaero 自己的按钮都在右边一列和底边。
+		// 用 Xaero 的 GuiTexturedButton：无底框、只有图标，悬停时图标上浮并变亮，无需自行绘制。
+		// 按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示由其 ScreenBase 扫描控件
+		// 绘制，为 Supplier，悬停时每帧调用一次，故用 lambda。
+		// GuiTexturedButton 构造器两代不同：1.21.1 及以前为 11 参，贴图边长由 Xaero 写死为 256
+		// （内部经 GuiGraphics.blit 的 7 参重载绘制，该重载固定按 256×256 采样，给 16×16 的贴图
+		// 只会采到左上 1/16 区域、图标不可见）；1.21.3 起尾部多两个参数，边长由调用方给出。故贴图
+		// 统一为 256×256（16×16 的图标画在左上角），两代采样同一区域。
 		//? if >=1.21.3 {
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
@@ -121,10 +120,10 @@ public abstract class GuiMapMixin {
 	 * 绘制挂在 GuiMap.prevLoadingLeaves 字段写完的那一刻：恰在 Xaero 打开叠加层缓冲之后、收缓冲之前，
 	 * 故画进去的方块必被这一帧画出，又不会盖住之后绘制的路标与文字。
 	 *
-	 * 局部变量按名字取（Xaero 的类带有局部变量表），不写死槽位号：槽位号随版本变化，名字不会。
+	 * <p>局部变量按名字取（Xaero 的类带有局部变量表），不写死槽位号：槽位号随版本变化，名字不会。
 	 * 注入点的方法名随 MC 版本：1.21.11 及以前是 Screen.render 的 intermediary 名 method_25394
-	 * （Xaero 发布时被重映射成这个），26.1 起 Xaero 随原版改名 extractRenderState。
-	 * 两个形态只差方法名与屏幕类型的写法，绘制体共用 {@link #msptmap$heatmap}。
+	 * （Xaero 发布时被重映射成它），26.1 起 Xaero 随原版改名 extractRenderState。两个形态只差方法名
+	 * 与屏幕类型的写法，绘制体共用 {@link #msptmap$heatmap}。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "extractRenderState",
@@ -170,11 +169,11 @@ public abstract class GuiMapMixin {
 
 	/**
 	 * 悬停详情挂在方法最末尾（TAIL）：此处地图已绘制完毕、Xaero 的缩放平移也已收干净，用 guiGraphics
-	 * 绘制的字必在最上层，坐标为普通屏幕坐标。不与热力图共用注入点：那个点位于地图自身的矩阵内，
-	 * 在那里绘制的字会随地图缩放。
+	 * 绘制的文字必在最上层，坐标为普通屏幕坐标。不与热力图共用注入点：后者位于地图自身的矩阵内，
+	 * 在那里绘制的文字会随地图缩放。
 	 *
-	 * 读字段而非局部变量：{@code mouseBlockPosX/Z} 本帧最后一次写入在方法很靠前处，到 TAIL 早已定下；
-	 * Xaero 自己高亮区块用的就是同一个值。鼠标压在控件上时整个不画，判定见
+	 * <p>读字段而非局部变量：{@code mouseBlockPosX/Z} 本帧最后一次写入在方法很靠前处，到 TAIL 早已
+	 * 定下；Xaero 自身高亮区块用的就是同一个值。鼠标压在控件上时整个不画，判定见
 	 * {@link ChunkTooltip#overWidget}。
 	 */
 	//? if >=26.1 {
@@ -227,8 +226,8 @@ public abstract class GuiMapMixin {
 	 * 扫描进度圈：同样挂在 TAIL（此处 Xaero 控件已绘制完，坐标为普通屏幕坐标）。画在扫描按钮自身的
 	 * 边框上（理由见 {@link ScanRing}）。
 	 *
-	 * 不自行计算任何数值：进度全部来自服务端每 0.1 秒推送的包（见 {@link ScanProgress}），故单人档
-	 * 地图开着（世界暂停、服务端发不出包）时它不动。
+	 * <p>不自行计算任何数值：进度全部来自服务端每 0.1 秒推送的包（见 {@link ScanProgress}），故
+	 * 单人档地图开着（世界暂停、服务端发不出包）时它不动。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)

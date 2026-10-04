@@ -20,10 +20,10 @@ import java.util.List;
 //?}
 
 /**
- * 刷怪的计时。
+ * 刷怪计时。
  *
- * 与其他几处不同：spawnForChunk 是静态方法，开始时刻只能存静态字段（它在主线程上按区块顺序调用，
- * 不会嵌套）；方法签名已含 level 与 chunk，无需自行计算坐标。
+ * <p>与其他注入点不同：spawnForChunk 是静态方法，开始时刻只能存静态字段（它在主线程上按区块顺序
+ * 调用，不会嵌套）；方法签名已含 level 与 chunk，无需自行计算坐标。
  */
 @Mixin(NaturalSpawner.class)
 public abstract class NaturalSpawnerMixin {

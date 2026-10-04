@@ -21,8 +21,7 @@ import java.util.List;
 /**
  * 悬停详情：鼠标所指区块的账本。
  *
- * 分两半：{@link #lines} 只拼字符串（不认游戏，可离线断言），{@link #draw} 只负责绘制。
- *
+ * <p>分两半：{@link #lines} 只拼接字符串（不依赖游戏，可离线断言），{@link #draw} 只负责绘制。
  * 所指区块由 Xaero 的高亮决定（{@code mouseBlockPosX >> 4}，依据见
  * {@link msptmap.client.mixins.GuiMapMixin}），与地图显示的必然是同一个区块。
  */
@@ -47,8 +46,8 @@ public final class ChunkTooltip {
 	/**
 	 * 各类耗时在详情与设置界面里的显示顺序。
 	 *
-	 * 与枚举顺序不同：枚举只许在末尾追加（协议按 ordinal 上线），而这里按「原版 tick 的先后」排，
-	 * 与 {@code ServerLevel.tick} 里各阶段的次序一致。新增类别时这里也要加一项，否则设置界面与
+	 * <p>与枚举顺序不同：枚举只许在末尾追加（协议按 ordinal 上线），而这里按原版 tick 的先后排，
+	 * 与 {@code ServerLevel.tick} 中各阶段的次序一致。新增类别时此处也要加一项，否则设置界面与
 	 * 详情都不会显示它（顺序自定）。
 	 */
 	static final List<TickCategory> ORDER = List.of(
@@ -61,8 +60,8 @@ public final class ChunkTooltip {
 			TickCategory.SPAWN);
 
 	/**
-	 * 上次拼行结果与它的输入：区块（引用即快照代次 —— 每收一包快照都会重建全部区块对象）、
-	 * 坐标、窗口刻数、配置签名。五者全同则直接复用。
+	 * 上次拼行结果与其输入：区块（引用即快照代次——每收一包快照都会重建全部区块对象）、坐标、
+	 * 窗口刻数、配置签名。五者全同则直接复用。
 	 */
 	private static ClientSnapshot.Chunk cachedChunk;
 	private static int cachedChunkX;
@@ -76,13 +75,13 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 详情要显示的每一行。显示哪几行由 {@link ClientConfig} 的勾选决定，全关时返回空列表
-	 * （连「未采样」也不给）；调用方见到空列表即不画面板。
+	 * 详情要显示的每一行。显示哪几行由 {@link ClientConfig} 的勾选决定，全关时返回空列表（连
+	 * 「未采样」也不给），调用方见到空列表即不画面板。
 	 *
-	 * 悬停时每帧都会调到这里，而输入（区块、窗口、配置）在两次绘制之间通常纹丝不动，
-	 * 故按输入缓存：命中即省下约八次 {@code format} 与整串拼接。
+	 * <p>悬停时每帧都会调用到这里，而输入（区块、窗口、配置）在两次绘制之间通常不变，故按输入
+	 * 缓存：命中即省下约八次 {@code format} 与整串拼接。
 	 *
-	 * @param chunk       鼠标所指区块；快照中没有（本次未扫到）时传 null —— 坐标行照给，另加一行
+	 * @param chunk       鼠标所指区块；快照中没有（本次未扫到）时为 null——坐标行照给，另加一行
 	 *                    「未采样」，以便区分「无数据」与「未显示」
 	 * @param windowTicks 窗口内经过的 tick 数，各类纳秒换算 mspt 时的分母
 	 */
@@ -160,9 +159,9 @@ public final class ChunkTooltip {
 		}
 		String name = ticketName(type);
 		if (type == TicketSources.PLAYER_LOADING) {
-			// 26.2 的 player_loading 是**逐区块铺**的：视距内每格一张、等级还都一样，所以这一链上
-			// 根本不存在「中心」与距离可言（每格算出来都是自己）。只写票名，不编造一个恒为 0 的距离。
-			// 其余票种（forced / portal / ender_pearl…）是稀疏的，中心与距离才有意义。
+			// 26.2 的 player_loading 是逐区块铺的：视距内每格一张、等级相同，故此链上不存在「中心」
+			// 与距离（每格算出来都是自己）。只写票名，不编造一个恒为 0 的距离。其余票种（forced /
+			// portal / ender_pearl 等）是稀疏的，中心与距离才有意义。
 			return " · " + name;
 		}
 		int offsetX = TicketSources.offsetX(code);
@@ -195,9 +194,9 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 面板位置：默认在鼠标右下角，右 / 下放不下则翻到另一侧，再收回屏幕内。返回 {x, y}。
+	 * 面板位置：默认在鼠标右下角，右 / 下放不下则翻到另一侧，再收回屏幕内。返回 {@code {x, y}}。
 	 *
-	 * 单独拆出以便离线断言（贴边翻面是 {@link #draw} 里唯一会算错的地方）。
+	 * <p>单独拆出以便离线断言（贴边翻面是 {@link #draw} 中唯一容易算错之处）。
 	 */
 	public static int[] position(int mouseX, int mouseY, int boxWidth, int boxHeight, int screenWidth, int screenHeight) {
 		int x = mouseX + OFFSET;
@@ -212,14 +211,13 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 鼠标是否正压在一个控件（按钮 / 输入框 / 下拉列表…）上 —— 是则这一帧不画详情。
+	 * 鼠标是否正压在一个控件（按钮 / 输入框 / 下拉列表…）上；是则这一帧不画详情。
 	 *
-	 * Xaero 在 {@code GuiMap.extractRenderState} 末尾也绘制自己的提示框，位置同在鼠标处，而注入点
-	 * 是同一方法的 TAIL（最后绘制），两个框会重叠；指向按钮时本就不在看地图，让位即可。
-	 * 判定只看是否为控件且鼠标落在其矩形内（左闭右开，同 {@code fill}），不看显示与禁用状态，
-	 * 与 Xaero 的口径一致；只认 {@link AbstractWidget}。
+	 * <p>Xaero 在 {@code GuiMap.extractRenderState} 末尾也绘制自己的提示框，位置同在鼠标处，而注入点
+	 * 是同一方法的 TAIL（最后绘制），两个框会重叠；指向按钮时本就不在看地图，让位即可。判定只看是否
+	 * 为控件且鼠标落在其矩形内（左闭右开，同 {@code fill}），不看显示与禁用状态，与 Xaero 口径一致。
 	 *
-	 * 只用原版类型，不涉及 Xaero，可离线断言。
+	 * <p>只用原版类型，不涉及 Xaero，可离线断言。
 	 */
 	public static boolean overWidget(int mouseX, int mouseY, List<? extends GuiEventListener> children) {
 		for (GuiEventListener child : children) {
@@ -279,10 +277,10 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 各类的名称。用 switch 而非数组：枚举新增类别时会在编译期报错，不会静默错位。
-	 * 名称都是四个字（对齐后每行等宽），新增时沿用。
+	 * 各类的名称。用 switch 而非数组：枚举新增类别时会在编译期报错，不会静默错位。名称均为四个字
+	 * （对齐后每行等宽），新增时沿用。
 	 *
-	 * 包内可见：设置界面那些勾选框也用它 —— 详情显示什么，设置里就写什么。
+	 * <p>包内可见：设置界面的勾选框也使用它——详情显示什么，设置里就写什么。
 	 */
 	static String label(TickCategory category) {
 		return switch (category) {
@@ -302,9 +300,9 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 参与拼行的全部配置项压成一个位掩码：有开关动了签名就变，缓存随之作废。
+	 * 参与拼行的全部配置项压成一个位掩码：任一开关变动则签名改变，缓存随之作废。
 	 *
-	 * 逐项列出（而非依赖任何通用机制），配置项增删时这里会跟着改，不会静默漏进签名。
+	 * <p>逐项列出（不依赖任何通用机制），配置项增删时此处会跟着改，不会静默漏进签名。
 	 */
 	private static int signature() {
 		int bits = 0;

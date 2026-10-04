@@ -11,10 +11,10 @@ import net.minecraft.resources.Identifier;
 *///?}
 
 /**
- * 资源位置相关的小工具：贴图 / 包 ID 的构造、维度 ID 的取用。
+ * 资源位置工具：贴图 / 包 ID 的构造与维度 ID 的取用。
  *
- * 1.21.11 起 ResourceLocation 更名为 Identifier，ResourceKey 的 location() 同时更名为 identifier()；
- * 调用点分散在客户端与网络层，故统一从这里走，条件注释只写在这一处。
+ * <p>1.21.11 起 {@code ResourceLocation} 更名为 {@code Identifier}，{@code ResourceKey.location()}
+ * 更名为 {@code identifier()}；调用点分散在客户端与网络层，故统一由本类收口。
  */
 public final class Ids {
 	private Ids() {
@@ -46,7 +46,7 @@ public final class Ids {
 
 	/**
 	 * 注册表键的路径段（如 {@code player_loading}）；该值不在注册表里时为 null。
-	 * 用 var 接键对象：它的类型名两代不同（Identifier / ResourceLocation），getPath() 两代同名。
+	 * 用 {@code var} 接键对象：其类型名两代不同（Identifier / ResourceLocation），而 getPath() 同名。
 	 */
 	public static <T> String path(Registry<T> registry, T value) {
 		var key = registry.getKey(value);

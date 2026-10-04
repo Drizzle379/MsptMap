@@ -25,25 +25,19 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 反查每个区块的加载来源：这个区块是被哪张加载票罩住的。
+ * 反查每个区块的加载来源：即该区块被哪张加载票覆盖。
  *
- * 票的分布分两种：{@code forced} / {@code portal} / {@code ender_pearl} 这类是**稀疏**的，只在
- * 一个区块上；而 {@code player_loading} 在 26.2 里是**逐区块铺**的（视距内每格一张、等级还都一样），
- * {@code player_simulation} 则是稀疏的 —— 同一个来源，两种铺法。
+ * <p>票的分布有两种：forced / portal / ender_pearl 等是稀疏的，只落在一个区块上；26.2 的
+ * player_loading 则是逐区块铺的，视距内每格一张。稀疏票靠等级传播覆盖周围——{@code ChunkTracker}
+ * 保证邻居等级 = 本区块等级 + 1，故从持票区块沿「等级恰好 +1」的邻居遍历即可认回整片覆盖区。
+ * 本类不自算等级，一律读 {@code getChunkLevel}，与游戏实际结果必然一致。逐区块铺的票则每格自身
+ * 即为持票区块，扩散退化为原地不动，结果仍正确。
  *
- * 稀疏的那种靠**等级传播**覆盖周围：{@code ChunkTracker} 维护的等级满足「邻居等级 = 本区块等级 + 1」，
- * 所以从持票区块沿着「等级恰好 +1」的邻居走，就能把整片覆盖区认回来。这里不自己算等级，一律读
- * {@code getChunkLevel}，与游戏的实际结果必然一致。
+ * <p>加载链与模拟链是两条独立的传播链，须各推一遍（玩家票在 26.2 拆为 player_loading 与
+ * player_simulation，同一区块上两条链的源头可能不同）。
  *
- * 逐区块铺的那种（{@code player_loading}），每个区块自己就是持票区块，扩散退化成原地不动 —— 结果
- * 仍然正确（每格的来源都是它自己），只是「距离」这一项对它的票种没有意义，显示时按票种区别对待
- * （见 {@code ChunkTooltip.ticket}）。
- *
- * 加载链与模拟链是两条独立的传播链，须各推一遍（玩家票在 26.2 拆成了 player_loading 与
- * player_simulation 两张，同一个区块上两条链的源头可能不是同一张票）。
- *
- * 结果记的是**源头坐标相对本区块的偏移**而非距离：客户端要显示 {@code @x,z}，且偏移量很小
- * （加载范围 33 格以内），能连同类型与存疑位一起塞进一个 int。
+ * <p>结果记录源头坐标相对本区块的偏移而非距离：客户端要显示 {@code @x,z}，且偏移量很小
+ * （加载范围 33 格以内），可与类型、存疑位一同编入一个 int。
  */
 public final class TicketSources {
 	/** 该链没有来源。 */
@@ -81,7 +75,7 @@ public final class TicketSources {
 	 */
 	public static Long2IntOpenHashMap resolve(ServerLevel level, boolean simulation) {
 		//? if <1.21.5 {
-		/*// 1.21.4 及以前的票体系与 1.21.5+ 不同（票表在 DistanceManager、无 doesLoad/doesSimulate、
+		/*// 1.21.4 及以前的票体系与 1.21.5+ 不同（票表在 DistanceManager，无 doesLoad/doesSimulate，
 		// 类型集合也不同），加载票来源暂不支持：返回空表，客户端只显示等级、不显示来源。
 		return new Long2IntOpenHashMap();
 		*///?} else {
@@ -91,9 +85,9 @@ public final class TicketSources {
 		DistanceManager distanceManager = chunkMap.getDistanceManager();
 
 		Long2IntOpenHashMap sources = new Long2IntOpenHashMap();
-		// BFS 队列用四个并行原始数组（免去每个元素一个 long[]），等级随元素带上 —— 出队后不必再查
-		// 一次 getChunkLevel。BFS 逐层访问，故第一次到达某区块时的源头必然是覆盖它的那些锚点里最近
-		// 的一个。容量按可见区块数取：锚点至多这么多，扩散阶段不够再翻倍。
+		// BFS 队列用四个并行原始数组（免去每元素一个 long[]），等级随元素携带，出队后无需再查
+		// getChunkLevel。BFS 逐层访问，故首次到达某区块时的源头必是覆盖它的锚点中最近的一个。
+		// 容量按可见区块数取，扩散阶段不够再翻倍。
 		int capacity = Math.max(16, accessor.getVisibleChunks().size());
 		long[] queueKeys = new long[capacity];
 		int[] queueLevels = new int[capacity];
@@ -102,8 +96,8 @@ public final class TicketSources {
 		int queueHead = 0;
 		int queueTail = 0;
 
-		// 一、持票区块：持有本链的票、且等级落在快照范围内的。等级更高的票扩散出去只会更高，
-		//     没有区块会采信它们，直接跳过。
+		// 一、持票区块：持有本链的票、且等级落在快照范围内的。等级更高的票扩散后只会更高，
+		//     没有区块会采信，直接跳过。
 		int anchors = 0;
 		StringBuilder sample = new StringBuilder();
 		for (Long2ObjectMap.Entry<ChunkHolder> entry : accessor.getVisibleChunks().long2ObjectEntrySet()) {
@@ -115,7 +109,7 @@ public final class TicketSources {
 			int x = ChunkPos.getX(key);
 			int z = ChunkPos.getZ(key);
 			sources.put(key, encode(anchor[0], 0, 0, false));
-			// 等级取 getChunkLevel 而非票自己的等级：邻近若有等级更低的票，此处的实际等级会被它压低，
+			// 等级取 getChunkLevel 而非票自身的等级：邻近若有等级更低的票，此处的实际等级会被它压低，
 			// 扩散判定必须用实际等级。入队时查与出队时查等价（同一趟里票表不变）
 			queueKeys[queueTail] = key;
 			queueLevels[queueTail] = distanceManager.getChunkLevel(key, simulation);
@@ -152,9 +146,9 @@ public final class TicketSources {
 					if (neighborLevel != hereLevel + 1 || !ChunkLevel.isBlockTicking(neighborLevel)) {
 						continue;
 					}
-					// 偏移记的是「源头相对本区块」，客户端用「本区块 + 偏移」还原成源头坐标
+					// 偏移记的是「源头相对本区块」，客户端用「本区块 + 偏移」还原为源头坐标
 					sources.put(neighbor, encode(type, anchorX - (x + dx), anchorZ - (z + dz), false));
-					// 扩容只在这一处（锚点阶段的入队数不超过初始容量）：一维数组一翻倍，四个一起换
+					// 扩容只在此处（锚点阶段的入队数不超过初始容量）：四个数组一同翻倍
 					if (queueTail == queueKeys.length) {
 						int grown = queueTail * 2;
 						queueKeys = Arrays.copyOf(queueKeys, grown);
@@ -171,10 +165,9 @@ public final class TicketSources {
 			}
 		}
 
-		// 诊断：这三个数能直接看出正推有没有出问题 —— 锚点数应为「玩家数 + forceload + 传送门/珍珠」
-		// 那么多个；覆盖数应接近快照里的区块数（淡灰的那些弱加载区块也在覆盖内）。对不上就说明
-		// 这儿算错了，不必对着地图猜。默认级别不打（每次扫描每维度一条，生产服上太吵），排查时开到
-		// debug 再看。
+		// 诊断：持票区块数应为「玩家数 + forceload + 传送门/珍珠」之和，覆盖数应接近快照中的区块数
+		// （淡灰的弱加载区块也在覆盖内）。两者对不上即说明正推有误。默认级别不打印（每次扫描每维度
+		// 一条，生产服上过吵），排查时开到 debug。
 		MsptMapMod.LOGGER.debug("维度 {} 加载票（{}）：持票区块 {} 个、覆盖 {} 个区块。前几个持票区块：{}",
 				Ids.id(level.dimension()), simulation ? "模拟链" : "加载链", anchors, sources.size(),
 				sample.isEmpty() ? "（无）" : sample);
@@ -186,9 +179,9 @@ public final class TicketSources {
 	/**
 	 * 该区块在本链上的持票信息：{类型序号, 票等级}，无票返回 null。
 	 *
-	 * 一个区块可能同时挂着多张票：**先比等级，取最低的那张** —— 与 {@code TicketStorage.getTicketLevelAt}
-	 * 的取法一致，它才是决定该区块状态的那张；**等级相同时按 {@link #priority} 取舍**（等级相同的票之间
-	 * 没有强弱之分，但显示哪一张对看的人更有用）。
+	 * 一个区块可能同时挂着多张票：先比等级，取最低的那张（与
+	 * {@code TicketStorage.getTicketLevelAt} 的取法一致，它才决定该区块的状态）；等级相同时按
+	 * {@link #priority} 取舍（等级相同的票无强弱之分，但显示哪一张对查看者更有用）。
 	 */
 	private static int[] anchorAt(List<Ticket> tickets, boolean simulation) {
 		if (tickets == null) {
@@ -217,8 +210,8 @@ public final class TicketSources {
 	 * 等级相同时的取舍顺序：数值越小越优先。
 	 *
 	 * 把两张玩家票排在最后是有意的：{@code player_loading} 覆盖视距内每一格，几乎总与别的票同时在场
-	 * （比如脚下的 forceload 区块），若让它优先，别的来源就永远显示不出来。其余按「越具体越优先」
-	 * 排：主动标记的（forceload）＞一次性成因（珍珠、传送门）＞世界结构（末地主岛、出生点）。
+	 * （比如脚下的 forceload 区块），若让它优先，其余来源将永远无法显示。其余按「越具体越优先」排：
+	 * 主动标记的（forceload）＞一次性成因（珍珠、传送门）＞世界结构（末地主岛、出生点）。
 	 */
 	public static int priority(int type) {
 		return switch (type) {
@@ -241,9 +234,9 @@ public final class TicketSources {
 	}
 
 	/**
-	 * 票类型身份 → 协议序号的缓存：{@link #indexOf} 要走注册表反查加字符串匹配，而票类型是单例
-	 * （枚举 / 注册表对象），同一张票只该算一次。用身份比较即可；算出的序号不随注册表变化，跨次扫描
-	 * 也有效。采样在服务端主线程上收尾，单线程访问。
+	 * 票类型身份 → 协议序号的缓存：{@link #indexOf} 需走注册表反查加字符串匹配，而票类型是单例
+	 * （枚举 / 注册表对象），同一张票只该算一次。用身份比较即可；算出的序号不随注册表变化，跨次
+	 * 扫描也有效。采样在服务端主线程上收尾，单线程访问。
 	 */
 	private static final Map<TicketType, Integer> TYPE_CACHE = new IdentityHashMap<>();
 
@@ -261,7 +254,7 @@ public final class TicketSources {
 	/**
 	 * 票类型 → 协议序号。
 	 *
-	 * 认的是**注册表里的名字**，不是 {@code equals}：{@code TicketType} 是 record，相等性只看
+	 * 认的是注册表里的名字，而非 {@code equals}：{@code TicketType} 是 record，相等性只看
 	 * (timeout, flags) 两个字段，而 {@code spawn_search} 与 {@code player_loading} 这两项取值完全相同
 	 * （都是 0 / 2），用 equals 会把前者认成后者。名字才是唯一的。
 	 */

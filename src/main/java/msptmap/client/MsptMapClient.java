@@ -26,12 +26,12 @@ import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
 
 /**
- * 客户端入口：结果包接收器、掉线清理、两条本地命令（scan / config）、地图按钮回调。
+ * 客户端入口：结果包接收器、掉线清理、两条本地命令（scan / config）与地图按钮回调。
  *
- * 聊天栏只说三句状态话（{@link #say}：走客户端本地消息，不发往服务器），其余只写日志。
+ * <p>聊天栏只输出状态提示（{@link #say}：走客户端本地消息，不发往服务器），其余只写日志。
  *
- * 命令为本地执行：Fabric 在 ClientPacketListener.sendCommand 处拦截，命令能在客户端命令树上跑通就
- * 不发给服务端，故与服务端那条同名命令不冲突。
+ * <p>命令为本地执行：Fabric 在 ClientPacketListener.sendCommand 处拦截，命令能在客户端命令树上
+ * 跑通即不发往服务端，故与服务端那条同名命令不冲突。
  */
 public class MsptMapClient implements ClientModInitializer {
 	/** 点击后包确实发出时在聊天栏显示（服务端是否答应随后另说）。 */
@@ -56,7 +56,7 @@ public class MsptMapClient implements ClientModInitializer {
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ClientConfig.save());
 
 		// 退出世界 / 掉线：丢弃上一局的结果与未画完的进度圈。快照按维度名存储（minecraft:overworld），
-		// 不清则进入同一维度的另一世界仍显示旧颜色，扫描中的圈也会一直挂在按钮上。
+		// 不清则进入同一维度的另一世界仍显示旧颜色，扫描中的进度圈也会一直挂在按钮上。
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			ClientSnapshot.clear();
 			ScanProgress.stop();
@@ -205,10 +205,10 @@ public class MsptMapClient implements ClientModInitializer {
 	}
 
 	/**
-	 * 地图开着时该世界是否暂停 = 此刻按扫描按钮是否会一直无反应。暂停期间服务端不走 tick，采样窗口
-	 * 一刻也数不动，必须关掉地图才开始。
+	 * 地图开着时该世界是否暂停，即此刻按扫描按钮是否会一直无反应。暂停期间服务端不走 tick，采样
+	 * 窗口一刻也数不动，必须关掉地图才会开始。
 	 *
-	 * 原式 {@code hasSingleplayerServer() && gui.isPausing() && !isPublished()} 里省掉了
+	 * <p>原式 {@code hasSingleplayerServer() && gui.isPausing() && !isPublished()} 中省略了
 	 * {@code gui.isPausing()}：本就在地图界面内，它必然为真。开启局域网（isPublished）则不暂停。
 	 */
 	private static boolean worldPausesWithMapOpen() {
