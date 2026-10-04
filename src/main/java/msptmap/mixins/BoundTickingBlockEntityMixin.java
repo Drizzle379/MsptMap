@@ -37,14 +37,16 @@ public abstract class BoundTickingBlockEntityMixin {
 
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void msptmapStartTick(CallbackInfo ci) {
-		msptmapStart = MsptSampler.begin();
+		// 只认服务端：客户端也有同一套 ticker（ClientLevel），若走到 begin() 就是渲染线程读服务端
+		// 主线程写的采样状态 —— 唯一的跨线程读点，客户端一律记 0
+		msptmapStart = blockEntity.getLevel() instanceof ServerLevel ? MsptSampler.begin() : 0L;
 	}
 
 	@Inject(method = "tick", at = @At("RETURN"))
 	private void msptmapEndTick(CallbackInfo ci) {
-		// start 为 0 时 MsptSampler.end 自行忽略，无需重复判断
-		// 客户端也有同一套 ticker（ClientLevel），采样仅在服务端发生
-		if (blockEntity.getLevel() instanceof ServerLevel level) {
+		// 未采样（含客户端）直接跳过：不再做 getLevel 与 instanceof，也不求坐标（end 本就忽略 0）。
+		// start 非 0 时维度必是服务端（HEAD 只给服务端记时间），这里的 instanceof 仍留着防 null
+		if (msptmapStart != 0L && blockEntity.getLevel() instanceof ServerLevel level) {
 			MsptSampler.end(TickCategory.BLOCK_ENTITY, level, ChunkKeys.pack(blockEntity.getBlockPos()), msptmapStart);
 		}
 	}

@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import msptmap.ChunkKeys;
 import msptmap.Clamp;
+import msptmap.Decimals;
 import msptmap.Ids;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
@@ -34,6 +35,8 @@ import java.util.Map;
  * 采样时每个事件只记两笔（纳秒、次数），不做除法、不分配对象。
  *
  * 窗口按**服务端 tick 数**收尾（挂在 Fabric API 的 END_SERVER_TICK 上），不看现实时间。
+ *
+ * 两次窗口之间隔 {@link #COOLDOWN_SECONDS} 秒冷却；服务器停止时由 {@link #reset()} 清空状态。
  */
 public final class MsptSampler {
 	/** 采样秒数上限。 */
@@ -66,7 +69,49 @@ public final class MsptSampler {
 	/** 每个维度一张表：区块坐标 → 账本。外层按对象身份比，内层用 fastutil 的 long 键表（免装箱）。 */
 	private static final Map<ServerLevel, Long2ObjectOpenHashMap<ChunkTiming>> timings = new IdentityHashMap<>();
 
+	/** 上一次扫描结束后至少间隔的现实秒数。收尾（快照构建）有成本，且未装地毯时谁都能发起。 */
+	public static final int COOLDOWN_SECONDS = 2;
+
+	private static final long COOLDOWN_NANOS = COOLDOWN_SECONDS * 1_000_000_000L;
+
+	/** 上次扫描结束的时刻，用于冷却；0 = 还没扫过。服务器停止时复位。 */
+	private static long lastEndNanos;
+
+	/**
+	 * 上一条记账的来源缓存：事件按区块聚集（方块实体、实体、随机刻都是逐区块走），命中时
+	 * 免掉两次哈希查找。换维度或清表时作废（见 {@link #clearTimings()}）。
+	 */
+	private static ServerLevel lastLevel;
+	private static Long2ObjectOpenHashMap<ChunkTiming> lastChunks;
+	private static long lastKey;
+	private static ChunkTiming lastTiming;
+
+	/**
+	 * 距上次服务端 tick 超过这么多现实秒，视为服务端没有在运行（空载自动暂停 / 世界暂停 / 长时间卡顿）。
+	 * 正常一刻 50 毫秒，5 秒有 100 倍余量，普通卡顿不会误判。
+	 */
+	private static final int STALL_SECONDS = 5;
+
+	private static final long STALL_NANOS = STALL_SECONDS * 1_000_000_000L;
+
+	/** 上一次服务端 tick 的时刻（与是否采样无关，每 tick 更新）；0 = 服务器还没有 tick 过。 */
+	private static long lastTickNanos;
+
+	/**
+	 * 上一 tick 收尾、本 tick 才发的完成包（见 {@link #finish()}）。没有待发时为 null。
+	 *
+	 * 压后一 tick 是为了让客户端有整整一 tick 把进度圈画满：窗口最后一刻直接发完成包的话，
+	 * 圈从 90% 跳到消失，观感像「没转满就中断」（PLAN 坑 21）。
+	 */
+	private static ServerPlayer pendingPlayer;
+	private static ScanResultPayload pendingDone;
+
 	private MsptSampler() {
+	}
+
+	/** 服务端是不是没有在运行：距上次 tick 超过 {@link #STALL_SECONDS} 秒。 */
+	private static boolean stalled(long now) {
+		return lastTickNanos != 0L && now - lastTickNanos > STALL_NANOS;
 	}
 
 	/**
@@ -77,25 +122,80 @@ public final class MsptSampler {
 		return Clamp.of(seconds, 1, MAX_SECONDS);
 	}
 
+	/** 一次「开始」请求的结果，由调用方决定怎么提示。 */
+	public enum StartResult {
+		/** 窗口已开。 */
+		STARTED,
+		/** 已有扫描进行中。 */
+		BUSY,
+		/** 距上次扫描结束不足 {@link #COOLDOWN_SECONDS} 秒。 */
+		COOLDOWN,
+		/** 服务端当前没有在运行（见 {@link #stalled}）：窗口数不到刻，控制台请求直接拒绝。 */
+		STALLED
+	}
+
 	/**
-	 * 开一个 N 秒的窗口；已在采样中则返回 false，由调用方决定提示。
+	 * 开一个 N 秒的窗口；已在采样中或冷却未过则返回对应结果，由调用方决定提示。
 	 *
 	 * @param requester 本次扫描的发起人：客户端请求为玩家（结果回给他），服务端命令 / 控制台为 null（结果打控制台）
 	 */
-	public static boolean start(int seconds, ServerPlayer requester) {
+	public static StartResult start(int seconds, ServerPlayer requester) {
+		long now = System.nanoTime();
+		boolean stalled = stalled(now);
 		if (sampling) {
-			return false;
+			if (!stalled) {
+				return StartResult.BUSY;
+			}
+			// 服务端已很久没有 tick：旧窗口是僵死的（发起人掉线、世界暂停后一直没恢复）；
+			// 作废重开，否则它会一直占着，之后所有请求都被回「忙」
+			MsptMapMod.LOGGER.info("上一个采样窗口已停滞（服务端 {} 秒没有 tick），已作废",
+					(now - lastTickNanos) / 1_000_000_000L);
+			reset();
+		}
+		// 冷却从上次结束算起：若从开始算，间隔 ≤ 窗口长度时冷却永远在窗口内过期，等于没有冷却
+		if (lastEndNanos != 0L && now - lastEndNanos < COOLDOWN_NANOS) {
+			return StartResult.COOLDOWN;
+		}
+		// 服务端当前没在运行：窗口数不到刻，控制台（无发起人）拿不到结果，说清楚即可；玩家请求照旧
+		// 开窗等待 —— 单人档在地图上点按钮时世界本就暂停，关掉地图自然会开始数刻（见 PLAN 坑 20）
+		if (stalled && requester == null) {
+			return StartResult.STALLED;
 		}
 		MsptSampler.requester = requester;
 		MsptSampler.seconds = clampSeconds(seconds);
-		timings.clear();
+		clearTimings();
 		windowTicks = 0;
 		sampling = true;
-		return true;
+		return StartResult.STARTED;
 	}
 
-	/** 每个服务端 tick 结束时调用一次：数够窗口刻数即收尾，收尾前每 0.1 秒推一次进度包（最后一刻不推）。 */
+	/**
+	 * 服务器停止：丢弃采样状态与表、复位冷却。
+	 *
+	 * 静态字段跨世界存活（单人档退回主菜单再进是同一个 JVM）：不复位则旧窗口继续往下数刻，
+	 * 重进后的扫描请求会被回成「忙」，而整个服务器里并没有别人在扫。
+	 */
+	public static void reset() {
+		sampling = false;
+		requester = null;
+		windowTicks = 0;
+		pendingPlayer = null;
+		pendingDone = null;
+		clearTimings();
+		lastEndNanos = 0L;
+	}
+
+	/**
+	 * 每个服务端 tick 结束时调用一次：数够窗口刻数即收尾，收尾前每 0.1 秒推一次进度包
+	 * （最后一刻改在 {@link #finish()} 里推满格，完成包再压后一 tick）。
+	 *
+	 * 时间戳与是否采样无关：未采样时也要记，停滞判定（{@link #stalled}）靠它。
+	 */
 	public static void onServerTick() {
+		lastTickNanos = System.nanoTime();
+		if (pendingDone != null) {
+			sendPendingDone();
+		}
 		if (!sampling) {
 			return;
 		}
@@ -105,6 +205,20 @@ public final class MsptSampler {
 			return;
 		}
 		sendProgress();
+	}
+
+	/** 发上一 tick 收尾时压住的完成包；这段间隔里玩家若已掉线则丢弃。 */
+	private static void sendPendingDone() {
+		ServerPlayer player = pendingPlayer;
+		ScanResultPayload payload = pendingDone;
+		pendingPlayer = null;
+		pendingDone = null;
+		if (ServerPlayNetworking.canSend(player, ScanResultPayload.TYPE)) {
+			ServerPlayNetworking.send(player, payload);
+		} else {
+			MsptMapMod.LOGGER.info("扫描结果没送到：{} 已不在线（窗口 {} tick）",
+					player.getScoreboardName(), payload.windowTicks());
+		}
 	}
 
 	/**
@@ -126,29 +240,68 @@ public final class MsptSampler {
 		return sampling ? System.nanoTime() : 0L;
 	}
 
-	/** 计时结束并入账。 */
+	/** 计时结束并入账。热路径：先走 {@link #lastTiming} 缓存，未命中才查表。 */
 	public static void end(TickCategory category, ServerLevel level, long chunkKey, long startNanos) {
 		if (startNanos == 0L) {
 			return;
 		}
-		timings.computeIfAbsent(level, key -> new Long2ObjectOpenHashMap<>())
-				.computeIfAbsent(chunkKey, key -> new ChunkTiming())
-				.add(category, System.nanoTime() - startNanos);
+		if (level != lastLevel) {
+			// 换维度：外层表查一次，并作废上一次的区块缓存（表都换了）
+			lastChunks = timings.computeIfAbsent(level, key -> new Long2ObjectOpenHashMap<>());
+			lastLevel = level;
+			lastTiming = null;
+		}
+		ChunkTiming timing;
+		if (chunkKey == lastKey && lastTiming != null) {
+			timing = lastTiming;
+		} else {
+			timing = lastChunks.get(chunkKey);
+			if (timing == null) {
+				timing = new ChunkTiming();
+				lastChunks.put(chunkKey, timing);
+			}
+			lastKey = chunkKey;
+			lastTiming = timing;
+		}
+		timing.add(category, System.nanoTime() - startNanos);
+	}
+
+	/**
+	 * 清表并作废来源缓存。缓存指向的表一旦被换掉，再写入就写进已废弃的表 —— 三个清表入口
+	 * （start / finish / reset）一律走这里，不直接调 {@code timings.clear()}。
+	 */
+	private static void clearTimings() {
+		timings.clear();
+		lastLevel = null;
+		lastChunks = null;
+		lastTiming = null;
 	}
 
 	/** 收尾：结果打包给发起人；发不回去（控制台发起 / 中途掉线）则打到服务端控制台。 */
 	private static void finish() {
 		sampling = false;
+		long finishStartNanos = System.nanoTime();
+		// 窗口到此结束：冷却时间从这里起算
+		lastEndNanos = finishStartNanos;
 		ServerPlayer player = requester;
 		requester = null;
-		if (player != null && ServerPlayNetworking.canSend(player, ScanResultPayload.TYPE)) {
-			ServerPlayNetworking.send(player, ScanResultPayload.done(seconds, windowTicks, snapshot()));
-		} else {
-			logTopChunks();
+		try {
+			if (player != null && ServerPlayNetworking.canSend(player, ScanResultPayload.TYPE)) {
+				// 先补一格满格进度，完成包压到下一 tick（见 pendingDone）：圈画满整整一 tick 再消失
+				ServerPlayNetworking.send(player, ScanResultPayload.progress(seconds, windowTicks));
+				pendingDone = ScanResultPayload.done(seconds, windowTicks, snapshot());
+				pendingPlayer = player;
+			} else {
+				logTopChunks();
+			}
+		} finally {
+			// 须在 snapshot() / logTopChunks() 之后，且发送路径抛异常时也要执行：外层表的键是
+			// ServerLevel，不清则多世界服务器卸载某个世界后，它仍被这张表强引用着，回收不掉。
+			clearTimings();
 		}
-		// 须在 snapshot() / logTopChunks() 之后：外层表的键是 ServerLevel，不清则多世界服务器
-		// 卸载某个世界后，它仍被这张表强引用着，回收不掉。
-		timings.clear();
+		// 收尾（实体遍历、两条链 BFS、排序、逐块编码量尺寸、提交发送）全部同步在本 tick 上，
+		// 这里量化它的成本；编码与真正的发送在网络线程，不在计量范围内
+		MsptMapMod.LOGGER.info("收尾耗时 {} ms", (System.nanoTime() - finishStartNanos) / 1_000_000L);
 	}
 
 	/**
@@ -206,8 +359,16 @@ public final class MsptSampler {
 					TicketSources.NONE));
 					*///?}
 		});
-		// 按重量降序：装不下时移除的必然是尾部最轻的
-		out.sort(Comparator.comparingLong(SnapshotCodec.ChunkData::totalNanos).reversed());
+		// 按重量降序：装不下时移除的必然是尾部最轻的。重量先一次算好再排 —— 比较器里现算
+		// totalNanos() 的话，每次比较都要把那七个数重加一遍，数万区块时是数十万次重复求和
+		List<Weighted> weighted = new ArrayList<>(out.size());
+		for (SnapshotCodec.ChunkData chunk : out) {
+			weighted.add(new Weighted(chunk, chunk.totalNanos()));
+		}
+		weighted.sort(Comparator.comparingLong(Weighted::total).reversed());
+		for (int i = 0; i < out.size(); i++) {
+			out.set(i, weighted.get(i).chunk());
+		}
 		int used = SnapshotCodec.fitToBudget(out, budget);
 		if (out.size() < chunks.size()) {
 			MsptMapMod.LOGGER.info("维度 {} 超出字节预算：{} 个干过活的区块没带上（最轻的那些）",
@@ -277,7 +438,7 @@ public final class MsptSampler {
 			/*int computeLevel = entry.getValue().getQueueLevel();
 			*///?}
 			SnapshotCodec.ChunkData chunk = new SnapshotCodec.ChunkData(ChunkPos.getX(key), ChunkPos.getZ(key),
-					new long[TickCategory.values().length], new int[TickCategory.values().length],
+					SnapshotCodec.ZERO_NANOS, SnapshotCodec.ZERO_COUNTS,
 					entityCounts.get(key), loadLevel, computeLevel,
 					//? if >=1.21.5 {
 					ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
@@ -301,9 +462,11 @@ public final class MsptSampler {
 
 	/** 结果发不回客户端时，把最重的 5 个区块打到服务端控制台。 */
 	private static void logTopChunks() {
+		// 重量同 snapshotDimension：排序前一次算好，不在比较器里反复求和
 		List<Row> rows = new ArrayList<>();
-		timings.forEach((level, chunks) -> chunks.forEach((key, timing) -> rows.add(new Row(level, key, timing))));
-		rows.sort((a, b) -> Long.compare(b.timing.totalNanos(), a.timing.totalNanos()));
+		timings.forEach((level, chunks) -> chunks.forEach(
+				(key, timing) -> rows.add(new Row(level, key, timing, timing.totalNanos()))));
+		rows.sort((a, b) -> Long.compare(b.total, a.total));
 
 		MsptMapMod.LOGGER.info("扫描结束：{} 个维度 / {} 个区块，窗口 {} 秒 / {} tick",
 				timings.size(), rows.size(), seconds, windowTicks);
@@ -327,12 +490,16 @@ public final class MsptSampler {
 		}
 	}
 
-	/** 纳秒 → mspt 文本（三位小数），仅供打印。 */
+	/** 纳秒 → mspt 文本，仅供打印（精度与固定 Locale 见 {@link Decimals}）。 */
 	private static String ms(long nanos) {
-		return String.format("%.3f", nanos / 1_000_000.0 / windowTicks);
+		return Decimals.format3(nanos / 1_000_000.0 / windowTicks);
 	}
 
-	/** 打印用的临时行，最多 5 行。 */
-	private record Row(ServerLevel level, long key, ChunkTiming timing) {
+	/** 打印用的临时行，最多 5 行；total 是排序前一次算好的重量。 */
+	private record Row(ServerLevel level, long key, ChunkTiming timing, long total) {
+	}
+
+	/** 排序用的临时行：区块连同它的重量。 */
+	private record Weighted(SnapshotCodec.ChunkData chunk, long total) {
 	}
 }

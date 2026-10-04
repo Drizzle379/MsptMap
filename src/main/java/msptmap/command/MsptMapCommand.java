@@ -33,10 +33,13 @@ public final class MsptMapCommand {
 
 	private static int scan(CommandSourceStack source, int seconds) {
 		// requester 为 null：结果只打控制台，不发包
-		if (MsptSampler.start(seconds, null)) {
-			MsptMapMod.LOGGER.info("开始采样 {} 秒（请求来自 {}）", seconds, source.getTextName());
-		} else {
-			MsptMapMod.LOGGER.info("已经在采样了，这次请求忽略（请求来自 {}）", source.getTextName());
+		switch (MsptSampler.start(seconds, null)) {
+			case STARTED -> MsptMapMod.LOGGER.info("开始采样 {} 秒（请求来自 {}）", seconds, source.getTextName());
+			case BUSY -> MsptMapMod.LOGGER.info("已经在采样了，这次请求忽略（请求来自 {}）", source.getTextName());
+			case COOLDOWN -> MsptMapMod.LOGGER.info("距上次扫描结束不足 {} 秒，这次请求忽略（请求来自 {}）",
+					MsptSampler.COOLDOWN_SECONDS, source.getTextName());
+			case STALLED -> MsptMapMod.LOGGER.info("服务端当前没有在运行（空载暂停或长时间卡顿），"
+					+ "采样窗口数不到刻，这次请求忽略（请求来自 {}）", source.getTextName());
 		}
 		return 1;
 	}

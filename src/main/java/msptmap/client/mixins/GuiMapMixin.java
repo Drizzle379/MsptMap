@@ -16,6 +16,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -45,6 +46,25 @@ public abstract class GuiMapMixin {
 	private static final int SCAN_BUTTON_Y = 40;
 	@Unique
 	private static final int SCAN_BUTTON_SIZE = 20;
+
+	/**
+	 * 维度 ID 字符串的按对象缓存：同一帧里热力图与悬停详情各要取一次 ID，而两次拿到的是同一个维度
+	 * 对象，第二次直接复用。维度切换（换世界、走传送门）后对象随之更换，引用比较自然失效，无需手工清理。
+	 */
+	@Unique
+	private static MapDimension msptmapLastDimension;
+	@Unique
+	private static String msptmapLastDimensionId;
+
+	/** 维度 ID（如 {@code minecraft:overworld}）。注册表反查 + 字符串构造不便宜，同一个对象只算一次。 */
+	@Unique
+	private static String msptmapDimensionId(MapDimension dimension) {
+		if (dimension != msptmapLastDimension) {
+			msptmapLastDimension = dimension;
+			msptmapLastDimensionId = Ids.id(dimension.getDimId());
+		}
+		return msptmapLastDimensionId;
+	}
 
 	/** 地图显示的维度、地图世界是否可用，均由它取得。 */
 	@Shadow
@@ -145,8 +165,11 @@ public abstract class GuiMapMixin {
 		if (currentDim == null) {
 			return;
 		}
+		// 屏幕尺寸按 GUI 缩放后的坐标取，与矩阵的屏幕空间一致；热力图据此剔除屏幕外的区块
+		Minecraft minecraft = Minecraft.getInstance();
 		MapOverlay.draw(matrixStack.last().pose(), overlayBuffer, flooredCameraX, flooredCameraZ,
-				Ids.id(currentDim.getDimId()));
+				msptmapDimensionId(currentDim),
+				minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
 	}
 
 	/**
@@ -192,7 +215,7 @@ public abstract class GuiMapMixin {
 		if (dimension == null) {
 			return;
 		}
-		String dimId = Ids.id(dimension.getDimId());
+		String dimId = msptmapDimensionId(dimension);
 		// 该维度从未扫描则不显示：没有热力图的地方不应出现「未采样」
 		if (ClientSnapshot.get(dimId) == null) {
 			return;

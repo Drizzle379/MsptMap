@@ -18,6 +18,7 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 *///?}
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
@@ -39,6 +40,10 @@ public class MsptMapClient implements ClientModInitializer {
 	static final String NO_MOD_MESSAGE = "分析失败，服务端未安装 MsptMap 或版本不一致";
 	/** 结果包读不出内容：对面格式与本端不兼容，本次作废。 */
 	static final String MISMATCH_MESSAGE = "分析失败，MsptMap 客户端与服务端版本不一致";
+	/** 冷却中：距上次扫描结束不足 {@link MsptSampler#COOLDOWN_SECONDS} 秒，服务端的冷却闸拒绝。 */
+	static final String COOLDOWN_MESSAGE = "分析失败，扫描过于频繁，请稍后再试";
+	/** 上一次还没出结果（进度圈还在转）时又发起：命令用它报错，按钮路径直接忽略。 */
+	static final String WAITING_MESSAGE = "上一次分析还没结束，请等待结果";
 	/** 版本不同但包读得动：照常出结果，只附一句提醒。 */
 	static final String VERSION_MISMATCH_MESSAGE = "MsptMap 客户端与服务端版本不一致，结果可能不准";
 
@@ -46,6 +51,9 @@ public class MsptMapClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		// 设置需在画第一帧前读入：地图上色与悬停详情读的就是这些静态字段
 		ClientConfig.load();
+
+		// 退出游戏时补一次落盘：设置界面只在 onClose 里存，用窗口关闭按钮退出或崩溃时改动会丢
+		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ClientConfig.save());
 
 		// 退出世界 / 掉线：丢弃上一局的结果与未画完的进度圈。快照按维度名存储（minecraft:overworld），
 		// 不清则进入同一维度的另一世界仍显示旧颜色，扫描中的圈也会一直挂在按钮上。
@@ -108,8 +116,12 @@ public class MsptMapClient implements ClientModInitializer {
 				ScanProgress.stop();
 				MsptMapMod.LOGGER.info("收到 忙碌：服务端正在扫另一次");
 			}
+			case COOLDOWN -> {
+				ScanProgress.stop();
+				MsptMapMod.LOGGER.info("收到 冷却：距上次扫描结束不足 {} 秒", MsptSampler.COOLDOWN_SECONDS);
+			}
 		}
-		// 收尾的三种状态在聊天栏说一句，START 与 PROGRESS 不说话
+		// 收尾的几种状态（完成 / 被拒 / 忙碌 / 冷却）在聊天栏说一句，START 与 PROGRESS 不说话
 		say(statusMessage(payload.status()));
 		// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
 		// START 时还不知道跑不跑得完，都不提示
@@ -149,12 +161,19 @@ public class MsptMapClient implements ClientModInitializer {
 			case DONE -> "分析成功，请打开地图查看";
 			case DENIED -> "分析失败，权限不足";
 			case BUSY -> "分析失败，分析器被其他玩家占用中";
+			case COOLDOWN -> COOLDOWN_MESSAGE;
 			case START, PROGRESS -> null;
 		};
 	}
 
 	/** 地图上扫描按钮的入口。包发不出去（服务端未装本模组）时在聊天栏说明原因。 */
 	public static void onButtonPress() {
+		if (ScanProgress.active()) {
+			// 上一次还没出结果：再发包只会被服务端回「被其他玩家占用」，而占用者其实是自己；
+			// 圈还在转，玩家看得见状态，这里静默忽略即可
+			MsptMapMod.LOGGER.info("上一次分析还没结束，本次点击忽略");
+			return;
+		}
 		if (!send(ClientConfig.scanSeconds)) {
 			MsptMapMod.LOGGER.warn("服务端没有装 MsptMap，扫不了。");
 			say(NO_MOD_MESSAGE);
@@ -219,6 +238,11 @@ public class MsptMapClient implements ClientModInitializer {
 
 	/** 命令那条路：发不出去由命令自行报错（命令反馈不算刷屏），发得出去则与按钮一致。 */
 	private static int requestScan(FabricClientCommandSource source, int seconds) {
+		if (ScanProgress.active()) {
+			// 同 onButtonPress：等结果的途中再发没有意义，这里是显式输入，说清楚而不是静默
+			source.sendError(Component.literal(WAITING_MESSAGE));
+			return 0;
+		}
 		if (!send(seconds)) {
 			source.sendError(Component.literal(NO_MOD_MESSAGE));
 			return 0;

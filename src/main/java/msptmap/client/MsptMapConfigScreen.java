@@ -1,6 +1,7 @@
 package msptmap.client;
 
 import msptmap.Clamp;
+import msptmap.Decimals;
 import msptmap.sampler.TickCategory;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.DoubleFunction;
+import java.util.function.IntConsumer;
 
 /**
  * 设置界面。两个入口：模组菜单（{@link ModMenuIntegration}）与命令 {@code /msptmap config}。
@@ -83,6 +85,14 @@ public class MsptMapConfigScreen extends Screen {
 	private record Label(String text, int x, int y, boolean header) {
 	}
 
+	/**
+	 * 布局计划里的一行：高度 + 「在给定 y 上摆放控件」的动作。
+	 *
+	 * 列高由计划本身求和而来（见 {@link #init()}），增删一行只动计划，不再有第二处行数要手工同步。
+	 */
+	private record Row(int height, IntConsumer place) {
+	}
+
 	@Override
 	protected void init() {
 		labels.clear();
@@ -96,86 +106,27 @@ public class MsptMapConfigScreen extends Screen {
 		int panelX = Math.max(MARGIN, (width - panelWidth) / 2);
 		int rightX = panelX + leftWidth + COLUMN_GAP;
 
-		int totalHeight = TITLE_HEIGHT + Math.max(leftColumnHeight(), rightColumnHeight())
-				+ BUTTON_GAP + WIDGET_HEIGHT;
+		// 先组三份排布计划，再由计划求和出列高、居中、逐行摆放（「先量后摆」）：
+		// 增删一行只改计划本身，居中用的高度自动跟随，不再有第二处行数要手工同步
+		List<Row> leftPlan = leftColumnPlan(panelX, control);
+		List<Row> infoPlan = rightInfoPlan(rightX);
+		int subWidth = (rightWidth - SUB_GAP) / 2;
+		List<Row> categoryPlan = rightCategoryPlan(rightX + subWidth + SUB_GAP);
+		int bodyHeight = Math.max(planHeight(leftPlan), rightColumnHeight(infoPlan, categoryPlan));
+
+		int totalHeight = TITLE_HEIGHT + bodyHeight + BUTTON_GAP + WIDGET_HEIGHT;
 		// 矮窗口（GUI 高度常见下限为 240）从 18 起，宁可下溢也不把标题顶出屏幕
 		titleY = Math.max(18, (height - totalHeight) / 2);
 		int bodyTop = titleY + TITLE_HEIGHT;
 
-		// 左列：扫描
-		int leftY = bodyTop;
-		labels.add(new Label("扫描", panelX, leftY + 4, true));
-		leftY += HEADER;
-		labels.add(new Label("秒数", panelX, leftY + 6, false));
-		addSecondsBox(panelX + LABEL_WIDTH, leftY);
-		leftY += ROW;
-		leftY += GROUP_GAP;
-
-		// 左列：颜色
-		labels.add(new Label("颜色", panelX, leftY + 4, true));
-		leftY += HEADER;
-		addCheckbox(panelX, leftY, "采用相对模式", ClientConfig.relativeColor,
-				"勾选后颜色按本次扫描的相对大小判定：最重的区块显示为红色，其余区块与它比较 —— "
-						+ "整体卡顿较低时，更容易发现相对卡顿的区块。取消勾选则一律按下方固定的红色阈值判定。",
-				value -> {
-					ClientConfig.relativeColor = value;
-					redSlider.active = !value;
-				});
-		leftY += ROW;
-		labels.add(new Label("红色阈值", panelX, leftY + 6, false));
-		redSlider = addSlider(panelX + LABEL_WIDTH, leftY, control, ClientConfig.MIN_RED_AT, ClientConfig.MAX_RED_AT,
-				ClientConfig.redAt, value -> String.format("%.2f mspt", value),
-				value -> ClientConfig.redAt = value,
-				"区块耗时达到此值即显示为最高等级红色；低于此值的区块，颜色由绿经黄连续过渡到红。"
-						+ "勾选「采用相对模式」时此项不参与判定，不可调。");
-		// 勾选相对模式时红点由数据决定，该滑块不参与，直接禁用
-		redSlider.active = !ClientConfig.relativeColor;
-		leftY += ROW;
-		labels.add(new Label("不透明度", panelX, leftY + 6, false));
-		addSlider(panelX + LABEL_WIDTH, leftY, control, ClientConfig.MIN_FILL_ALPHA, 1.0,
-				ClientConfig.fillAlpha, value -> String.format("%.2f", value),
-				value -> ClientConfig.fillAlpha = value,
-				"热力色填充的不透明度。取值范围 0.05 ~ 1.00，数值越小，地图底图越清晰。");
-		leftY += ROW;
-		addCheckbox(panelX, leftY, "显示弱加载区块", ClientConfig.showWeakGray,
-				"显示加载等级为32的区块。",
-				value -> ClientConfig.showWeakGray = value);
-		leftY += ROW;
-
-		// 右列：悬停详情。两个子列，自上而下排列：左子列是单行信息的开关，右子列是合计与各类明细
-		int subWidth = (rightWidth - SUB_GAP) / 2;
-		int columnB = rightX + subWidth + SUB_GAP;
+		// 摆控件：左列（扫描 + 颜色），右列（悬停详情，两个子列并排）
+		applyPlan(leftPlan, bodyTop);
 		labels.add(new Label("悬停详情", rightX, bodyTop + 4, true));
-		int rightY = bodyTop + HEADER;
-		addCheckbox(rightX, rightY, "坐标", ClientConfig.tooltipCoords,
-				value -> ClientConfig.tooltipCoords = value);
-		rightY += ROW;
-		addCheckbox(rightX, rightY, "等级", ClientConfig.tooltipLevels,
-				value -> ClientConfig.tooltipLevels = value);
-		rightY += ROW;
-		// 两个票开关紧跟在「等级」之后：它们是等级行的一部分，不是独立行
-		addCheckbox(rightX, rightY, "加载票", ClientConfig.tooltipTicketLoad,
-				value -> ClientConfig.tooltipTicketLoad = value);
-		rightY += ROW;
-		addCheckbox(rightX, rightY, "计算票", ClientConfig.tooltipTicketSim,
-				value -> ClientConfig.tooltipTicketSim = value);
-		rightY += ROW;
-		addCheckbox(rightX, rightY, "实体数", ClientConfig.tooltipEntities,
-				value -> ClientConfig.tooltipEntities = value);
-
-		// 右子列：合计在最前，其后各类明细按显示顺序逐行排，标签与开关都取自同一份定义
-		int categoryY = bodyTop + HEADER;
-		addCheckbox(columnB, categoryY, "合计", ClientConfig.tooltipTotal,
-				value -> ClientConfig.tooltipTotal = value);
-		categoryY += ROW;
-		for (TickCategory category : ChunkTooltip.ORDER) {
-			addCheckbox(columnB, categoryY, ChunkTooltip.label(category), ClientConfig.tooltipCategory(category),
-					value -> ClientConfig.tooltipCategories[category.ordinal()] = value);
-			categoryY += ROW;
-		}
+		applyPlan(infoPlan, bodyTop + HEADER);
+		applyPlan(categoryPlan, bodyTop + HEADER);
 
 		// 底部两个按钮。两列高度不等，取较低的那列（明细比单行信息多，右列通常更长）
-		int buttonY = Math.max(leftY, categoryY) + BUTTON_GAP;
+		int buttonY = bodyTop + bodyHeight + BUTTON_GAP;
 		addRenderableWidget(Button.builder(Component.literal("恢复默认"), button -> {
 					ClientConfig.resetToDefaults();
 					// 值已回到默认，控件随之重建（滑块位置、勾选框、秒数框文本）
@@ -255,22 +206,98 @@ public class MsptMapConfigScreen extends Screen {
 		}
 	}
 
-	/**
-	 * 左列总高度：两个分组标题 + 五行控件 + 一个组间缝。
-	 *
-	 * 仅用于整块居中 —— 在 {@link #init()} 中增删行时这里也要同步修改。
-	 */
-	private static int leftColumnHeight() {
-		return HEADER * 2 + ROW * 5 + GROUP_GAP;
+	/** 左列（扫描 + 颜色）的排布计划：自上而下每一行的高度与摆放动作。 */
+	private List<Row> leftColumnPlan(int panelX, int control) {
+		return List.of(
+				new Row(HEADER, y -> labels.add(new Label("扫描", panelX, y + 4, true))),
+				new Row(ROW, y -> {
+					labels.add(new Label("秒数", panelX, y + 6, false));
+					addSecondsBox(panelX + LABEL_WIDTH, y);
+				}),
+				// 纯间隔行：只占高，不摆控件
+				new Row(GROUP_GAP, y -> {
+				}),
+				new Row(HEADER, y -> labels.add(new Label("颜色", panelX, y + 4, true))),
+				new Row(ROW, y -> addCheckbox(panelX, y, "采用相对模式", ClientConfig.relativeColor,
+						"勾选后颜色按本次扫描的相对大小判定：最重的区块显示为红色，其余区块与它比较 —— "
+								+ "整体卡顿较低时，更容易发现相对卡顿的区块。取消勾选则一律按下方固定的红色阈值判定。",
+						value -> {
+							ClientConfig.relativeColor = value;
+							redSlider.active = !value;
+						})),
+				new Row(ROW, y -> {
+					labels.add(new Label("红色阈值", panelX, y + 6, false));
+					redSlider = addSlider(panelX + LABEL_WIDTH, y, control,
+							ClientConfig.MIN_RED_AT, ClientConfig.MAX_RED_AT, ClientConfig.redAt,
+							value -> Decimals.format2(value) + " mspt",
+							value -> ClientConfig.redAt = value,
+							"区块耗时达到此值即显示为最高等级红色；低于此值的区块，颜色由绿经黄连续过渡到红。"
+									+ "勾选「采用相对模式」时此项不参与判定，不可调。");
+					// 勾选相对模式时红点由数据决定，该滑块不参与，直接禁用
+					redSlider.active = !ClientConfig.relativeColor;
+				}),
+				new Row(ROW, y -> {
+					labels.add(new Label("不透明度", panelX, y + 6, false));
+					addSlider(panelX + LABEL_WIDTH, y, control, ClientConfig.MIN_FILL_ALPHA, 1.0,
+							ClientConfig.fillAlpha, Decimals::format2,
+							value -> ClientConfig.fillAlpha = value,
+							"热力色填充的不透明度。取值范围 0.05 ~ 1.00，数值越小，地图底图越清晰。");
+				}),
+				new Row(ROW, y -> addCheckbox(panelX, y, "显示弱加载区块", ClientConfig.showWeakGray,
+						"显示加载等级为32的区块。",
+						value -> ClientConfig.showWeakGray = value)));
 	}
 
-	/**
-	 * 右列总高度：一个分组标题 + 较高的那个子列（左子列五条单行信息、右子列是合计 + 各类明细）。
-	 *
-	 * 同 {@link #leftColumnHeight()}，仅用于整块居中，增删行时同步修改。
-	 */
-	private static int rightColumnHeight() {
-		return HEADER + ROW * Math.max(5, ChunkTooltip.ORDER.size() + 1);
+	/** 右列左子列（单行信息的开关）的排布计划。 */
+	private List<Row> rightInfoPlan(int x) {
+		return List.of(
+				new Row(ROW, y -> addCheckbox(x, y, "坐标", ClientConfig.tooltipCoords,
+						value -> ClientConfig.tooltipCoords = value)),
+				new Row(ROW, y -> addCheckbox(x, y, "等级", ClientConfig.tooltipLevels,
+						value -> ClientConfig.tooltipLevels = value)),
+				// 两个票开关紧跟在「等级」之后：它们是等级行的一部分，不是独立行
+				new Row(ROW, y -> addCheckbox(x, y, "加载票", ClientConfig.tooltipTicketLoad,
+						value -> ClientConfig.tooltipTicketLoad = value)),
+				new Row(ROW, y -> addCheckbox(x, y, "计算票", ClientConfig.tooltipTicketSim,
+						value -> ClientConfig.tooltipTicketSim = value)),
+				new Row(ROW, y -> addCheckbox(x, y, "实体数", ClientConfig.tooltipEntities,
+						value -> ClientConfig.tooltipEntities = value)));
+	}
+
+	/** 右列右子列（合计 + 各类明细）的排布计划：标签与开关都取自同一份显示定义。 */
+	private List<Row> rightCategoryPlan(int x) {
+		List<Row> plan = new ArrayList<>();
+		plan.add(new Row(ROW, y -> addCheckbox(x, y, "合计", ClientConfig.tooltipTotal,
+				value -> ClientConfig.tooltipTotal = value)));
+		for (TickCategory category : ChunkTooltip.ORDER) {
+			plan.add(new Row(ROW, y -> addCheckbox(x, y, ChunkTooltip.label(category),
+					ClientConfig.tooltipCategory(category),
+					value -> ClientConfig.tooltipCategories[category.ordinal()] = value)));
+		}
+		return plan;
+	}
+
+	/** 计划占的总高度。 */
+	private static int planHeight(List<Row> plan) {
+		int height = 0;
+		for (Row row : plan) {
+			height += row.height();
+		}
+		return height;
+	}
+
+	/** 按计划逐行摆放：每行在累计到的 y 上执行摆放动作，再累加它的高度。 */
+	private static void applyPlan(List<Row> plan, int top) {
+		int y = top;
+		for (Row row : plan) {
+			row.place().accept(y);
+			y += row.height();
+		}
+	}
+
+	/** 右列总高度：一个分组标题 + 较高的那个子列（左子列五条单行信息、右子列是合计 + 各类明细）。 */
+	private static int rightColumnHeight(List<Row> infoPlan, List<Row> categoryPlan) {
+		return HEADER + Math.max(planHeight(infoPlan), planHeight(categoryPlan));
 	}
 
 	/** 右列宽度：两个子列，各按最长标签计算（宽度为 Checkbox 的框 + 4 + 文字）。 */

@@ -71,7 +71,7 @@ public final class ClientConfig {
 	public static boolean tooltipTicketSim;
 
 	/** 各类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
-	public static final boolean[] tooltipCategories = new boolean[TickCategory.values().length];
+	public static final boolean[] tooltipCategories = new boolean[TickCategory.COUNT];
 
 	static {
 		// 默认值只在 resetToDefaults() 中写一次：首次启动与「恢复默认」共用同一份

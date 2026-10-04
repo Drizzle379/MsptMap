@@ -1,5 +1,6 @@
 package msptmap.client;
 
+import msptmap.Decimals;
 import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketSources;
 import net.minecraft.ChatFormatting;
@@ -59,6 +60,18 @@ public final class ChunkTooltip {
 			TickCategory.ENTITY,
 			TickCategory.SPAWN);
 
+	/**
+	 * 上次拼行结果与它的输入：区块（引用即快照代次 —— 每收一包快照都会重建全部区块对象）、
+	 * 坐标、窗口刻数、配置签名。五者全同则直接复用。
+	 */
+	private static ClientSnapshot.Chunk cachedChunk;
+	private static int cachedChunkX;
+	private static int cachedChunkZ;
+	private static int cachedWindowTicks;
+	/** 初值 -1：与任何真实签名（位掩码，≥ 0）都不同，首帧不会误命中。 */
+	private static int cachedSignature = -1;
+	private static List<String> cachedLines = List.of();
+
 	private ChunkTooltip() {
 	}
 
@@ -66,11 +79,31 @@ public final class ChunkTooltip {
 	 * 详情要显示的每一行。显示哪几行由 {@link ClientConfig} 的勾选决定，全关时返回空列表
 	 * （连「未采样」也不给）；调用方见到空列表即不画面板。
 	 *
+	 * 悬停时每帧都会调到这里，而输入（区块、窗口、配置）在两次绘制之间通常纹丝不动，
+	 * 故按输入缓存：命中即省下约八次 {@code format} 与整串拼接。
+	 *
 	 * @param chunk       鼠标所指区块；快照中没有（本次未扫到）时传 null —— 坐标行照给，另加一行
 	 *                    「未采样」，以便区分「无数据」与「未显示」
 	 * @param windowTicks 窗口内经过的 tick 数，各类纳秒换算 mspt 时的分母
 	 */
 	public static List<String> lines(ClientSnapshot.Chunk chunk, int chunkX, int chunkZ, int windowTicks) {
+		int signature = signature();
+		if (chunk == cachedChunk && chunkX == cachedChunkX && chunkZ == cachedChunkZ
+				&& windowTicks == cachedWindowTicks && signature == cachedSignature) {
+			return cachedLines;
+		}
+		List<String> lines = buildLines(chunk, chunkX, chunkZ, windowTicks);
+		cachedChunk = chunk;
+		cachedChunkX = chunkX;
+		cachedChunkZ = chunkZ;
+		cachedWindowTicks = windowTicks;
+		cachedSignature = signature;
+		cachedLines = lines;
+		return lines;
+	}
+
+	/** 拼行本体（不含缓存）。 */
+	private static List<String> buildLines(ClientSnapshot.Chunk chunk, int chunkX, int chunkZ, int windowTicks) {
 		List<String> lines = new ArrayList<>();
 		if (!ClientConfig.anyTooltipLine()) {
 			return lines;
@@ -97,7 +130,7 @@ public final class ChunkTooltip {
 			lines.add("实体数 " + chunk.entities());
 		}
 		if (ClientConfig.tooltipTotal) {
-			lines.add("合计 " + format(chunk.mspt()) + " mspt");
+			lines.add("合计 " + Decimals.format3(chunk.mspt()) + " mspt");
 		}
 		for (TickCategory category : ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {
@@ -263,13 +296,42 @@ public final class ChunkTooltip {
 		};
 	}
 
-	/** 纳秒 → 毫秒/tick 文本（三位小数），与 MsptSampler 打印用的格式一致。 */
+	/** 纳秒 → 毫秒/tick 文本，与 MsptSampler 打印共用 {@link Decimals} 的口径。 */
 	private static String ms(long nanos, int windowTicks) {
-		return format(nanos / 1_000_000.0 / Math.max(1, windowTicks));
+		return Decimals.format3(nanos / 1_000_000.0 / Math.max(1, windowTicks));
 	}
 
-	/** 快照里已算好的 ms/tick 走这里。 */
-	private static String format(double mspt) {
-		return String.format("%.3f", mspt);
+	/**
+	 * 参与拼行的全部配置项压成一个位掩码：有开关动了签名就变，缓存随之作废。
+	 *
+	 * 逐项列出（而非依赖任何通用机制），配置项增删时这里会跟着改，不会静默漏进签名。
+	 */
+	private static int signature() {
+		int bits = 0;
+		if (ClientConfig.tooltipCoords) {
+			bits |= 1 << 0;
+		}
+		if (ClientConfig.tooltipLevels) {
+			bits |= 1 << 1;
+		}
+		if (ClientConfig.tooltipTotal) {
+			bits |= 1 << 2;
+		}
+		if (ClientConfig.tooltipEntities) {
+			bits |= 1 << 3;
+		}
+		if (ClientConfig.tooltipTicketLoad) {
+			bits |= 1 << 4;
+		}
+		if (ClientConfig.tooltipTicketSim) {
+			bits |= 1 << 5;
+		}
+		// 各类明细各占一位，位序按 ordinal（签名只需唯一，与显示顺序无关）
+		for (TickCategory category : ORDER) {
+			if (ClientConfig.tooltipCategory(category)) {
+				bits |= 1 << (6 + category.ordinal());
+			}
+		}
+		return bits;
 	}
 }

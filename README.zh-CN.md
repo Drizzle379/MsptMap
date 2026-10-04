@@ -12,7 +12,7 @@
 |---|---|---|
 | Minecraft 1.20–1.21.11 或 26.1.2 / 26.2 / 26.3 + Fabric Loader ≥ 0.19.3 | 必需 | 具体可用版本见下表后清单 |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | 必需 | |
-| [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 客户端必需 | |
+| [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 客户端必需 | 注入锚点在 Xaero 1.44.2 / 1.46.0 / 1.46.4 上核对过（多数版本用 1.46.0）；Xaero 将来更新致锚点失配时，按钮与热力图停用，游戏照常启动 |
 | [Carpet](https://modrinth.com/mod/carpet) | 可选 | 安装后可以管理指令使用权限 |
 | [Mod Menu](https://modrinth.com/mod/modmenu) | 建议安装 | 安装后可以快捷进行设置 |
 
@@ -39,6 +39,8 @@ jar 放进 `mods/`。采样在服务端进行，**服务端也要装**；客户�
 3. 悬停任意区块看详情：坐标、加载等级、加载票、合计 mspt、实体数、各类耗时明细。加载票写明这个区块是靠什么被加载着的 —— `玩家加载` = 附近有玩家、`强制加载` = `/forceload`、`末影珍珠` = 珍珠落点，等等；后面的 `@x,z` 是票所在的区块（1.21.4 及以前的游戏没有可查询的票表，此项不显示）
 4. ✕ 按钮清空热力图
 5. 设置：Mod Menu → 设置，或 `/msptmap config`；存在 `config/msptmap-client.properties`
+
+合计 mspt 为七类耗时之和：计划刻、随机刻里触发的方块更新会同时计入这两类，合计可能略高于该区块的真实单刻耗时。
 
 **单人档**：地图打开时世界暂停，点击扫描按钮后要关闭地图等待。
 

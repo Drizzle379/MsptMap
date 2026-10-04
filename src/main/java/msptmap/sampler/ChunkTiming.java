@@ -7,10 +7,8 @@ package msptmap.sampler;
  * （少几千次除法，也不丢精度）。
  */
 public final class ChunkTiming {
-	private static final int CATEGORIES = TickCategory.values().length;
-
-	private final long[] nanos = new long[CATEGORIES];
-	private final int[] counts = new int[CATEGORIES];
+	private final long[] nanos = new long[TickCategory.COUNT];
+	private final int[] counts = new int[TickCategory.COUNT];
 
 	/** 记一笔。热路径，禁止分配对象与除法。 */
 	public void add(TickCategory category, long durationNanos) {

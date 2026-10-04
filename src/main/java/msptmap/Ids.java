@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier;
 /**
  * 资源位置相关的小工具：贴图 / 包 ID 的构造、维度 ID 的取用。
  *
- * 26.1 起 ResourceLocation 更名为 Identifier，且 ResourceKey.location() 更名为 identifier()；
+ * 1.21.11 起 ResourceLocation 更名为 Identifier，ResourceKey 的 location() 同时更名为 identifier()；
  * 调用点分散在客户端与网络层，故统一从这里走，条件注释只写在这一处。
  */
 public final class Ids {

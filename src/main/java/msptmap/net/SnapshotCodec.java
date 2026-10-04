@@ -46,11 +46,25 @@ public final class SnapshotCodec {
 	public record DimensionData(String dimension, List<ChunkData> chunks) {
 	}
 
+	/**
+	 * 「仅加载」区块共用的全零数组：只有这里持有，且只读地交给 ChunkData。一次扫描里这类区块
+	 * 可达数万个，逐个分配两个数组是纯浪费。
+	 */
+	public static final long[] ZERO_NANOS = new long[TickCategory.COUNT];
+
+	public static final int[] ZERO_COUNTS = new int[TickCategory.COUNT];
+
+	/** 单个区块编码后的最小字节数（坐标为小 varint、七组计数为 0 时约 21 字节，取 20 留余量）。 */
+	private static final int MIN_CHUNK_BYTES = 20;
+
+	/** 单个维度编码后的最小字节数（名称长度前缀 1 + 名称 1 + 区块个数 1）。 */
+	private static final int MIN_DIMENSION_BYTES = 3;
+
 	/** 写一个区块。 */
 	public static void writeChunk(FriendlyByteBuf buf, ChunkData chunk) {
 		buf.writeVarInt(chunk.x());
 		buf.writeVarInt(chunk.z());
-		for (int i = 0; i < TickCategory.values().length; i++) {
+		for (int i = 0; i < TickCategory.COUNT; i++) {
 			buf.writeVarLong(chunk.nanos()[i]);
 			buf.writeVarInt(chunk.counts()[i]);
 		}
@@ -65,8 +79,8 @@ public final class SnapshotCodec {
 	public static ChunkData readChunk(FriendlyByteBuf buf) {
 		int x = buf.readVarInt();
 		int z = buf.readVarInt();
-		long[] nanos = new long[TickCategory.values().length];
-		int[] counts = new int[TickCategory.values().length];
+		long[] nanos = new long[TickCategory.COUNT];
+		int[] counts = new int[TickCategory.COUNT];
 		for (int i = 0; i < nanos.length; i++) {
 			nanos[i] = buf.readVarLong();
 			counts[i] = buf.readVarInt();
@@ -89,6 +103,11 @@ public final class SnapshotCodec {
 
 	public static List<ChunkData> readChunks(FriendlyByteBuf buf) {
 		int size = buf.readVarInt();
+		// 先按剩余字节数把关再分配：对端声明几亿个区块时 new ArrayList<>(size) 抛的是 OOM（Error），
+		// ScanResultPayload.decode 的 catch (Exception) 兜不住、会直接崩；换成运行时异常走 MISMATCH 降级路
+		if (size < 0 || size > buf.readableBytes() / MIN_CHUNK_BYTES) {
+			throw new IllegalArgumentException("区块个数 " + size + " 与剩余 " + buf.readableBytes() + " 字节不符");
+		}
 		List<ChunkData> chunks = new ArrayList<>(size);
 		for (int i = 0; i < size; i++) {
 			chunks.add(readChunk(buf));
@@ -115,6 +134,10 @@ public final class SnapshotCodec {
 
 	public static List<DimensionData> readDimensions(FriendlyByteBuf buf) {
 		int size = buf.readVarInt();
+		// 同 readChunks：按对端声明的个数直接分配会被伪造/错位的大数打成 OOM
+		if (size < 0 || size > buf.readableBytes() / MIN_DIMENSION_BYTES) {
+			throw new IllegalArgumentException("维度个数 " + size + " 与剩余 " + buf.readableBytes() + " 字节不符");
+		}
 		List<DimensionData> dimensions = new ArrayList<>(size);
 		for (int i = 0; i < size; i++) {
 			dimensions.add(readDimension(buf));

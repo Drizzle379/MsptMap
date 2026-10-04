@@ -28,6 +28,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 每个点都是 HEAD 记开始、RETURN 记结束，差值即该方法自身的耗时。开始时刻存 @Unique 字段而不用
  * ThreadLocal：这几个方法只在服务端主线程调用，而 ThreadLocal 每次读写都要装箱一个 Long。
  *
+ * 各 RETURN 注入点先判「开始时刻为 0（未在采样）」即提前返回：否则每次收尾都要白算一遍区块坐标
+ * 打包与维度转换（{@link MsptSampler#end} 本就忽略 0，只是参数已经求了值）。
+ *
  * 乘客不会重复计时，其耗时记在**载具所在的那个区块**上。
  */
 @Mixin(ServerLevel.class)
@@ -62,6 +65,9 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickChunk", at = @At("RETURN"))
 	private void msptmapRandomTickEnd(LevelChunk chunk, int tickSpeed, CallbackInfo ci) {
+		if (this.msptmapRandomTickStart == 0L) {
+			return;
+		}
 		MsptSampler.end(TickCategory.RANDOM_TICK, this.msptmapLevel(), ChunkKeys.pack(chunk.getPos()), this.msptmapRandomTickStart);
 	}
 
@@ -73,6 +79,9 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickBlock", at = @At("RETURN"))
 	private void msptmapBlockEnd(BlockPos pos, Block block, CallbackInfo ci) {
+		if (this.msptmapBlockStart == 0L) {
+			return;
+		}
 		MsptSampler.end(TickCategory.SCHEDULED, this.msptmapLevel(), ChunkKeys.pack(pos), this.msptmapBlockStart);
 	}
 
@@ -84,6 +93,9 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickFluid", at = @At("RETURN"))
 	private void msptmapFluidEnd(BlockPos pos, Fluid fluid, CallbackInfo ci) {
+		if (this.msptmapFluidStart == 0L) {
+			return;
+		}
 		MsptSampler.end(TickCategory.SCHEDULED, this.msptmapLevel(), ChunkKeys.pack(pos), this.msptmapFluidStart);
 	}
 
@@ -95,6 +107,9 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "tickNonPassenger", at = @At("RETURN"))
 	private void msptmapEntityEnd(Entity entity, CallbackInfo ci) {
+		if (this.msptmapEntityStart == 0L) {
+			return;
+		}
 		MsptSampler.end(TickCategory.ENTITY, this.msptmapLevel(), ChunkKeys.pack(entity.chunkPosition()), this.msptmapEntityStart);
 	}
 
@@ -116,7 +131,7 @@ public abstract class ServerLevelMixin {
 		try {
 			original.call(pos, sourceBlock, orientation);
 		} finally {
-			if (--this.msptmapNeighborDepth == 0) {
+			if (--this.msptmapNeighborDepth == 0 && this.msptmapNeighborStart != 0L) {
 				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
 						this.msptmapNeighborStart);
 			}
@@ -131,7 +146,7 @@ public abstract class ServerLevelMixin {
 		try {
 			original.call(pos, sourceBlock);
 		} finally {
-			if (--this.msptmapNeighborDepth == 0) {
+			if (--this.msptmapNeighborDepth == 0 && this.msptmapNeighborStart != 0L) {
 				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
 						this.msptmapNeighborStart);
 			}
@@ -153,6 +168,9 @@ public abstract class ServerLevelMixin {
 
 	@Inject(method = "doBlockEvent", at = @At("RETURN"))
 	private void msptmapBlockEventEnd(BlockEventData eventData, CallbackInfoReturnable<Boolean> cir) {
+		if (this.msptmapBlockEventStart == 0L) {
+			return;
+		}
 		MsptSampler.end(TickCategory.BLOCK_EVENT, this.msptmapLevel(), ChunkKeys.pack(eventData.pos()),
 				this.msptmapBlockEventStart);
 	}

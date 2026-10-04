@@ -37,33 +37,74 @@ public final class ScanRing {
 	 */
 	public static List<int[]> segments(float fraction, int x, int y, int size) {
 		List<int[]> out = new ArrayList<>(4);
-		int done = Math.round(Clamp.of(fraction, 0f, 1f) * size * 4);
+		int done = doneSteps(fraction, size);
 		for (int side = 0; side < 4; side++) {
-			int steps = Clamp.of(done - side * size, 0, size);
+			int steps = sideSteps(done, side, size);
 			if (steps == 0) {
 				continue;
 			}
-			out.add(switch (side) {
-				case 0 -> new int[]{x, y, x + steps, y + 1};                                  // 上：左 → 右
-				case 1 -> new int[]{x + size - 1, y, x + size, y + steps};                    // 右：上 → 下
-				case 2 -> new int[]{x + size - steps, y + size - 1, x + size, y + size};      // 下：右 → 左
-				default -> new int[]{x, y + size - steps, x + 1, y + size};                   // 左：下 → 上
-			});
+			int[] rect = new int[4];
+			sideRect(side, steps, x, y, size, rect);
+			out.add(rect);
 		}
 		return out;
 	}
 
+	/** 已走过的总步数（整圈 = {@code size} 的 4 倍）。 */
+	private static int doneSteps(float fraction, int size) {
+		return Math.round(Clamp.of(fraction, 0f, 1f) * size * 4);
+	}
+
+	/** 该条边已走过多少步（0 ~ {@code size}）。 */
+	private static int sideSteps(int done, int side, int size) {
+		return Clamp.of(done - side * size, 0, size);
+	}
+
+	/** 把某条边上已走过的一段写成矩形（{@code out} = {x1, y1, x2, y2}）。四条的几何算式只此一处。 */
+	private static void sideRect(int side, int steps, int x, int y, int size, int[] out) {
+		switch (side) {
+			case 0 -> { out[0] = x; out[1] = y; out[2] = x + steps; out[3] = y + 1; }                          // 上：左 → 右
+			case 1 -> { out[0] = x + size - 1; out[1] = y; out[2] = x + size; out[3] = y + steps; }            // 右：上 → 下
+			case 2 -> { out[0] = x + size - steps; out[1] = y + size - 1; out[2] = x + size; out[3] = y + size; } // 下：右 → 左
+			default -> { out[0] = x; out[1] = y + size - steps; out[2] = x + 1; out[3] = y + size; }           // 左：下 → 上
+		}
+	}
+
+	/** 绘制复用的矩形缓冲：只在客户端渲染线程用（单独一条线程），故静态共享无并发问题。 */
+	private static final int[] RECT = new int[4];
+
 	/** 把圈画在按钮边框上：先铺整圈暗轨道，再覆盖已走过的部分。 */
 	//? if >=26.1 {
 	public static void draw(GuiGraphicsExtractor graphics, float fraction, int x, int y, int size) {
+		fillRing(graphics, 1f, x, y, size, TRACK_COLOR);
+		fillRing(graphics, fraction, x, y, size, PROGRESS_COLOR);
+	}
 	//?} else {
 	/*public static void draw(GuiGraphics graphics, float fraction, int x, int y, int size) {
+		fillRing(graphics, 1f, x, y, size, TRACK_COLOR);
+		fillRing(graphics, fraction, x, y, size, PROGRESS_COLOR);
+	}
 	*///?}
-		for (int[] side : segments(1f, x, y, size)) {
-			graphics.fill(side[0], side[1], side[2], side[3], TRACK_COLOR);
-		}
-		for (int[] step : segments(fraction, x, y, size)) {
-			graphics.fill(step[0], step[1], step[2], step[3], PROGRESS_COLOR);
+
+	/**
+	 * 逐条边填充；不走 {@link #segments}（每帧省下列表与 int[] 的分配），几何算式与之共用。
+	 *
+	 * 声明行分叉（{@code GuiGraphics} 在 26.1 更名为 {@code GuiGraphicsExtractor}），方法体共用；
+	 * else 段的注释里不能再放以星号斜杠收尾的注释（javadoc 也算），那会提前关上包装注释。
+	 */
+	//? if >=26.1 {
+	private static void fillRing(GuiGraphicsExtractor graphics, float fraction, int x, int y, int size, int color) {
+	//?} else {
+	/*private static void fillRing(GuiGraphics graphics, float fraction, int x, int y, int size, int color) {
+	*///?}
+		int done = doneSteps(fraction, size);
+		for (int side = 0; side < 4; side++) {
+			int steps = sideSteps(done, side, size);
+			if (steps == 0) {
+				continue;
+			}
+			sideRect(side, steps, x, y, size, RECT);
+			graphics.fill(RECT[0], RECT[1], RECT[2], RECT[3], color);
 		}
 	}
 }

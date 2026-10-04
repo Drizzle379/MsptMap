@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * 服务端 → 客户端：扫描的进展与结果。
  *
- * 五种状态共用这一个包，客户端因此只需一个接收器、状态判断只写一遍。
+ * 六种状态共用这一个包，客户端因此只需一个接收器、状态判断只写一遍。
  * 除 DONE 外都不带区块数据（空列表）；PROGRESS 复用 DONE 的 {@code windowTicks} 表示窗口已过的刻数。
  *
  * 版本不同的两端也允许互发：包 ID 不带版本号，包体开头的魔数是**标记**而非闸门。
@@ -47,8 +47,14 @@ public record ScanResultPayload(int protocol, Status status, int seconds, int wi
 		DONE,
 		DENIED,
 		BUSY,
-		/** 只能追加在末尾：状态按 ordinal 上线，插入中间会使版本不一致的另一端读错状态。 */
-		PROGRESS
+		/**
+		 * 只能追加在末尾：状态按 ordinal 上线，插入中间会使版本不一致的另一端读错状态。
+		 *
+		 * PROGRESS = 扫描进度（每 0.1 秒一个）；COOLDOWN = 冷却中拒绝（距上次扫描结束不足
+		 * {@link msptmap.sampler.MsptSampler#COOLDOWN_SECONDS} 秒）。
+		 */
+		PROGRESS,
+		COOLDOWN
 	}
 
 	/**
@@ -139,5 +145,10 @@ public record ScanResultPayload(int protocol, Status status, int seconds, int wi
 
 	public static ScanResultPayload busy() {
 		return new ScanResultPayload(MsptMapMod.PROTOCOL, Status.BUSY, 0, 0, List.of());
+	}
+
+	/** 冷却中：由 {@link msptmap.sampler.MsptSampler} 的冷却闸发。 */
+	public static ScanResultPayload cooldown() {
+		return new ScanResultPayload(MsptMapMod.PROTOCOL, Status.COOLDOWN, 0, 0, List.of());
 	}
 }

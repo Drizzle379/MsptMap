@@ -20,5 +20,11 @@ public enum TickCategory {
 	/** 方块更新：ServerLevel.updateNeighborsAt（通知六个邻居，红石连锁的耗时落在这里）。 */
 	NEIGHBOR_UPDATE,
 	/** 方块事件：ServerLevel.doBlockEvent（活塞、箱子、音符盒那类排队的方块动作）。 */
-	BLOCK_EVENT
+	BLOCK_EVENT;
+
+	/**
+	 * 类别数。循环条件与数组长度处用它代替 {@code values().length}：{@code values()} 每次调用
+	 * 都克隆一份数组，逐区块的编码/建表路径上会积成数万次克隆。
+	 */
+	public static final int COUNT = values().length;
 }

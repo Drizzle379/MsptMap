@@ -32,6 +32,12 @@ public final class ClientSnapshot {
 
 	private static final Map<String, Chunk[]> byDimension = new HashMap<>();
 
+	/**
+	 * 每个维度本次快照里最重的区块耗时（ms/tick）。相对模式下红点取它 —— 绘制每帧都要读，
+	 * 故收快照时随转换循环一并算好，不从 {@link #byDimension} 里现扫。
+	 */
+	private static final Map<String, Float> heaviestByDimension = new HashMap<>();
+
 	/** 本次窗口实际经过的 tick 数：各类纳秒换算 ms/tick 的分母。 */
 	private static int windowTicks;
 
@@ -46,17 +52,22 @@ public final class ClientSnapshot {
 	public static void accept(int windowTicks, List<SnapshotCodec.DimensionData> dimensions) {
 		ClientSnapshot.windowTicks = Math.max(1, windowTicks);
 		byDimension.clear();
+		heaviestByDimension.clear();
 		for (SnapshotCodec.DimensionData dimension : dimensions) {
 			List<SnapshotCodec.ChunkData> chunks = dimension.chunks();
 			Chunk[] converted = new Chunk[chunks.size()];
+			// 顺手取最重的一个（见 heaviestByDimension）：再过一遍是白扫
+			float heaviest = 0.0f;
 			for (int i = 0; i < converted.length; i++) {
 				SnapshotCodec.ChunkData chunk = chunks.get(i);
+				float value = mspt(chunk.totalNanos(), windowTicks);
+				heaviest = Math.max(heaviest, value);
 				converted[i] = new Chunk(
 						chunk.x() << 4,
 						chunk.z() << 4,
 						(chunk.x() + 1) << 4,
 						(chunk.z() + 1) << 4,
-						mspt(chunk.totalNanos(), windowTicks),
+						value,
 						chunk.loadLevel(),
 						chunk.computeLevel(),
 						chunk.entities(),
@@ -67,6 +78,7 @@ public final class ClientSnapshot {
 						chunk.counts());
 			}
 			byDimension.put(dimension.dimension(), converted);
+			heaviestByDimension.put(dimension.dimension(), heaviest);
 		}
 	}
 
@@ -80,6 +92,7 @@ public final class ClientSnapshot {
 	public static int clear() {
 		int dropped = byDimension.size();
 		byDimension.clear();
+		heaviestByDimension.clear();
 		windowTicks = 0;
 		return dropped;
 	}
@@ -92,6 +105,16 @@ public final class ClientSnapshot {
 	/** 本次窗口经过的 tick 数。悬停详情用它把各类纳秒换算成 ms/tick。 */
 	public static int windowTicks() {
 		return windowTicks;
+	}
+
+	/**
+	 * 该维度本次快照里最重的区块耗时（ms/tick）；没有数据时为 0。
+	 *
+	 * 相对模式下红点取它（见 {@link MapOverlay#draw}），收快照时已一并算好。
+	 */
+	public static float heaviestMspt(String dimension) {
+		Float heaviest = heaviestByDimension.get(dimension);
+		return heaviest == null ? 0.0f : heaviest;
 	}
 
 	/**

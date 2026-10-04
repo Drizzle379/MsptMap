@@ -7,6 +7,7 @@ import msptmap.net.ScanResultPayload;
 import msptmap.sampler.MsptSampler;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 // 1.20.5 起才有这个类；1.20.4 及以前的 FabricPacket 体系由 registerGlobalReceiver 隐式注册，不需要它
 //? if >=1.20.5 {
@@ -40,6 +41,9 @@ public class MsptMapMod implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ServerTickEvents.END_SERVER_TICK.register(server -> MsptSampler.onServerTick());
+		// 服务器停止：丢弃采样状态。静态字段跨世界存活（单人档退回主菜单再进是同一个 JVM），
+		// 不复位则重进后旧窗口继续数刻、新请求被回成「忙」
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> MsptSampler.reset());
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registryAccess, environment) -> MsptMapCommand.register(dispatcher));
 
@@ -100,11 +104,17 @@ public class MsptMapMod implements ModInitializer {
 		int requested = payload.seconds() > 0 ? payload.seconds() : MsptMapSettings.seconds.getAsInt();
 		int seconds = MsptSampler.clampSeconds(requested);
 
-		if (MsptSampler.start(seconds, player)) {
+		switch (MsptSampler.start(seconds, player)) {
 			// 先回 START：秒数以服务端为准，客户端据此计算进度圈
-			ServerPlayNetworking.send(player, ScanResultPayload.start(seconds));
-		} else {
-			ServerPlayNetworking.send(player, ScanResultPayload.busy());
+			case STARTED -> ServerPlayNetworking.send(player, ScanResultPayload.start(seconds));
+			case BUSY -> ServerPlayNetworking.send(player, ScanResultPayload.busy());
+			case COOLDOWN -> {
+				LOGGER.info("玩家 {} 的扫描请求距上次结束不足 {} 秒，已忽略", playerName(player),
+						MsptSampler.COOLDOWN_SECONDS);
+				ServerPlayNetworking.send(player, ScanResultPayload.cooldown());
+			}
+			// 停滞判定只拒绝无发起人的请求，玩家请求到不了这里（见 MsptSampler.start）；兜底按忙碌回
+			case STALLED -> ServerPlayNetworking.send(player, ScanResultPayload.busy());
 		}
 	}
 

@@ -19,8 +19,10 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.TicketStorage;
 //?}
 
-import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 反查每个区块的加载来源：这个区块是被哪张加载票罩住的。
@@ -89,9 +91,16 @@ public final class TicketSources {
 		DistanceManager distanceManager = chunkMap.getDistanceManager();
 
 		Long2IntOpenHashMap sources = new Long2IntOpenHashMap();
-		// 队列元素：{区块坐标, 源头的区块 X, 源头的区块 Z}。BFS 逐层访问，故第一次到达某区块时的
-		// 源头必然是覆盖它的那些锚点里最近的一个。
-		ArrayDeque<long[]> queue = new ArrayDeque<>();
+		// BFS 队列用四个并行原始数组（免去每个元素一个 long[]），等级随元素带上 —— 出队后不必再查
+		// 一次 getChunkLevel。BFS 逐层访问，故第一次到达某区块时的源头必然是覆盖它的那些锚点里最近
+		// 的一个。容量按可见区块数取：锚点至多这么多，扩散阶段不够再翻倍。
+		int capacity = Math.max(16, accessor.getVisibleChunks().size());
+		long[] queueKeys = new long[capacity];
+		int[] queueLevels = new int[capacity];
+		int[] queueAnchorXs = new int[capacity];
+		int[] queueAnchorZs = new int[capacity];
+		int queueHead = 0;
+		int queueTail = 0;
 
 		// 一、持票区块：持有本链的票、且等级落在快照范围内的。等级更高的票扩散出去只会更高，
 		//     没有区块会采信它们，直接跳过。
@@ -106,7 +115,13 @@ public final class TicketSources {
 			int x = ChunkPos.getX(key);
 			int z = ChunkPos.getZ(key);
 			sources.put(key, encode(anchor[0], 0, 0, false));
-			queue.add(new long[] {key, x, z});
+			// 等级取 getChunkLevel 而非票自己的等级：邻近若有等级更低的票，此处的实际等级会被它压低，
+			// 扩散判定必须用实际等级。入队时查与出队时查等价（同一趟里票表不变）
+			queueKeys[queueTail] = key;
+			queueLevels[queueTail] = distanceManager.getChunkLevel(key, simulation);
+			queueAnchorXs[queueTail] = x;
+			queueAnchorZs[queueTail] = z;
+			queueTail++;
 			if (anchors < 5) {
 				sample.append(sample.isEmpty() ? "" : "、").append('(').append(x).append(',').append(z)
 						.append(") 票").append(anchor[0]).append(" 等级").append(anchor[1]);
@@ -115,13 +130,13 @@ public final class TicketSources {
 		}
 
 		// 二、按 8 邻扩散（与 ChunkTracker 的方向一致），只往等级恰好 +1 的邻居走。
-		while (!queue.isEmpty()) {
-			long[] head = queue.poll();
-			long key = head[0];
-			int anchorX = (int) head[1];
-			int anchorZ = (int) head[2];
+		while (queueHead < queueTail) {
+			long key = queueKeys[queueHead];
+			int hereLevel = queueLevels[queueHead];
+			int anchorX = queueAnchorXs[queueHead];
+			int anchorZ = queueAnchorZs[queueHead];
+			queueHead++;
 			int type = type(sources.get(key));
-			int hereLevel = distanceManager.getChunkLevel(key, simulation);
 			int x = ChunkPos.getX(key);
 			int z = ChunkPos.getZ(key);
 			for (int dx = -1; dx <= 1; dx++) {
@@ -139,15 +154,28 @@ public final class TicketSources {
 					}
 					// 偏移记的是「源头相对本区块」，客户端用「本区块 + 偏移」还原成源头坐标
 					sources.put(neighbor, encode(type, anchorX - (x + dx), anchorZ - (z + dz), false));
-					queue.add(new long[] {neighbor, anchorX, anchorZ});
+					// 扩容只在这一处（锚点阶段的入队数不超过初始容量）：一维数组一翻倍，四个一起换
+					if (queueTail == queueKeys.length) {
+						int grown = queueTail * 2;
+						queueKeys = Arrays.copyOf(queueKeys, grown);
+						queueLevels = Arrays.copyOf(queueLevels, grown);
+						queueAnchorXs = Arrays.copyOf(queueAnchorXs, grown);
+						queueAnchorZs = Arrays.copyOf(queueAnchorZs, grown);
+					}
+					queueKeys[queueTail] = neighbor;
+					queueLevels[queueTail] = neighborLevel;
+					queueAnchorXs[queueTail] = anchorX;
+					queueAnchorZs[queueTail] = anchorZ;
+					queueTail++;
 				}
 			}
 		}
 
 		// 诊断：这三个数能直接看出正推有没有出问题 —— 锚点数应为「玩家数 + forceload + 传送门/珍珠」
 		// 那么多个；覆盖数应接近快照里的区块数（淡灰的那些弱加载区块也在覆盖内）。对不上就说明
-		// 这儿算错了，不必对着地图猜。
-		MsptMapMod.LOGGER.info("维度 {} 加载票（{}）：持票区块 {} 个、覆盖 {} 个区块。前几个持票区块：{}",
+		// 这儿算错了，不必对着地图猜。默认级别不打（每次扫描每维度一条，生产服上太吵），排查时开到
+		// debug 再看。
+		MsptMapMod.LOGGER.debug("维度 {} 加载票（{}）：持票区块 {} 个、覆盖 {} 个区块。前几个持票区块：{}",
 				Ids.id(level.dimension()), simulation ? "模拟链" : "加载链", anchors, sources.size(),
 				sample.isEmpty() ? "（无）" : sample);
 		return sources;
@@ -213,13 +241,31 @@ public final class TicketSources {
 	}
 
 	/**
+	 * 票类型身份 → 协议序号的缓存：{@link #indexOf} 要走注册表反查加字符串匹配，而票类型是单例
+	 * （枚举 / 注册表对象），同一张票只该算一次。用身份比较即可；算出的序号不随注册表变化，跨次扫描
+	 * 也有效。采样在服务端主线程上收尾，单线程访问。
+	 */
+	private static final Map<TicketType, Integer> TYPE_CACHE = new IdentityHashMap<>();
+
+	/** 票类型 → 协议序号（先查 {@link #TYPE_CACHE}，未命中才算）。 */
+	private static int indexOf(TicketType type) {
+		Integer cached = TYPE_CACHE.get(type);
+		if (cached != null) {
+			return cached;
+		}
+		int index = computeIndexOf(type);
+		TYPE_CACHE.put(type, index);
+		return index;
+	}
+
+	/**
 	 * 票类型 → 协议序号。
 	 *
 	 * 认的是**注册表里的名字**，不是 {@code equals}：{@code TicketType} 是 record，相等性只看
 	 * (timeout, flags) 两个字段，而 {@code spawn_search} 与 {@code player_loading} 这两项取值完全相同
 	 * （都是 0 / 2），用 equals 会把前者认成后者。名字才是唯一的。
 	 */
-	private static int indexOf(TicketType type) {
+	private static int computeIndexOf(TicketType type) {
 		String path = Ids.path(BuiltInRegistries.TICKET_TYPE, type);
 		if (path == null) {
 			return UNRECOGNIZED;
