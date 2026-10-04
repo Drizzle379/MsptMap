@@ -214,18 +214,17 @@ public final class ChunkTooltip {
 	 * 鼠标是否正压在一个控件（按钮 / 输入框 / 下拉列表…）上；是则这一帧不画详情。
 	 *
 	 * <p>Xaero 在 {@code GuiMap.extractRenderState} 末尾也绘制自己的提示框，位置同在鼠标处，而注入点
-	 * 是同一方法的 TAIL（最后绘制），两个框会重叠；指向按钮时本就不在看地图，让位即可。判定只看是否
-	 * 为控件且鼠标落在其矩形内（左闭右开，同 {@code fill}），不看显示与禁用状态，与 Xaero 口径一致。
+	 * 是同一方法的 TAIL（最后绘制），两个框会重叠；指向按钮时本就不在看地图，让位即可。
+	 *
+	 * <p>以 {@code isMouseOver} 为准，不自行比对矩形：其他模组会往地图上加全屏的透明叠加层，靠覆写
+	 * 它返回 false 声明自己不参与悬停（如 Xaero Head Tracker 的玩家头像层）。自行比对矩形会让这类
+	 * 控件的矩形覆盖整屏，把悬停永久挡掉。
 	 *
 	 * <p>只用原版类型，不涉及 Xaero，可离线断言。
 	 */
 	public static boolean overWidget(int mouseX, int mouseY, List<? extends GuiEventListener> children) {
 		for (GuiEventListener child : children) {
-			if (!(child instanceof AbstractWidget widget)) {
-				continue;
-			}
-			if (mouseX >= widget.getX() && mouseX < widget.getX() + widget.getWidth()
-					&& mouseY >= widget.getY() && mouseY < widget.getY() + widget.getHeight()) {
+			if (child instanceof AbstractWidget widget && widget.isMouseOver(mouseX, mouseY)) {
 				return true;
 			}
 		}
