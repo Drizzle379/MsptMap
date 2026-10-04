@@ -16,7 +16,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -165,11 +164,8 @@ public abstract class GuiMapMixin {
 		if (currentDim == null) {
 			return;
 		}
-		// 屏幕尺寸按 GUI 缩放后的坐标取，与矩阵的屏幕空间一致；热力图据此剔除屏幕外的区块
-		Minecraft minecraft = Minecraft.getInstance();
 		MapOverlay.draw(matrixStack.last().pose(), overlayBuffer, flooredCameraX, flooredCameraZ,
-				msptmapDimensionId(currentDim),
-				minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
+				msptmapDimensionId(currentDim));
 	}
 
 	/**
