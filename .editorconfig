@@ -1,0 +1,22 @@
+# 统一编辑器行为；换行与 .gitattributes 的 eol=lf 保持一致
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Java 与 Gradle 脚本用 Tab（沿用现有风格）
+[*.{java,gradle,groovy}]
+indent_style = tab
+indent_size = 4
+
+# JSON / YAML 用 2 空格
+[*.{json,yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown 行尾空格可能是刻意的换行
+[*.md]
+trim_trailing_whitespace = false

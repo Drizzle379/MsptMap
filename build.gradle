@@ -75,19 +75,29 @@ processResources {
 	def modVersion = project.mod_version
 	def loaderVersion = project.loader_version
 	def javaRelease = project.java_release
+	// mixin 兼容级别跟随 java_release：级别高于运行 JVM 时 mixin 会拒绝加载，故不能写死
+	def mixinCompatLevel = "JAVA_" + javaRelease
+	def fabricApiVersion = project.fabric_api_version
 	def minecraftRange = project.minecraft_range
 	def carpetRange = project.carpet_range
 	inputs.property "version", modVersion
 	inputs.property "loader_version", loaderVersion
 	inputs.property "java_release", javaRelease
+	inputs.property "mixin_compat_level", mixinCompatLevel
+	inputs.property "fabric_api_version", fabricApiVersion
 	inputs.property "minecraft_range", minecraftRange
 	inputs.property "carpet_range", carpetRange
 	filesMatching("fabric.mod.json") {
 		expand "version": modVersion,
 				"loader_version": loaderVersion,
 				"java_release": javaRelease,
+				"fabric_api_version": fabricApiVersion,
 				"minecraft_range": minecraftRange,
 				"carpet_range": carpetRange
+	}
+	// 两个 mixins.json 的 ${mixin_compat_level} 占位符（分开填，语义与 fabric.mod.json 的元数据不同）
+	filesMatching(["msptmap.mixins.json", "msptmap.client.mixins.json"]) {
+		expand "mixin_compat_level": mixinCompatLevel
 	}
 }
 

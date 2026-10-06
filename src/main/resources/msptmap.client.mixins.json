@@ -1,7 +1,7 @@
 {
   "required": false,
   "package": "msptmap.client.mixins",
-  "compatibilityLevel": "JAVA_25",
+  "compatibilityLevel": "${mixin_compat_level}",
   "client": [
     "GuiMapMixin"
   ],

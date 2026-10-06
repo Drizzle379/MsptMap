@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "msptmap.mixins",
-  "compatibilityLevel": "JAVA_25",
+  "compatibilityLevel": "${mixin_compat_level}",
   "mixins": [
     "BoundTickingBlockEntityMixin",
     "ChunkMapAccessor",
