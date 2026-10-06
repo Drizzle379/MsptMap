@@ -36,11 +36,11 @@ The server and the client may run different versions of MsptMap: a mismatch stil
 
 1. Open the world map and click the heatmap button in the top-left corner to start a scan (or run `/msptmap scan [seconds]`)
 2. Once sampling finishes, chunks are painted by how much they lag: green → yellow → red; weakly-loaded chunks are pale grey
-3. Hover any chunk for details: coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown. The load ticket names what keeps that chunk loaded — `玩家加载` for a nearby player, `强制加载` for `/forceload`, `末影珍珠` for a thrown pearl, and so on; an `@x,z` after it is the chunk the ticket sits on (games through 1.21.4 have no queryable ticket table and do not show this part)
+3. Hover any chunk for details: coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown. The load ticket names what keeps that chunk loaded — `player_loading` for a nearby player, `forced` for `/forceload`, `ender_pearl` for a thrown pearl, and so on; an `@x,z` after it is the chunk the ticket sits on (games through 1.21.4 have no queryable ticket table and do not show this part)
 4. The ✕ button clears the heatmap
 5. Settings: Mod Menu → Settings, or `/msptmap config`; stored in `config/msptmap-client.properties`
 
-Total mspt is the sum of the seven categories: block updates triggered inside scheduled or random ticks are counted in both, so the total may slightly exceed the chunk's true per-tick cost.
+Total mspt excludes block updates: their cost is already counted in the category that triggered them, so it is not double-counted.
 
 **Single-player**: the world is paused while the map is open, so close it after clicking the scan button and wait.
 

@@ -356,7 +356,7 @@ public final class MsptSampler {
 					*///?}
 		});
 		// 按重量降序：装不下时移除的必然是尾部最轻的。重量先一次算好再排；若在比较器中现算
-		// totalNanos()，每次比较都要重加那七个数，数万区块时即为数十万次重复求和
+		// totalNanos()，每次比较都要重加那六个数，数万区块时即为数十万次重复求和
 		List<Weighted> weighted = new ArrayList<>(out.size());
 		for (SnapshotCodec.ChunkData chunk : out) {
 			weighted.add(new Weighted(chunk, chunk.totalNanos()));

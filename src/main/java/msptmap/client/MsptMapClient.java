@@ -28,24 +28,25 @@ import net.minecraft.network.chat.Component;
 /**
  * 客户端入口：结果包接收器、掉线清理、两条本地命令（scan / config）与地图按钮回调。
  *
- * <p>聊天栏只输出状态提示（{@link #say}：走客户端本地消息，不发往服务器），其余只写日志。
+ * <p>聊天栏只输出状态提示（{@link #say}：参数为语言键，按客户端语言解析；走客户端本地消息，
+ * 不发往服务端），其余只写日志。
  *
  * <p>命令为本地执行：Fabric 在 ClientPacketListener.sendCommand 处拦截，命令能在客户端命令树上
  * 跑通即不发往服务端，故与服务端那条同名命令不冲突。
  */
 public class MsptMapClient implements ClientModInitializer {
 	/** 点击后包确实发出时在聊天栏显示（服务端是否答应随后另说）。 */
-	static final String STARTING_MESSAGE = "分析中…";
+	static final String STARTING_KEY = "msptmap.message.starting";
 	/** 包发不出去：服务端未装本模组，或装的是协议不同的另一版本（Fabric 只告诉「对面不认识这个包 ID」）。 */
-	static final String NO_MOD_MESSAGE = "分析失败，服务端未安装 MsptMap 或版本不一致";
+	static final String NO_MOD_KEY = "msptmap.message.no_mod";
 	/** 结果包读不出内容：对面格式与本端不兼容，本次作废。 */
-	static final String MISMATCH_MESSAGE = "分析失败，MsptMap 客户端与服务端版本不一致";
+	static final String MISMATCH_KEY = "msptmap.message.mismatch";
 	/** 冷却中：距上次扫描结束不足 {@link MsptSampler#COOLDOWN_SECONDS} 秒，服务端的冷却闸拒绝。 */
-	static final String COOLDOWN_MESSAGE = "分析失败，扫描过于频繁，请稍后再试";
+	static final String COOLDOWN_KEY = "msptmap.message.cooldown";
 	/** 上一次还没出结果（进度圈还在转）时又发起：命令用它报错，按钮路径直接忽略。 */
-	static final String WAITING_MESSAGE = "上一次分析还没结束，请等待结果";
+	static final String WAITING_KEY = "msptmap.message.waiting";
 	/** 版本不同但包读得动：照常出结果，只附一句提醒。 */
-	static final String VERSION_MISMATCH_MESSAGE = "MsptMap 客户端与服务端版本不一致，结果可能不准";
+	static final String VERSION_MISMATCH_KEY = "msptmap.message.version_mismatch";
 
 	@Override
 	public void onInitializeClient() {
@@ -87,7 +88,7 @@ public class MsptMapClient implements ClientModInitializer {
 		if (payload.protocol() == ScanResultPayload.MISMATCH) {
 			// 包体读不出来：对面格式与本端差得太多，本次作废
 			MsptMapMod.LOGGER.warn("服务端 MsptMap 的结果包解析不了（本端 {}），已丢弃", MsptMapMod.PROTOCOL);
-			say(MISMATCH_MESSAGE);
+			say(MISMATCH_KEY);
 			return;
 		}
 		switch (payload.status()) {
@@ -126,7 +127,7 @@ public class MsptMapClient implements ClientModInitializer {
 		// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
 		// START 时还不知道跑不跑得完，都不提示
 		if (payload.status() == ScanResultPayload.Status.DONE && payload.protocol() != MsptMapMod.PROTOCOL) {
-			say(VERSION_MISMATCH_MESSAGE);
+			say(VERSION_MISMATCH_KEY);
 		}
 	}
 
@@ -139,29 +140,29 @@ public class MsptMapClient implements ClientModInitializer {
 		*///?}
 	}
 
-	/** 在聊天栏说一句。走客户端本地消息，仅自己可见，不发往服务器。传 null 则不说。 */
-	private static void say(String text) {
-		if (text != null) {
+	/** 在聊天栏显示一条消息（key 为语言键）。仅自己可见，不发往服务端；key 为 null 时不显示。 */
+	private static void say(String key) {
+		if (key != null) {
 			// 1.21.11 及以前名为 addMessage，26.1 起更名为 addClientSystemMessage
 			//? if >=26.1 {
-			chat().addClientSystemMessage(Component.literal(text));
+			chat().addClientSystemMessage(Component.translatable(key));
 			//?} else {
-			/*chat().addMessage(Component.literal(text));
+			/*chat().addMessage(Component.translatable(key));
 			*///?}
 		}
 	}
 
 	/**
-	 * 某种状态对应的那句话；null = 不说（START / PROGRESS 不说话，「分析中…」在点按钮时说）。
+	 * 某种状态对应的聊天文案语言键；START / PROGRESS 为 null（「分析中…」已在点按钮时显示）。
 	 *
-	 * 纯函数，便于离线断言各说各的。
+	 * 纯函数，便于离线断言。
 	 */
 	static String statusMessage(ScanResultPayload.Status status) {
 		return switch (status) {
-			case DONE -> "分析成功，请打开地图查看";
-			case DENIED -> "分析失败，权限不足";
-			case BUSY -> "分析失败，分析器被其他玩家占用中";
-			case COOLDOWN -> COOLDOWN_MESSAGE;
+			case DONE -> "msptmap.message.done";
+			case DENIED -> "msptmap.message.denied";
+			case BUSY -> "msptmap.message.busy";
+			case COOLDOWN -> COOLDOWN_KEY;
 			case START, PROGRESS -> null;
 		};
 	}
@@ -176,11 +177,11 @@ public class MsptMapClient implements ClientModInitializer {
 		}
 		if (!send(ClientConfig.scanSeconds)) {
 			MsptMapMod.LOGGER.warn("服务端没有装 MsptMap，扫不了。");
-			say(NO_MOD_MESSAGE);
+			say(NO_MOD_KEY);
 			return;
 		}
 		// 包已发出，先说「分析中…」；服务端是否答应（拒绝 / 被占用）随后另说
-		say(STARTING_MESSAGE);
+		say(STARTING_KEY);
 		if (worldPausesWithMapOpen()) {
 			// 请求已发出，但世界正处于暂停（见 worldPausesWithMapOpen）：玩家观感是「点了没反应」，
 			// 日志留一句以便排查
@@ -194,14 +195,12 @@ public class MsptMapClient implements ClientModInitializer {
 	}
 
 	/**
-	 * 提示措辞：单人档与服务器上要做的事不同（单人档地图开着时世界暂停）。
+	 * 提示措辞的语言键：单人档与服务端上要做的事不同（单人档地图开着时世界暂停）。
 	 *
-	 * 纯函数，便于离线断言两句各说各的。
+	 * 纯函数，便于离线断言。
 	 */
 	static String scanButtonHint(boolean worldPauses) {
-		return worldPauses
-				? "绘制Mspt地图（单人档要关闭地图等待一段时间，否则无法生成）"
-				: "绘制Mspt地图（向服务端请求）";
+		return worldPauses ? "msptmap.hint.singleplayer" : "msptmap.hint.server";
 	}
 
 	/**
@@ -240,14 +239,14 @@ public class MsptMapClient implements ClientModInitializer {
 	private static int requestScan(FabricClientCommandSource source, int seconds) {
 		if (ScanProgress.active()) {
 			// 同 onButtonPress：等结果的途中再发没有意义，这里是显式输入，说清楚而不是静默
-			source.sendError(Component.literal(WAITING_MESSAGE));
+			source.sendError(Component.translatable(WAITING_KEY));
 			return 0;
 		}
 		if (!send(seconds)) {
-			source.sendError(Component.literal(NO_MOD_MESSAGE));
+			source.sendError(Component.translatable(NO_MOD_KEY));
 			return 0;
 		}
-		say(STARTING_MESSAGE);
+		say(STARTING_KEY);
 		return 1;
 	}
 

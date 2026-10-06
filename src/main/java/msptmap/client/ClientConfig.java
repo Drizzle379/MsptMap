@@ -70,6 +70,12 @@ public final class ClientConfig {
 	public static boolean tooltipTicketLoad;
 	public static boolean tooltipTicketSim;
 
+	/** 各类名称是否显示为二字母缩写（详情与设置界面共用；两个语言下相同）。 */
+	public static boolean tooltipAbbreviate;
+
+	/** 各类明细行的 mspt 单位是否显示；合计行的单位固定显示，不受它管。 */
+	public static boolean tooltipMsptUnit;
+
 	/** 各类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
 	public static final boolean[] tooltipCategories = new boolean[TickCategory.COUNT];
 
@@ -94,6 +100,8 @@ public final class ClientConfig {
 		tooltipEntities = true;
 		tooltipTicketLoad = true;
 		tooltipTicketSim = true;
+		tooltipAbbreviate = false;
+		tooltipMsptUnit = false;
 		Arrays.fill(tooltipCategories, true);
 	}
 
@@ -132,6 +140,8 @@ public final class ClientConfig {
 		tooltipEntities = readBoolean(properties, "tooltip.entities", tooltipEntities);
 		tooltipTicketLoad = readBoolean(properties, "tooltip.ticketLoad", tooltipTicketLoad);
 		tooltipTicketSim = readBoolean(properties, "tooltip.ticketSim", tooltipTicketSim);
+		tooltipAbbreviate = readBoolean(properties, "tooltip.abbreviate", tooltipAbbreviate);
+		tooltipMsptUnit = readBoolean(properties, "tooltip.unit", tooltipMsptUnit);
 		for (TickCategory category : TickCategory.values()) {
 			tooltipCategories[category.ordinal()] =
 					readBoolean(properties, "tooltip.category." + category.name(), tooltipCategories[category.ordinal()]);
@@ -139,13 +149,15 @@ public final class ClientConfig {
 		clamp();
 	}
 
-	/** 实际写盘。手写这几行而不用 Properties.store：后者会把中文注释转义成 unicode 码点。 */
+	/** 实际写盘。手写这几行而不用 Properties.store：后者键序不稳定、还会写入时间戳注释。 */
 	static void save(Path file) {
 		clamp();
 		StringBuilder text = new StringBuilder();
-		text.append("# MsptMap 客户端设置。游戏里改：模组菜单 → MsptMap → 设置（备用入口 /msptmap config）。\n");
-		text.append("# 这里只存客户端偏好；服务端的默认秒数由服务端自己决定（不带秒数的扫描固定 2 秒）。\n");
-		text.append("# 值越界会被自动夹回来，手改坏了也不会崩游戏。\n\n");
+		text.append("# MsptMap client settings. Edit in game: Mod Menu -> MsptMap -> Settings "
+				+ "(fallback: /msptmap config).\n");
+		text.append("# This file stores client-side preferences only; the server decides its own default "
+				+ "seconds (a scan without seconds runs 2 seconds).\n");
+		text.append("# Values out of range are clamped automatically; malformed values do not crash the game.\n\n");
 		text.append("scan.seconds=").append(scanSeconds).append('\n');
 		text.append("color.redAt=").append(redAt).append('\n');
 		text.append("color.relative=").append(relativeColor).append('\n');
@@ -157,6 +169,8 @@ public final class ClientConfig {
 		text.append("tooltip.entities=").append(tooltipEntities).append('\n');
 		text.append("tooltip.ticketLoad=").append(tooltipTicketLoad).append('\n');
 		text.append("tooltip.ticketSim=").append(tooltipTicketSim).append('\n');
+		text.append("tooltip.abbreviate=").append(tooltipAbbreviate).append('\n');
+		text.append("tooltip.unit=").append(tooltipMsptUnit).append('\n');
 		for (TickCategory category : TickCategory.values()) {
 			text.append("tooltip.category.").append(category.name()).append('=')
 					.append(tooltipCategories[category.ordinal()]).append('\n');

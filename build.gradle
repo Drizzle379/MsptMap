@@ -65,9 +65,9 @@ group = project.maven_group
 base.archivesName = "${project.archives_base_name}-Fabric"
 version = "v${project.mod_version}+${project.jar_mc}"
 
-// fabric.mod.json 里的占位符由这里填，让该文件与具体版本脱钩：升版本、换 MC 版本都只改
-// gradle.properties，不会两边对不上。filteringCharset 须显式写：该文件里有中文描述，
-// 靠平台默认编码会乱码。
+// fabric.mod.json 里的占位符由这里填，让该文件与具体版本脱钩：升版本、换 MC 版本只需改
+// gradle.properties，不会出现两边不一致。filteringCharset 仍显式写 UTF-8：过滤读取不依赖
+// 平台默认编码。
 processResources {
 	filteringCharset = "UTF-8"
 	// 先取到局部变量：filesMatching 的闭包在任务执行时才跑，在那里读 project 会触发 Gradle 的

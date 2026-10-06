@@ -6,10 +6,12 @@ import msptmap.ChunkKeys;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.Fluid;
 //? if >=1.21.2 {
@@ -49,7 +51,7 @@ public abstract class ServerLevelMixin {
 	@Unique
 	private long msptmapNeighborStart;
 
-	/** 方块更新的嵌套层数：只有最外层那次计时。 */
+	/** 方块更新的嵌套层数（各入口共享）：只有最外层那次计时。 */
 	@Unique
 	private int msptmapNeighborDepth;
 
@@ -110,42 +112,134 @@ public abstract class ServerLevelMixin {
 	}
 
 	/**
-	 * 方块更新：通知某坐标的六个邻居。红石连锁在派发过程中会再绕回本方法，故只记最外层那一次
-	 * （嵌套调用的耗时已含在外层中，逐个记账会重复累加），区块取最外层那次的位置。
+	 * 方块更新的各入口共享同一深度计数：{@code updateNeighborsAt}（六向派发）、
+	 * {@code updateNeighborsAtExceptFromFacing}（排除某方向）与 {@code neighborChanged}（单点通知，三参与
+	 * BlockState 五参两个重载）。红石连锁在派发过程中会绕回这些方法，故只记最外层那一次（嵌套调用的耗时
+	 * 已含在外层中，逐个记账会重复累加），区块取最外层那次的位置。
 	 *
 	 * <p>用 {@code @WrapMethod} 而非两次 {@code @Inject}（HEAD / RETURN）：深度计数须在 try-finally
 	 * 中还原——目标方法抛异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
 	 */
-	// 1.21.2 起目标方法多了 Orientation 参数；两个形态仅差此项，注入方法随之分叉。
+	@Unique
+	private void msptmapNeighborBegin() {
+		if (this.msptmapNeighborDepth++ == 0) {
+			this.msptmapNeighborStart = MsptSampler.begin();
+		}
+	}
+
+	/** 退出任一方块更新入口：最外层关窗并记账。 */
+	@Unique
+	private void msptmapNeighborEnd(BlockPos pos) {
+		if (--this.msptmapNeighborDepth == 0 && this.msptmapNeighborStart != 0L) {
+			MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
+					this.msptmapNeighborStart);
+		}
+	}
+
+	// 1.21.2 起红石派发改用 Orientation 参数（neighborChanged 原有的 BlockPos 参数被其替换），以下各入口
+	// 的签名均在此处分叉。
 	//? if >=1.21.2 {
 	@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
 			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
 	private void msptmapNeighbor(BlockPos pos, Block sourceBlock, Orientation orientation, Operation<Void> original) {
-		if (this.msptmapNeighborDepth++ == 0) {
-			this.msptmapNeighborStart = MsptSampler.begin();
-		}
+		this.msptmapNeighborBegin();
 		try {
 			original.call(pos, sourceBlock, orientation);
 		} finally {
-			if (--this.msptmapNeighborDepth == 0 && this.msptmapNeighborStart != 0L) {
-				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
-						this.msptmapNeighborStart);
-			}
+			this.msptmapNeighborEnd(pos);
 		}
 	}
 	//?} else {
 	/*@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;)V")
 	private void msptmapNeighbor(BlockPos pos, Block sourceBlock, Operation<Void> original) {
-		if (this.msptmapNeighborDepth++ == 0) {
-			this.msptmapNeighborStart = MsptSampler.begin();
-		}
+		this.msptmapNeighborBegin();
 		try {
 			original.call(pos, sourceBlock);
 		} finally {
-			if (--this.msptmapNeighborDepth == 0 && this.msptmapNeighborStart != 0L) {
-				MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
-						this.msptmapNeighborStart);
-			}
+			this.msptmapNeighborEnd(pos);
+		}
+	}
+	*///?}
+
+	/** 六向派发，排除一个方向（观察者、中继器、红石粉一类方块的直呼路径）。 */
+	//? if >=1.21.2 {
+	@WrapMethod(method = "updateNeighborsAtExceptFromFacing(Lnet/minecraft/core/BlockPos;"
+			+ "Lnet/minecraft/world/level/block/Block;Lnet/minecraft/core/Direction;"
+			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
+	private void msptmapNeighborExceptFromFacing(BlockPos pos, Block sourceBlock, Direction except,
+			Orientation orientation, Operation<Void> original) {
+		this.msptmapNeighborBegin();
+		try {
+			original.call(pos, sourceBlock, except, orientation);
+		} finally {
+			this.msptmapNeighborEnd(pos);
+		}
+	}
+	//?} else {
+	/*@WrapMethod(method = "updateNeighborsAtExceptFromFacing(Lnet/minecraft/core/BlockPos;"
+			+ "Lnet/minecraft/world/level/block/Block;Lnet/minecraft/core/Direction;)V")
+	private void msptmapNeighborExceptFromFacing(BlockPos pos, Block sourceBlock, Direction except,
+			Operation<Void> original) {
+		this.msptmapNeighborBegin();
+		try {
+			original.call(pos, sourceBlock, except);
+		} finally {
+			this.msptmapNeighborEnd(pos);
+		}
+	}
+	*///?}
+
+	/** 单点邻居通知。 */
+	//? if >=1.21.2 {
+	@WrapMethod(method = "neighborChanged(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
+			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
+	private void msptmapNeighborChanged(BlockPos pos, Block sourceBlock, Orientation orientation,
+			Operation<Void> original) {
+		this.msptmapNeighborBegin();
+		try {
+			original.call(pos, sourceBlock, orientation);
+		} finally {
+			this.msptmapNeighborEnd(pos);
+		}
+	}
+	//?} else {
+	/*@WrapMethod(method = "neighborChanged(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
+			+ "Lnet/minecraft/core/BlockPos;)V")
+	private void msptmapNeighborChanged(BlockPos pos, Block sourceBlock, BlockPos fromPos, Operation<Void> original) {
+		this.msptmapNeighborBegin();
+		try {
+			original.call(pos, sourceBlock, fromPos);
+		} finally {
+			this.msptmapNeighborEnd(pos);
+		}
+	}
+	*///?}
+
+	/** 单点邻居通知，调用方持有目标方块的状态。 */
+	//? if >=1.21.2 {
+	@WrapMethod(method = "neighborChanged(Lnet/minecraft/world/level/block/state/BlockState;"
+			+ "Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
+			+ "Lnet/minecraft/world/level/redstone/Orientation;Z)V")
+	private void msptmapNeighborChangedState(BlockState state, BlockPos pos, Block sourceBlock,
+			Orientation orientation, boolean movedByPiston, Operation<Void> original) {
+		this.msptmapNeighborBegin();
+		try {
+			original.call(state, pos, sourceBlock, orientation, movedByPiston);
+		} finally {
+			this.msptmapNeighborEnd(pos);
+		}
+	}
+	//?} else {
+	/*@WrapMethod(method = "neighborChanged(Lnet/minecraft/world/level/block/state/BlockState;"
+			+ "Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
+			+ "Lnet/minecraft/core/BlockPos;Z)V")
+	private void msptmapNeighborChangedState(BlockState state, BlockPos pos, Block sourceBlock, BlockPos fromPos,
+			boolean movedByPiston, Operation<Void> original) {
+		this.msptmapNeighborBegin();
+		try {
+			original.call(state, pos, sourceBlock, fromPos, movedByPiston);
+		} finally {
+			this.msptmapNeighborEnd(pos);
 		}
 	}
 	*///?}

@@ -29,11 +29,13 @@ public final class ChunkTiming {
 		return this.counts;
 	}
 
-	/** 各类耗时之和（纳秒）。 */
+	/** 合计：各类耗时之和（纳秒），不计方块更新——其耗时已含在触发它的那一类里，计入会重复。 */
 	public long totalNanos() {
 		long total = 0L;
-		for (long value : this.nanos) {
-			total += value;
+		for (int i = 0; i < TickCategory.COUNT; i++) {
+			if (i != TickCategory.NEIGHBOR_UPDATE.ordinal()) {
+				total += this.nanos[i];
+			}
 		}
 		return total;
 	}

@@ -3,7 +3,7 @@
 	"id": "msptmap",
 	"version": "${version}",
 	"name": "MsptMap",
-	"description": "在 Xaero 的世界地图上，绘制区块 mspt 热力图。",
+	"description": "Draws a chunk mspt heatmap on Xaero's world map.",
 	"authors": [
 		"Drizzle"
 	],

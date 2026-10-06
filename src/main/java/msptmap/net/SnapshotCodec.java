@@ -32,11 +32,13 @@ public final class SnapshotCodec {
 	 */
 	public record ChunkData(int x, int z, long[] nanos, int[] counts, int entities, int loadLevel, int computeLevel,
 			int loadTicket, int simTicket) {
-		/** 各类耗时之和。除以窗口 tick 数即 ms/tick，故不单独传输。 */
+		/** 合计：各类耗时之和，不计方块更新（同 ChunkTiming.totalNanos）。除以窗口 tick 数即 ms/tick，故不单独传输。 */
 		public long totalNanos() {
 			long total = 0L;
-			for (long value : nanos) {
-				total += value;
+			for (int i = 0; i < TickCategory.COUNT; i++) {
+				if (i != TickCategory.NEIGHBOR_UPDATE.ordinal()) {
+					total += nanos[i];
+				}
 			}
 			return total;
 		}

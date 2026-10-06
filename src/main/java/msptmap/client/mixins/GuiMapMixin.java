@@ -96,23 +96,23 @@ public abstract class GuiMapMixin {
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
 				button -> MsptMapClient.onButtonPress(),
-				() -> new Tooltip(Component.literal(MsptMapClient.scanButtonHint())), 256, 256));
+				() -> new Tooltip(Component.translatable(MsptMapClient.scanButtonHint())), 256, 256));
 		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(0, 62, 20, 20, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
-				new Tooltip(Component.literal("清空Mspt地图")), 256, 256));
+				new Tooltip(Component.translatable("msptmap.button.clear")), 256, 256));
 		//?} else {
 		/*((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
 				button -> MsptMapClient.onButtonPress(),
-				() -> new Tooltip(Component.literal(MsptMapClient.scanButtonHint()))));
+				() -> new Tooltip(Component.translatable(MsptMapClient.scanButtonHint()))));
 		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(0, 62, 20, 20, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
-				new Tooltip(Component.literal("清空Mspt地图"))));
+				new Tooltip(Component.translatable("msptmap.button.clear"))));
 		*///?}
 	}
 

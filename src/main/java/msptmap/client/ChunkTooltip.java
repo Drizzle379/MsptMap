@@ -3,7 +3,6 @@ package msptmap.client;
 import msptmap.Decimals;
 import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketSources;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 //? if >=26.1 {
@@ -14,6 +13,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextColor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +22,12 @@ import java.util.List;
 /**
  * 悬停详情：鼠标所指区块的账本。
  *
- * <p>分两半：{@link #lines} 只拼接字符串（不依赖游戏，可离线断言），{@link #draw} 只负责绘制。
- * 所指区块由 Xaero 的高亮决定（{@code mouseBlockPosX >> 4}，依据见
+ * <p>分为两部分：{@link #lines} 只组装文本组件（构造时不查语言表，可离线断言），{@link #draw} 只
+ * 负责绘制。所指区块由 Xaero 的高亮决定（{@code mouseBlockPosX >> 4}，依据见
  * {@link msptmap.client.mixins.GuiMapMixin}），与地图显示的必然是同一个区块。
+ *
+ * <p>文本一律经 {@link Component#translatable} 引用语言文件里的键；翻译在绘制时才按当前语言解析，
+ * 故切换语言无需作废 {@link #lines} 的缓存。
  */
 public final class ChunkTooltip {
 	private static final int PADDING = 3;
@@ -34,30 +38,34 @@ public final class ChunkTooltip {
 	/** 深色半透明底：地图颜色杂乱，需垫底才看得清字。 */
 	private static final int BACKGROUND = 0xC0000000;
 	private static final int TEXT_COLOR = 0xFFFFFFFF;
-	/** 附注文字色：正文是纯白，附注降一档。 */
-	private static final int NOTE_COLOR = 0xFFB0B0B0;
+	/** 附注文字色（RGB）：正文为纯白，附注色暗一档。 */
+	private static final int NOTE_COLOR = 0xB0B0B0;
 
 	/**
-	 * 存疑说明行。{@link #lines} 只在真有区块对不上时把它追加在末尾，{@link #draw} 认这一行，
-	 * 用斜体画。
+	 * 存疑说明行。{@link #lines} 只在确有区块对不上时把它追加在末尾；斜体与附注色内嵌在样式里，
+	 * {@link #draw} 统一绘制。
 	 */
-	static final String NOTE_DOUBTFUL = "* 该行数据未能核实";
+	static final Component NOTE_DOUBTFUL = Component.translatable("msptmap.tooltip.doubtful")
+			.withStyle(style -> style.withItalic(true).withColor(TextColor.fromRgb(NOTE_COLOR)));
 
 	/**
 	 * 各类耗时在详情与设置界面里的显示顺序。
 	 *
-	 * <p>与枚举顺序不同：枚举只许在末尾追加（协议按 ordinal 上线），而这里按原版 tick 的先后排，
-	 * 与 {@code ServerLevel.tick} 中各阶段的次序一致。新增类别时此处也要加一项，否则设置界面与
-	 * 详情都不会显示它（顺序自定）。
+	 * <p>与枚举顺序不同：枚举只许在末尾追加（协议按 ordinal 上线），这里按原版 tick 的实际先后排
+	 * （{@code ServerLevel.tick}：计划刻 → 随机刻、刷怪 → 方块事件 → 实体 → 方块实体）。方块更新例外，
+	 * 排在最后：其耗时已含在触发它的类别里（合计不计它），单列末尾并以附注样式（灰、斜体、带星）区别于
+	 * 计入合计的正式行。
+	 *
+	 * <p>新增类别时此处也要加一项，否则设置界面与详情都不会显示它（顺序自定）。
 	 */
 	static final List<TickCategory> ORDER = List.of(
-			TickCategory.RANDOM_TICK,
 			TickCategory.SCHEDULED,
-			TickCategory.NEIGHBOR_UPDATE,
+			TickCategory.RANDOM_TICK,
+			TickCategory.SPAWN,
 			TickCategory.BLOCK_EVENT,
-			TickCategory.BLOCK_ENTITY,
 			TickCategory.ENTITY,
-			TickCategory.SPAWN);
+			TickCategory.BLOCK_ENTITY,
+			TickCategory.NEIGHBOR_UPDATE);
 
 	/**
 	 * 上次拼行结果与其输入：区块（引用即快照代次——每收一包快照都会重建全部区块对象）、坐标、
@@ -69,7 +77,7 @@ public final class ChunkTooltip {
 	private static int cachedWindowTicks;
 	/** 初值 -1：与任何真实签名（位掩码，≥ 0）都不同，首帧不会误命中。 */
 	private static int cachedSignature = -1;
-	private static List<String> cachedLines = List.of();
+	private static List<Component> cachedLines = List.of();
 
 	private ChunkTooltip() {
 	}
@@ -85,13 +93,13 @@ public final class ChunkTooltip {
 	 *                    「未采样」，以便区分「无数据」与「未显示」
 	 * @param windowTicks 窗口内经过的 tick 数，各类纳秒换算 mspt 时的分母
 	 */
-	public static List<String> lines(ClientSnapshot.Chunk chunk, int chunkX, int chunkZ, int windowTicks) {
+	public static List<Component> lines(ClientSnapshot.Chunk chunk, int chunkX, int chunkZ, int windowTicks) {
 		int signature = signature();
 		if (chunk == cachedChunk && chunkX == cachedChunkX && chunkZ == cachedChunkZ
 				&& windowTicks == cachedWindowTicks && signature == cachedSignature) {
 			return cachedLines;
 		}
-		List<String> lines = buildLines(chunk, chunkX, chunkZ, windowTicks);
+		List<Component> lines = buildLines(chunk, chunkX, chunkZ, windowTicks);
 		cachedChunk = chunk;
 		cachedChunkX = chunkX;
 		cachedChunkZ = chunkZ;
@@ -102,38 +110,38 @@ public final class ChunkTooltip {
 	}
 
 	/** 拼行本体（不含缓存）。 */
-	private static List<String> buildLines(ClientSnapshot.Chunk chunk, int chunkX, int chunkZ, int windowTicks) {
-		List<String> lines = new ArrayList<>();
+	private static List<Component> buildLines(ClientSnapshot.Chunk chunk, int chunkX, int chunkZ, int windowTicks) {
+		List<Component> lines = new ArrayList<>();
 		if (!ClientConfig.anyTooltipLine()) {
 			return lines;
 		}
 		if (ClientConfig.tooltipCoords) {
-			lines.add("区块 " + chunkX + ", " + chunkZ);
+			lines.add(Component.translatable("msptmap.tooltip.coords", chunkX, chunkZ));
 		}
 		if (chunk == null) {
-			lines.add("未采样");
+			lines.add(Component.translatable("msptmap.tooltip.unsampled"));
 			return lines;
 		}
 		boolean doubtful = false;
 		if (ClientConfig.tooltipLevels) {
 			// 两条链各配自己的票：加载票与模拟票在同一区块上可能不是同一张
-			lines.add("加载等级 " + chunk.loadLevel()
-					+ ticket(chunk.loadTicket(), ClientConfig.tooltipTicketLoad, chunkX, chunkZ));
-			lines.add("计算等级 " + chunk.computeLevel()
-					+ ticket(chunk.simTicket(), ClientConfig.tooltipTicketSim, chunkX, chunkZ));
+			lines.add(Component.translatable("msptmap.tooltip.load_level", chunk.loadLevel())
+					.append(ticket(chunk.loadTicket(), ClientConfig.tooltipTicketLoad, chunkX, chunkZ)));
+			lines.add(Component.translatable("msptmap.tooltip.compute_level", chunk.computeLevel())
+					.append(ticket(chunk.simTicket(), ClientConfig.tooltipTicketSim, chunkX, chunkZ)));
 			doubtful = ticketDoubtful(chunk.loadTicket(), ClientConfig.tooltipTicketLoad)
 					|| ticketDoubtful(chunk.simTicket(), ClientConfig.tooltipTicketSim);
 		}
 		if (ClientConfig.tooltipEntities) {
 			// 与耗时无关的瞬时值：方块实体 / 实体 / 刷怪那几类耗时的成因多半在这里
-			lines.add("实体数 " + chunk.entities());
+			lines.add(Component.translatable("msptmap.tooltip.entities", chunk.entities()));
 		}
 		if (ClientConfig.tooltipTotal) {
-			lines.add("合计 " + Decimals.format3(chunk.mspt()) + " mspt");
+			lines.add(msptLine(Component.translatable("msptmap.label.total"), Decimals.format3(chunk.mspt())));
 		}
 		for (TickCategory category : ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {
-				lines.add(label(category) + " " + ms(chunk.nanos()[category.ordinal()], windowTicks) + " mspt");
+				lines.add(categoryLine(chunk, windowTicks, category));
 			}
 		}
 		if (doubtful) {
@@ -142,35 +150,56 @@ public final class ChunkTooltip {
 		return lines;
 	}
 
+	/** 「合计」行：单位固定显示，不受「显示单位」开关管。 */
+	private static Component msptLine(Component label, String mspt) {
+		return Component.translatable("msptmap.tooltip.mspt_line", label, mspt);
+	}
+
+	/** 各类明细行：单位是否显示由「显示单位」开关决定。 */
+	private static MutableComponent valueLine(Component label, String mspt) {
+		return Component.translatable(ClientConfig.tooltipMsptUnit
+				? "msptmap.tooltip.mspt_line" : "msptmap.tooltip.plain_line", label, mspt);
+	}
+
+	/** 某类的明细行。方块更新行附加注样式：合计不计它，以灰、斜体、带星区别于计入合计的其余行。 */
+	private static Component categoryLine(ClientSnapshot.Chunk chunk, int windowTicks, TickCategory category) {
+		String value = ms(chunk.nanos()[category.ordinal()], windowTicks);
+		if (category != TickCategory.NEIGHBOR_UPDATE) {
+			return valueLine(label(category), value);
+		}
+		return valueLine(label(category).copy().append("*"), value)
+				.withStyle(style -> style.withItalic(true).withColor(TextColor.fromRgb(NOTE_COLOR)));
+	}
+
 	/**
 	 * 等级行后半段：「 · 票名中心」或「 · 票名 @x,z」；存疑时是「 · 未知 *」。
-	 * 没勾选该开关、或（理论上不该发生的）该链没有来源时返回空串。
+	 * 未勾选该开关、或该链没有来源（理论上不应发生）时返回空组件。
 	 */
-	private static String ticket(int code, boolean enabled, int chunkX, int chunkZ) {
+	private static Component ticket(int code, boolean enabled, int chunkX, int chunkZ) {
 		if (!enabled) {
-			return "";
+			return Component.empty();
 		}
 		if (TicketSources.doubtful(code)) {
-			return " · 未知 *";
+			return Component.translatable("msptmap.tooltip.ticket_doubtful");
 		}
 		int type = TicketSources.type(code);
 		if (type == TicketSources.NONE) {
-			return "";
+			return Component.empty();
 		}
-		String name = ticketName(type);
+		Component name = Component.translatable(ticketName(type));
 		if (type == TicketSources.PLAYER_LOADING) {
 			// 26.2 的 player_loading 是逐区块铺的：视距内每格一张、等级相同，故此链上不存在「中心」
 			// 与距离（每格算出来都是自己）。只写票名，不编造一个恒为 0 的距离。其余票种（forced /
 			// portal / ender_pearl 等）是稀疏的，中心与距离才有意义。
-			return " · " + name;
+			return Component.translatable("msptmap.tooltip.ticket_name", name);
 		}
 		int offsetX = TicketSources.offsetX(code);
 		int offsetZ = TicketSources.offsetZ(code);
 		if (offsetX == 0 && offsetZ == 0) {
 			// 票就在本区块上：源头坐标即本区块坐标，不必重复写
-			return " · " + name + "中心";
+			return Component.translatable("msptmap.tooltip.ticket_center", name);
 		}
-		return " · " + name + " @" + (chunkX + offsetX) + "," + (chunkZ + offsetZ);
+		return Component.translatable("msptmap.tooltip.ticket_at", name, chunkX + offsetX, chunkZ + offsetZ);
 	}
 
 	/** 该链存疑、且这一栏确实要显示。 */
@@ -178,18 +207,23 @@ public final class ChunkTooltip {
 		return enabled && TicketSources.doubtful(code);
 	}
 
-	/** 加载票的名称。原版没有官方译名，这里是本模组的定名，改动即协议变更。 */
+	/** 加载票名称的语言键，与类型一一对应；新增票种时此处与语言文件需同步更新。 */
 	private static String ticketName(int type) {
 		return switch (type) {
-			case TicketSources.PLAYER_LOADING -> "玩家加载";
-			case TicketSources.PLAYER_SIMULATION -> "玩家模拟";
-			case TicketSources.FORCED -> "强制加载";
-			case TicketSources.PORTAL -> "传送门";
-			case TicketSources.ENDER_PEARL -> "末影珍珠";
-			case TicketSources.PLAYER_SPAWN -> "出生点";
-			case TicketSources.SPAWN_SEARCH -> "出生点搜索";
-			case TicketSources.DRAGON -> "末影龙";
-			default -> "未知";
+			case TicketSources.PLAYER_LOADING -> "msptmap.ticket.player_loading";
+			case TicketSources.PLAYER_SIMULATION -> "msptmap.ticket.player_simulation";
+			case TicketSources.FORCED -> "msptmap.ticket.forced";
+			case TicketSources.PORTAL -> "msptmap.ticket.portal";
+			case TicketSources.ENDER_PEARL -> "msptmap.ticket.ender_pearl";
+			// 出生点票：1.21.10 及以前名为 start，1.21.11 起拆分为 player_spawn 与 spawn_search
+			//? if >=1.21.11 {
+			case TicketSources.PLAYER_SPAWN -> "msptmap.ticket.player_spawn";
+			//?} else {
+			/*case TicketSources.PLAYER_SPAWN -> "msptmap.ticket.start";
+			*///?}
+			case TicketSources.SPAWN_SEARCH -> "msptmap.ticket.spawn_search";
+			case TicketSources.DRAGON -> "msptmap.ticket.dragon";
+			default -> "msptmap.ticket.unknown";
 		};
 	}
 
@@ -233,9 +267,9 @@ public final class ChunkTooltip {
 
 	/** 在鼠标右下方绘制小面板。无行可画时直接返回，不留空框。 */
 	//? if >=26.1 {
-	public static void draw(GuiGraphicsExtractor graphics, int mouseX, int mouseY, List<String> lines) {
+	public static void draw(GuiGraphicsExtractor graphics, int mouseX, int mouseY, List<Component> lines) {
 	//?} else {
-	/*public static void draw(GuiGraphics graphics, int mouseX, int mouseY, List<String> lines) {
+	/*public static void draw(GuiGraphics graphics, int mouseX, int mouseY, List<Component> lines) {
 	*///?}
 		if (lines.isEmpty()) {
 			return;
@@ -243,7 +277,7 @@ public final class ChunkTooltip {
 		Font font = Minecraft.getInstance().font;
 		int lineHeight = font.lineHeight + 1;
 		int textWidth = 0;
-		for (String line : lines) {
+		for (Component line : lines) {
 			textWidth = Math.max(textWidth, font.width(line));
 		}
 		int boxWidth = textWidth + PADDING * 2;
@@ -253,43 +287,50 @@ public final class ChunkTooltip {
 				Minecraft.getInstance().getWindow().getGuiScaledHeight());
 
 		graphics.fill(at[0], at[1], at[0] + boxWidth, at[1] + boxHeight, BACKGROUND);
+		// 附注行的样式已内嵌在组件里（见 NOTE_DOUBTFUL），此处无需再区分
 		for (int i = 0; i < lines.size(); i++) {
-			String line = lines.get(i);
 			int y = at[1] + PADDING + i * lineHeight;
-			if (line.equals(NOTE_DOUBTFUL)) {
-				// 附注：斜体、不加粗、比正文暗一档
-				//? if >=26.1 {
-				graphics.text(font, Component.literal(line).withStyle(ChatFormatting.ITALIC),
-						at[0] + PADDING, y, NOTE_COLOR);
-				//?} else {
-				/*graphics.drawString(font, Component.literal(line).withStyle(ChatFormatting.ITALIC),
-						at[0] + PADDING, y, NOTE_COLOR);
-				*///?}
-			} else {
-				//? if >=26.1 {
-				graphics.text(font, line, at[0] + PADDING, y, TEXT_COLOR);
-				//?} else {
-				/*graphics.drawString(font, line, at[0] + PADDING, y, TEXT_COLOR);
-				*///?}
-			}
+			//? if >=26.1 {
+			graphics.text(font, lines.get(i), at[0] + PADDING, y, TEXT_COLOR);
+			//?} else {
+			/*graphics.drawString(font, lines.get(i), at[0] + PADDING, y, TEXT_COLOR);
+			*///?}
 		}
 	}
 
 	/**
-	 * 各类的名称。用 switch 而非数组：枚举新增类别时会在编译期报错，不会静默错位。名称均为四个字
-	 * （对齐后每行等宽），新增时沿用。
+	 * 各类的名称；「显示为缩写」开启时为其二字母缩写。两个键表都用 switch 而非数组：枚举新增类别时
+	 * 会在编译期报错，不会静默错位。
 	 *
-	 * <p>包内可见：设置界面的勾选框也使用它——详情显示什么，设置里就写什么。
+	 * <p>包内可见：设置界面的勾选框也使用它，使详情与设置中的名称一致。
 	 */
-	static String label(TickCategory category) {
+	static Component label(TickCategory category) {
+		return Component.translatable(ClientConfig.tooltipAbbreviate ? abbrKey(category) : nameKey(category));
+	}
+
+	/** 类别名称的语言键。 */
+	private static String nameKey(TickCategory category) {
 		return switch (category) {
-			case RANDOM_TICK -> "随机刻";
-			case SCHEDULED -> "计划刻";
-			case NEIGHBOR_UPDATE -> "方块更新";
-			case BLOCK_EVENT -> "方块事件";
-			case BLOCK_ENTITY -> "方块实体";
-			case ENTITY -> "实体";
-			case SPAWN -> "刷怪";
+			case RANDOM_TICK -> "msptmap.category.random_tick";
+			case SCHEDULED -> "msptmap.category.scheduled";
+			case NEIGHBOR_UPDATE -> "msptmap.category.neighbor_update";
+			case BLOCK_EVENT -> "msptmap.category.block_event";
+			case BLOCK_ENTITY -> "msptmap.category.block_entity";
+			case ENTITY -> "msptmap.category.entity";
+			case SPAWN -> "msptmap.category.spawn";
+		};
+	}
+
+	/** 类别二字母缩写的语言键；缩写为英文，两语言同值。 */
+	private static String abbrKey(TickCategory category) {
+		return switch (category) {
+			case RANDOM_TICK -> "msptmap.category.abbr.random_tick";
+			case SCHEDULED -> "msptmap.category.abbr.scheduled";
+			case NEIGHBOR_UPDATE -> "msptmap.category.abbr.neighbor_update";
+			case BLOCK_EVENT -> "msptmap.category.abbr.block_event";
+			case BLOCK_ENTITY -> "msptmap.category.abbr.block_entity";
+			case ENTITY -> "msptmap.category.abbr.entity";
+			case SPAWN -> "msptmap.category.abbr.spawn";
 		};
 	}
 
@@ -328,6 +369,14 @@ public final class ChunkTooltip {
 			if (ClientConfig.tooltipCategory(category)) {
 				bits |= 1 << (6 + category.ordinal());
 			}
+		}
+		// 类别名缩写紧随类别段之后占一位
+		if (ClientConfig.tooltipAbbreviate) {
+			bits |= 1 << 13;
+		}
+		// 明细行的 mspt 单位占一位（行内容随之变，须入签名）
+		if (ClientConfig.tooltipMsptUnit) {
+			bits |= 1 << 14;
 		}
 		return bits;
 	}
