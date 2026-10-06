@@ -27,6 +27,11 @@ public interface ChunkMapAccessor {
 	@Accessor("visibleChunkMap")
 	Long2ObjectLinkedOpenHashMap<ChunkHolder> getVisibleChunks();
 
+	// 全量区块表：含视距外正在 tick 的（远程 forceload、传送门加载区）。票的锚点要在这张表上找 ——
+	// 只用 visibleChunks 会漏掉远离玩家的加载点，那片热力图就没有中心。
+	@Accessor("updatingChunkMap")
+	Long2ObjectLinkedOpenHashMap<ChunkHolder> getUpdatingChunks();
+
 	// 加载票表：1.21.5 起才有 TicketStorage 字段（1.21.4 及以前的票表在 DistanceManager 中，
 	// 体系不同，本模组暂不支持，见 TicketSources）。
 	//? if >=1.21.5 {

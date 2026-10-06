@@ -1,5 +1,6 @@
 package msptmap.sampler;
 
+import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -337,23 +338,8 @@ public final class MsptSampler {
 			int loadLevel = holder != null ? holder.getTicketLevel() : 33;
 			int computeLevel = holder != null ? holder.getQueueLevel() : 33;
 			*///?}
-			out.add(new SnapshotCodec.ChunkData(
-					ChunkPos.getX(key),
-					ChunkPos.getZ(key),
-					timing.nanosArray(),
-					timing.countsArray(),
-					// 显式转 long 走原始版 get(long)（缺省值 0）；装箱版 get(Object) 对不存在的键
-					// 在部分 fastutil 版本上返回 null，拆箱即 NPE（1.21.8 实机曾触发）
-					entityCounts.get((long) key),
-					loadLevel,
-					computeLevel,
-					//? if >=1.21.5 {
-					ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
-					ticketCode(simTickets, key, ChunkLevel.isBlockTicking(computeLevel))));
-					//?} else {
-					/*TicketSources.NONE,
-					TicketSources.NONE));
-					*///?}
+			out.add(chunkData(key, timing.nanosArray(), timing.countsArray(), loadLevel, computeLevel,
+					entityCounts, loadTickets, simTickets));
 		});
 		// 按重量降序：装不下时移除的必然是尾部最轻的。重量先一次算好再排；若在比较器中现算
 		// totalNanos()，每次比较都要重加那六个数，数万区块时即为数十万次重复求和
@@ -408,16 +394,38 @@ public final class MsptSampler {
 	 * <p>只收加载等级 ≤ 32 的（31 实体刻 / 32 方块刻）；33 及以上完全不 tick。等级直接读
 	 * {@code ChunkHolder.getTicketLevel()}，与 {@code getChunkLevel(key, false)} 同源。这批区块
 	 * 没有轻重可挑，装不下即中止，并留一行日志。
+	 *
+	 * <p>中心区块（见 {@link TicketSources#isCenter}）不在此列：先于可见区块补上、不计预算。中心
+	 * 不在视距内（远程 forceload、传送门）或没有耗时记录时，只有先补才能保证客户端画得出中心蓝框。
 	 */
 	private static void addLoadedChunks(ServerLevel level, DistanceManager distanceManager, LongOpenHashSet measured,
 			Long2IntOpenHashMap entityCounts, Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets,
 			List<SnapshotCodec.ChunkData> out, int budget) {
+		// out 里已有的键：实测留下的 + 下面补的中心；实测但被预算裁掉的不在其中
+		LongOpenHashSet included = new LongOpenHashSet(Math.max(16, out.size()));
+		for (SnapshotCodec.ChunkData chunk : out) {
+			included.add(ChunkKeys.pack(chunk.x(), chunk.z()));
+		}
+		//? if >=1.21.5 {
+		// 一、两个链的中心先补：每张票一个、数量少，不计预算（1.21.4 及以前来源降级，表是空的）
+		for (Long2IntOpenHashMap tickets : new Long2IntOpenHashMap[] {loadTickets, simTickets}) {
+			for (Long2IntMap.Entry entry : tickets.long2IntEntrySet()) {
+				long key = entry.getLongKey();
+				// add 返回 false = 快照里已有（同一区块在两条链上都是中心也只补一次）
+				if (TicketSources.isCenter(entry.getIntValue()) && included.add(key)) {
+					out.add(loadedChunk(key, distanceManager.getChunkLevel(key, false),
+							distanceManager.getChunkLevel(key, true), entityCounts, loadTickets, simTickets));
+				}
+			}
+		}
+		//?}
+		// 二、其余「加载着、无计时」的可见区块
 		int used = 0;
 		boolean full = false;
 		for (Long2ObjectMap.Entry<ChunkHolder> entry : ((ChunkMapAccessor) (Object) level.getChunkSource().chunkMap)
 				.getVisibleChunks().long2ObjectEntrySet()) {
 			long key = entry.getLongKey();
-			if (measured.contains(key)) {
+			if (measured.contains(key) || included.contains(key)) {
 				continue;
 			}
 			int loadLevel = entry.getValue().getTicketLevel();
@@ -429,16 +437,8 @@ public final class MsptSampler {
 			//?} else {
 			/*int computeLevel = entry.getValue().getQueueLevel();
 			*///?}
-			SnapshotCodec.ChunkData chunk = new SnapshotCodec.ChunkData(ChunkPos.getX(key), ChunkPos.getZ(key),
-					SnapshotCodec.ZERO_NANOS, SnapshotCodec.ZERO_COUNTS,
-					entityCounts.get(key), loadLevel, computeLevel,
-					//? if >=1.21.5 {
-					ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
-					ticketCode(simTickets, key, ChunkLevel.isBlockTicking(computeLevel)));
-					//?} else {
-					/*TicketSources.NONE,
-					TicketSources.NONE);
-					*///?}
+			SnapshotCodec.ChunkData chunk = loadedChunk(key, loadLevel, computeLevel,
+					entityCounts, loadTickets, simTickets);
 			int size = SnapshotCodec.encodedSize(chunk);
 			if (used + size > budget) {
 				full = true;
@@ -450,6 +450,33 @@ public final class MsptSampler {
 		if (full) {
 			MsptMapMod.LOGGER.info("维度 {} 超出字节预算：一部分只加载着的区块没带上", Ids.id(level.dimension()));
 		}
+	}
+
+	/** 「仅加载、无计时」形态的区块数据（耗时与次数全填 0，客户端据此铺淡灰）。 */
+	private static SnapshotCodec.ChunkData loadedChunk(long key, int loadLevel, int computeLevel,
+			Long2IntOpenHashMap entityCounts, Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets) {
+		return chunkData(key, SnapshotCodec.ZERO_NANOS, SnapshotCodec.ZERO_COUNTS,
+				loadLevel, computeLevel, entityCounts, loadTickets, simTickets);
+	}
+
+	/**
+	 * 组装一个区块的数据；实测区块与仅加载区块共用（前者给 {@code timing} 的两组数组，后者传
+	 * {@link SnapshotCodec#ZERO_NANOS}）。
+	 */
+	private static SnapshotCodec.ChunkData chunkData(long key, long[] nanos, int[] counts,
+			int loadLevel, int computeLevel, Long2IntOpenHashMap entityCounts,
+			Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets) {
+		return new SnapshotCodec.ChunkData(ChunkPos.getX(key), ChunkPos.getZ(key), nanos, counts,
+				// key 为原始 long，走原始版 get(long)（缺省值 0）；装箱版 get(Object) 对不存在的键
+				// 在部分 fastutil 版本上返回 null，拆箱即 NPE（1.21.8 实机曾触发）
+				entityCounts.get(key), loadLevel, computeLevel,
+				//? if >=1.21.5 {
+				ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
+				ticketCode(simTickets, key, ChunkLevel.isBlockTicking(computeLevel)));
+				//?} else {
+				/*TicketSources.NONE,
+				TicketSources.NONE);
+				*///?}
 	}
 
 	/** 结果发不回客户端时，把最重的 5 个区块打到服务端控制台。 */

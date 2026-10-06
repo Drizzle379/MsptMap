@@ -1,13 +1,13 @@
 package msptmap.sampler;
 
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import msptmap.ChunkKeys;
 import msptmap.Ids;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.DistanceManager;
@@ -23,15 +23,22 @@ import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.LongFunction;
+import java.util.function.LongToIntFunction;
 
 /**
  * 反查每个区块的加载来源：即该区块被哪张加载票覆盖。
  *
  * <p>票的分布有两种：forced / portal / ender_pearl 等是稀疏的，只落在一个区块上；26.2 的
- * player_loading 则是逐区块铺的，视距内每格一张。稀疏票靠等级传播覆盖周围——{@code ChunkTracker}
- * 保证邻居等级 = 本区块等级 + 1，故从持票区块沿「等级恰好 +1」的邻居遍历即可认回整片覆盖区。
- * 本类不自算等级，一律读 {@code getChunkLevel}，与游戏实际结果必然一致。逐区块铺的票则每格自身
- * 即为持票区块，扩散退化为原地不动，结果仍正确。
+ * player_loading 则是逐区块铺的，视距内每格一张。稀疏票靠等级传播覆盖周围：从持票区块向外传播
+ * 值逐格 +1（传播值 = 票自身等级 + 到锚点的距离），某邻居的实际等级恰等于本票的传播值时，说明
+ * 本票是覆盖它的（并列）最强来源，继续往外走。逐区块铺的票则每格自身即为持票区块，扩散退化为
+ * 原地不动，结果仍正确。
+ *
+ * <p>扩散判据必须拿「本票传播值」与实际等级比较，不能拿实际等级自己逐格 +1：实际等级是全区所有
+ * 票取最小后的结果，若本票被更强的票压住（比如传送门落在玩家模拟区内），实际等级里已看不出本票，
+ * 照它 +1 会顺着强票的等级梯度一路扩散，把强票的半片区域误认成本票的覆盖区。本类不自算等级，
+ * 一律读传播器给出的实际等级比对。
  *
  * <p>加载链与模拟链是两条独立的传播链，须各推一遍（玩家票在 26.2 拆为 player_loading 与
  * player_simulation，同一区块上两条链的源头可能不同）。
@@ -83,36 +90,54 @@ public final class TicketSources {
 		ChunkMapAccessor accessor = (ChunkMapAccessor) (Object) chunkMap;
 		TicketStorage storage = accessor.getTicketStorage();
 		DistanceManager distanceManager = chunkMap.getDistanceManager();
+		return resolve(storage::getTickets, key -> distanceManager.getChunkLevel(key, simulation),
+				accessor.getUpdatingChunks().keySet(), simulation, Ids.id(level.dimension()));
+		//?}
+	}
 
+	//? if >=1.21.5 {
+	/**
+	 * BFS 本体：数据源由调用方给出，采集与算法分开，离线测试才能在没有游戏环境的 JVM 里直连
+	 * （真票表 + 真 {@code SimulationChunkTracker}，见 tickettest）。
+	 *
+	 * @param ticketsAt  区块 → 挂在该区块上的全部票
+	 * @param levelAt    区块 → 该链上传播后的实际等级
+	 * @param keys       可能要认作持票区块的区块集合（生产中即 chunkMap 的更新中区块表）
+	 * @param simulation false 走加载链，true 走模拟链
+	 * @param dimension  日志用的维度名
+	 */
+	static Long2IntOpenHashMap resolve(LongFunction<List<Ticket>> ticketsAt, LongToIntFunction levelAt,
+			LongSet keys, boolean simulation, String dimension) {
 		Long2IntOpenHashMap sources = new Long2IntOpenHashMap();
-		// BFS 队列用四个并行原始数组（免去每元素一个 long[]），等级随元素携带，出队后无需再查
-		// getChunkLevel。BFS 逐层访问，故首次到达某区块时的源头必是覆盖它的锚点中最近的一个。
-		// 容量按可见区块数取，扩散阶段不够再翻倍。
-		int capacity = Math.max(16, accessor.getVisibleChunks().size());
+		// BFS 队列用四个并行原始数组（免去每元素一个 long[]），传播值随元素携带，出队后无需再查
+		// 实际等级。BFS 逐层扩展，首次到达某区块的锚点必是覆盖它的（并列）最近的一个。
+		// 容量按全量区块数取，扩散阶段不够再翻倍。
+		int capacity = Math.max(16, keys.size());
 		long[] queueKeys = new long[capacity];
-		int[] queueLevels = new int[capacity];
+		int[] queueSpread = new int[capacity];
 		int[] queueAnchorXs = new int[capacity];
 		int[] queueAnchorZs = new int[capacity];
 		int queueHead = 0;
 		int queueTail = 0;
 
 		// 一、持票区块：持有本链的票、且等级落在快照范围内的。等级更高的票扩散后只会更高，
-		//     没有区块会采信，直接跳过。
+		//     没有区块会采信，直接跳过。遍历全量区块表而非可见表：视距外的加载点（远程 forceload、
+		//     传送门）也要认出来，否则那片热力图找不到中心。
 		int anchors = 0;
 		StringBuilder sample = new StringBuilder();
-		for (Long2ObjectMap.Entry<ChunkHolder> entry : accessor.getVisibleChunks().long2ObjectEntrySet()) {
-			long key = entry.getLongKey();
-			int[] anchor = anchorAt(storage.getTickets(key), simulation);
+		for (LongIterator it = keys.iterator(); it.hasNext(); ) {
+			long key = it.nextLong();
+			int[] anchor = anchorAt(ticketsAt.apply(key), simulation);
 			if (anchor == null || !ChunkLevel.isBlockTicking(anchor[1])) {
 				continue;
 			}
 			int x = ChunkPos.getX(key);
 			int z = ChunkPos.getZ(key);
 			sources.put(key, encode(anchor[0], 0, 0, false));
-			// 等级取 getChunkLevel 而非票自身的等级：邻近若有等级更低的票，此处的实际等级会被它压低，
-			// 扩散判定必须用实际等级。入队时查与出队时查等价（同一趟里票表不变）
+			// 传播值从票自身的等级起算（不是该区块的实际等级）：被更强票压住的锚点，实际等级里已
+			// 看不出本票，往外第一步就会与邻居的实际等级对不上而停下（见类注释）
 			queueKeys[queueTail] = key;
-			queueLevels[queueTail] = distanceManager.getChunkLevel(key, simulation);
+			queueSpread[queueTail] = anchor[1];
 			queueAnchorXs[queueTail] = x;
 			queueAnchorZs[queueTail] = z;
 			queueTail++;
@@ -123,10 +148,12 @@ public final class TicketSources {
 			anchors++;
 		}
 
-		// 二、按 8 邻扩散（与 ChunkTracker 的方向一致），只往等级恰好 +1 的邻居走。
+		// 二、按 8 邻扩散（与 ChunkTracker 的方向一致），只往实际等级恰好等于本票传播值的邻居走：
+		//     等级小于传播值说明被更强的票压住，本票不再覆盖它；实际等级必 ≤ 本票传播值，
+		//     不会出现大于的情形。
 		while (queueHead < queueTail) {
 			long key = queueKeys[queueHead];
-			int hereLevel = queueLevels[queueHead];
+			int spread = queueSpread[queueHead];
 			int anchorX = queueAnchorXs[queueHead];
 			int anchorZ = queueAnchorZs[queueHead];
 			queueHead++;
@@ -142,8 +169,8 @@ public final class TicketSources {
 					if (sources.containsKey(neighbor)) {
 						continue;
 					}
-					int neighborLevel = distanceManager.getChunkLevel(neighbor, simulation);
-					if (neighborLevel != hereLevel + 1 || !ChunkLevel.isBlockTicking(neighborLevel)) {
+					int neighborLevel = levelAt.applyAsInt(neighbor);
+					if (neighborLevel != spread + 1 || !ChunkLevel.isBlockTicking(neighborLevel)) {
 						continue;
 					}
 					// 偏移记的是「源头相对本区块」，客户端用「本区块 + 偏移」还原为源头坐标
@@ -152,12 +179,12 @@ public final class TicketSources {
 					if (queueTail == queueKeys.length) {
 						int grown = queueTail * 2;
 						queueKeys = Arrays.copyOf(queueKeys, grown);
-						queueLevels = Arrays.copyOf(queueLevels, grown);
+						queueSpread = Arrays.copyOf(queueSpread, grown);
 						queueAnchorXs = Arrays.copyOf(queueAnchorXs, grown);
 						queueAnchorZs = Arrays.copyOf(queueAnchorZs, grown);
 					}
 					queueKeys[queueTail] = neighbor;
-					queueLevels[queueTail] = neighborLevel;
+					queueSpread[queueTail] = spread + 1;
 					queueAnchorXs[queueTail] = anchorX;
 					queueAnchorZs[queueTail] = anchorZ;
 					queueTail++;
@@ -169,11 +196,12 @@ public final class TicketSources {
 		// （淡灰的弱加载区块也在覆盖内）。两者对不上即说明正推有误。默认级别不打印（每次扫描每维度
 		// 一条，生产服上过吵），排查时开到 debug。
 		MsptMapMod.LOGGER.debug("维度 {} 加载票（{}）：持票区块 {} 个、覆盖 {} 个区块。前几个持票区块：{}",
-				Ids.id(level.dimension()), simulation ? "模拟链" : "加载链", anchors, sources.size(),
+				dimension, simulation ? "模拟链" : "加载链", anchors, sources.size(),
 				sample.isEmpty() ? "（无）" : sample);
 		return sources;
-		//?}
 	}
+	//?}
+
 
 	//? if >=1.21.5 {
 	/**
@@ -305,5 +333,20 @@ public final class TicketSources {
 
 	public static boolean doubtful(int code) {
 		return (code & DOUBTFUL_BIT) != 0;
+	}
+
+	/**
+	 * 该编码是否指向本区块上的票，即本区块是某张票的中心。
+	 *
+	 * <p>编码只有两处产出：持票区块（偏移恒为 0）与扩散覆盖区（偏移恒非 0），故「有来源且偏移为 0」
+	 * 即票就在本区块上。player_loading 除外：它逐区块铺、视距内每格偏移都是 0，没有中心可言 ——
+	 * 玩家位置由模拟链上的 player_simulation 代表。无来源与存疑编码不会命中。
+	 *
+	 * <p>客户端画中心蓝框、显示「…中心」，以及服务端把中心补进快照，都以此为准。
+	 */
+	public static boolean isCenter(int code) {
+		int type = type(code);
+		return type != NONE && type != PLAYER_LOADING
+				&& offsetX(code) == 0 && offsetZ(code) == 0;
 	}
 }

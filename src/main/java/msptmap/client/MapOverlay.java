@@ -1,6 +1,7 @@
 package msptmap.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import msptmap.sampler.TicketSources;
 import org.joml.Matrix4f;
 import xaero.map.graphics.MapRenderHelper;
 
@@ -20,6 +21,14 @@ public final class MapOverlay {
 	/** 弱加载且无耗时区块的填充色与透明度。 */
 	private static final float IDLE_GRAY = 0.7f;
 	private static final float IDLE_ALPHA = 0.3f;
+
+	/** 加载源中心蓝框的颜色（不透明，与绿黄红热力色区分）。 */
+	private static final float CENTER_RED = 0.2f;
+	private static final float CENTER_GREEN = 0.5f;
+	private static final float CENTER_BLUE = 1.0f;
+
+	/** 蓝框宽度（世界格）：沿区块内沿一圈，压住最外圈的热力色。 */
+	private static final int CENTER_BORDER = 1;
 
 	/**
 	 * 黄点在红点上的位置（1/3）：颜色只保留红点一个可调参数，黄点由它推出，相对模式下同样跟随本次
@@ -59,6 +68,33 @@ public final class MapOverlay {
 			MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1, x2, z2,
 					red(mspt, redPoint), green(mspt, redPoint), 0.0f, (float) ClientConfig.fillAlpha);
 		}
+
+		// 加载源中心画蓝框：每个持有加载票的区块（传送门、末影珍珠、forceload、玩家位置……）。
+		// 两条链都查：纯加载票（player_spawn、spawn_search）只在加载链上，模拟票只在模拟链上，
+		// 同一区块同时命中两条链时也只画一次。单独一趟、画在填色之后：框沿区块内沿一圈，压在
+		// 热力色上不被盖住。
+		for (ClientSnapshot.Chunk chunk : chunks) {
+			if (!TicketSources.isCenter(chunk.loadTicket()) && !TicketSources.isCenter(chunk.simTicket())) {
+				continue;
+			}
+			int x1 = chunk.x1() - flooredCameraX;
+			int z1 = chunk.z1() - flooredCameraZ;
+			int x2 = chunk.x2() - flooredCameraX;
+			int z2 = chunk.z2() - flooredCameraZ;
+			centerBorder(matrix, buffer, x1, z1, x2, z2);
+		}
+	}
+
+	/** 沿区块内沿画一圈蓝框：上、下两条横边跨满，左、右两条竖边接在两横边之间。 */
+	private static void centerBorder(Matrix4f matrix, VertexConsumer buffer, int x1, int z1, int x2, int z2) {
+		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1,
+				x2, z1 + CENTER_BORDER, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
+		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z2 - CENTER_BORDER,
+				x2, z2, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
+		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1 + CENTER_BORDER,
+				x1 + CENTER_BORDER, z2 - CENTER_BORDER, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
+		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x2 - CENTER_BORDER, z1 + CENTER_BORDER,
+				x2, z2 - CENTER_BORDER, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
 	}
 
 	/**

@@ -193,13 +193,13 @@ public final class ChunkTooltip {
 			// portal / ender_pearl 等）是稀疏的，中心与距离才有意义。
 			return Component.translatable("msptmap.tooltip.ticket_name", name);
 		}
-		int offsetX = TicketSources.offsetX(code);
-		int offsetZ = TicketSources.offsetZ(code);
-		if (offsetX == 0 && offsetZ == 0) {
+		// 中心判据与蓝框同源（TicketSources.isCenter），两处显示不会不一致
+		if (TicketSources.isCenter(code)) {
 			// 票就在本区块上：源头坐标即本区块坐标，不必重复写
 			return Component.translatable("msptmap.tooltip.ticket_center", name);
 		}
-		return Component.translatable("msptmap.tooltip.ticket_at", name, chunkX + offsetX, chunkZ + offsetZ);
+		return Component.translatable("msptmap.tooltip.ticket_at", name,
+				chunkX + TicketSources.offsetX(code), chunkZ + TicketSources.offsetZ(code));
 	}
 
 	/** 该链存疑、且这一栏确实要显示。 */
