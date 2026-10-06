@@ -39,6 +39,7 @@
   "msptmap.config.reset": "Reset defaults",
   "msptmap.config.reset_tooltip": "Restore all settings to their default values.",
   "msptmap.config.done": "Done",
+  "msptmap.config.back": "Back",
 
   "msptmap.label.total": "Total",
 

@@ -226,12 +226,7 @@ public class MsptMapClient implements ClientModInitializer {
 
 	/** 未装 Mod Menu 时打开设置界面的命令。parent 为 null：关闭后直接回游戏。只开界面，不发送消息。 */
 	private static int openConfig() {
-		// 1.21.11 及以前叫 setScreen，26.1 起更名为 setScreenAndShow
-		//? if >=26.1 {
-		Minecraft.getInstance().setScreenAndShow(new MsptMapConfigScreen(null));
-		//?} else {
-		/*Minecraft.getInstance().setScreen(new MsptMapConfigScreen(null));
-		*///?}
+		ConfigScreenBase.showScreen(Minecraft.getInstance(), new MsptMapConfigScreen(null));
 		return 1;
 	}
 
