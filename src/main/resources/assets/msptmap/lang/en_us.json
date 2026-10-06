@@ -13,6 +13,7 @@
   "msptmap.hint.singleplayer": "Draw the Mspt map (in singleplayer, close the map and wait a while, or nothing can be generated)",
 
   "msptmap.button.clear": "Clear the Mspt map",
+  "msptmap.button.config": "Open the MsptMap settings",
 
   "msptmap.config.title": "MsptMap Settings",
   "msptmap.config.group.scan": "Scan",
@@ -42,6 +43,19 @@
   "msptmap.config.back": "Back",
 
   "msptmap.label.total": "Total",
+
+  "msptmap.summary.title": "Scan overview",
+  "msptmap.summary.chunks": "Chunks %s [%s] · %ss",
+  "msptmap.summary.entities": "Entities %s",
+  "msptmap.summary.sources": "Sources %s",
+  "msptmap.summary.source_item": "%s %s",
+  "msptmap.summary.total": "Total",
+  "msptmap.summary.top_title": "Top 3 laggy chunks",
+  "msptmap.summary.top_line": "%s mspt @ %s %s,%s",
+
+  "msptmap.dimension.overworld": "Overworld",
+  "msptmap.dimension.nether": "Nether",
+  "msptmap.dimension.end": "End",
 
   "msptmap.category.random_tick": "Random tick",
   "msptmap.category.scheduled": "Scheduled tick",

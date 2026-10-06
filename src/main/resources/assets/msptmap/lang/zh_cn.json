@@ -13,6 +13,7 @@
   "msptmap.hint.singleplayer": "绘制Mspt地图（单人档要关闭地图等待一段时间，否则无法生成）",
 
   "msptmap.button.clear": "清空Mspt地图",
+  "msptmap.button.config": "打开MsptMap设置",
 
   "msptmap.config.title": "MsptMap 设置",
   "msptmap.config.group.scan": "扫描",
@@ -42,6 +43,19 @@
   "msptmap.config.back": "返回",
 
   "msptmap.label.total": "合计",
+
+  "msptmap.summary.title": "扫描总览",
+  "msptmap.summary.chunks": "区块 %s [%s] · %ss",
+  "msptmap.summary.entities": "实体 %s",
+  "msptmap.summary.sources": "加载源 %s",
+  "msptmap.summary.source_item": "%s %s",
+  "msptmap.summary.total": "总卡顿",
+  "msptmap.summary.top_title": "卡顿区块TOP3",
+  "msptmap.summary.top_line": "%s mspt @ %s %s,%s",
+
+  "msptmap.dimension.overworld": "主世界",
+  "msptmap.dimension.nether": "下界",
+  "msptmap.dimension.end": "末地",
 
   "msptmap.category.random_tick": "随机刻",
   "msptmap.category.scheduled": "计划刻",

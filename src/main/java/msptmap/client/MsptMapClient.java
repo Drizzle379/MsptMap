@@ -23,6 +23,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -222,6 +223,15 @@ public class MsptMapClient implements ClientModInitializer {
 	 */
 	public static void onClearPress() {
 		MsptMapMod.LOGGER.info("清屏：丢掉 {} 个维度的热力图", ClientSnapshot.clear());
+	}
+
+	/**
+	 * 地图上的设置按钮：打开设置界面。parent 传地图屏幕，关闭设置后回地图，而非退到游戏。
+	 *
+	 * 只开界面：不在聊天栏发消息。
+	 */
+	public static void onConfigPress(Screen parent) {
+		ConfigScreenBase.showScreen(Minecraft.getInstance(), new MsptMapConfigScreen(parent));
 	}
 
 	/** 未装 Mod Menu 时打开设置界面的命令。parent 为 null：关闭后直接回游戏。只开界面，不发送消息。 */

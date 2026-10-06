@@ -1,7 +1,10 @@
 package msptmap.client;
 
 import msptmap.net.SnapshotCodec;
+import msptmap.sampler.TickCategory;
+import msptmap.sampler.TicketSources;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,27 @@ public final class ClientSnapshot {
 		int loadTicket, int simTicket, boolean timed, long[] nanos, int[] counts) {
 	}
 
+	/** 最重榜的容量（「卡顿区块TOP3」的 3）。 */
+	private static final int TOP_COUNT = 3;
+
+	/** 最重榜上的一格：区块（区块坐标）及其总耗时。跨维度排名，故记住所属维度。 */
+	public record Heavy(long totalNanos, int chunkX, int chunkZ, String dimension) {
+	}
+
+	/**
+	 * 扫描总览用的合计：三个维度一并累加。
+	 *
+	 * <p>{@code sources} 与蓝框同源（见 {@link TicketSources#isCenter}），即蓝框数；
+	 * {@code sourcesByType} 把前者按票种拆开（下标 = 票类型序号），各项之和恒等于前者。
+	 * {@code heaviest} 按总耗时降序，至多 {@link #TOP_COUNT} 个。
+	 *
+	 * <p>{@code categoryNanos} 与 {@code totalNanos} 的口径同
+	 * {@link SnapshotCodec.ChunkData#totalNanos}：七个类别各自累加，合计不计方块更新。
+	 */
+	public record Totals(int chunks, int timed, int entities, int sources, int[] sourcesByType,
+			List<Heavy> heaviest, long totalNanos, long[] categoryNanos, int windowTicks) {
+	}
+
 	private static final Map<String, Chunk[]> byDimension = new HashMap<>();
 
 	/**
@@ -41,27 +65,45 @@ public final class ClientSnapshot {
 	/** 本次窗口实际经过的 tick 数：各类纳秒换算 ms/tick 的分母。 */
 	private static int windowTicks;
 
+	/** 总览的合计（三个维度一并累加）；未扫描、已清屏时为 null。 */
+	private static Totals totals;
+
 	private ClientSnapshot() {
 	}
 
 	/**
 	 * 收下一份结果，整体替换上一次的。空结果同样替换：上一次的颜色不能留在屏幕上。
 	 *
+	 * <p>三个维度一并累加出总览的合计（{@link Totals}）：Xaero 地图一次只显示一个维度，
+	 * 总览则是全局视角。
+	 *
 	 * @param windowTicks 窗口实际经过的 tick 数，纳秒换算 ms/tick 的分母
 	 */
 	public static void accept(int windowTicks, List<SnapshotCodec.DimensionData> dimensions) {
-		ClientSnapshot.windowTicks = Math.max(1, windowTicks);
+		int window = Math.max(1, windowTicks);
+		ClientSnapshot.windowTicks = window;
 		byDimension.clear();
 		heaviestByDimension.clear();
+		int chunkCount = 0;
+		int timedCount = 0;
+		int entityCount = 0;
+		int sourceCount = 0;
+		int[] sourcesByType = new int[TicketSources.UNRECOGNIZED + 1];
+		long totalNanos = 0L;
+		long[] categoryNanos = new long[TickCategory.COUNT];
+		List<Heavy> heaviest = new ArrayList<>(TOP_COUNT);
 		for (SnapshotCodec.DimensionData dimension : dimensions) {
-			List<SnapshotCodec.ChunkData> chunks = dimension.chunks();
-			Chunk[] converted = new Chunk[chunks.size()];
+			List<SnapshotCodec.ChunkData> chunksOf = dimension.chunks();
+			String dimensionId = dimension.dimension();
+			Chunk[] converted = new Chunk[chunksOf.size()];
 			// 一并取出最重的一个（见 heaviestByDimension）；否则需再遍历一遍
-			float heaviest = 0.0f;
+			float heaviestHere = 0.0f;
 			for (int i = 0; i < converted.length; i++) {
-				SnapshotCodec.ChunkData chunk = chunks.get(i);
-				float value = mspt(chunk.totalNanos(), windowTicks);
-				heaviest = Math.max(heaviest, value);
+				SnapshotCodec.ChunkData chunk = chunksOf.get(i);
+				long total = chunk.totalNanos();
+				float value = mspt(total, window);
+				heaviestHere = Math.max(heaviestHere, value);
+				boolean timedHere = timed(chunk.counts());
 				converted[i] = new Chunk(
 						chunk.x() << 4,
 						chunk.z() << 4,
@@ -73,19 +115,40 @@ public final class ClientSnapshot {
 						chunk.entities(),
 						chunk.loadTicket(),
 						chunk.simTicket(),
-						timed(chunk.counts()),
+						timedHere,
 						chunk.nanos(),
 						chunk.counts());
+				chunkCount++;
+				if (timedHere) {
+					timedCount++;
+				}
+				entityCount += chunk.entities();
+				totalNanos += total;
+				long[] nanos = chunk.nanos();
+				for (int c = 0; c < TickCategory.COUNT; c++) {
+					categoryNanos[c] += nanos[c];
+				}
+				// 加载源计数与蓝框同源（见 TicketSources.isCenter）：每区块最多记一格，两条链都
+				// 命中时加载链优先，使细分行之和恒等于 sourceCount
+				boolean loadCenter = TicketSources.isCenter(chunk.loadTicket());
+				if (loadCenter || TicketSources.isCenter(chunk.simTicket())) {
+					sourceCount++;
+					sourcesByType[TicketSources.type(loadCenter ? chunk.loadTicket() : chunk.simTicket())]++;
+				}
+				insertHeaviest(heaviest, total, chunk.x(), chunk.z(), dimensionId);
 			}
-			byDimension.put(dimension.dimension(), converted);
-			heaviestByDimension.put(dimension.dimension(), heaviest);
+			byDimension.put(dimensionId, converted);
+			heaviestByDimension.put(dimensionId, heaviestHere);
 		}
+		totals = new Totals(chunkCount, timedCount, entityCount, sourceCount, sourcesByType, heaviest,
+				totalNanos, categoryNanos, window);
 	}
 
 	/**
 	 * 清屏：丢弃当前结果，地图立即恢复未上色状态（地图上的 ✕ 按钮即此操作）。
 	 *
-	 * <p>悬停详情无需另行通知：它先查 {@link #get}，无该维度数据即不显示。窗口 tick 数一并归零。
+	 * <p>悬停详情与扫描总览无需另行通知：前者先查 {@link #get}、后者先查 {@link #totals}，
+	 * 取不到即不显示。窗口 tick 数一并归零。
 	 *
 	 * @return 丢弃的维度数（供调用方区分「按了没反应」与「本来就是空的」）
 	 */
@@ -93,6 +156,7 @@ public final class ClientSnapshot {
 		int dropped = byDimension.size();
 		byDimension.clear();
 		heaviestByDimension.clear();
+		totals = null;
 		windowTicks = 0;
 		return dropped;
 	}
@@ -100,6 +164,33 @@ public final class ClientSnapshot {
 	/** 该维度的数据；本次未扫到（或从未扫描）时为 null。 */
 	public static Chunk[] get(String dimension) {
 		return byDimension.get(dimension);
+	}
+
+	/** 总览的合计；未扫描、已清屏时为 null。 */
+	public static Totals totals() {
+		return totals;
+	}
+
+	/**
+	 * 把区块插入最重榜（按总耗时降序，至多 {@link #TOP_COUNT} 个）：找到插入位置后多出的从尾部裁掉。
+	 *
+	 * <p>只收有耗时的（totalNanos &gt; 0）：仅加载的区块不该出现在最重榜里。
+	 */
+	private static void insertHeaviest(List<Heavy> top, long totalNanos, int chunkX, int chunkZ, String dimension) {
+		if (totalNanos <= 0L) {
+			return;
+		}
+		int at = top.size();
+		while (at > 0 && top.get(at - 1).totalNanos() < totalNanos) {
+			at--;
+		}
+		if (at == TOP_COUNT) {
+			return;
+		}
+		top.add(at, new Heavy(totalNanos, chunkX, chunkZ, dimension));
+		if (top.size() > TOP_COUNT) {
+			top.remove(TOP_COUNT);
+		}
 	}
 
 	/** 本次窗口经过的 tick 数。悬停详情用它把各类纳秒换算成 ms/tick。 */

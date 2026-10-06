@@ -11,11 +11,13 @@ import msptmap.client.MapOverlay;
 import msptmap.client.MsptMapClient;
 import msptmap.client.ScanProgress;
 import msptmap.client.ScanRing;
+import msptmap.client.ScanSummary;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -31,20 +33,30 @@ import xaero.map.gui.GuiTexturedButton;
 import xaero.map.world.MapDimension;
 
 /**
- * Xaero 世界地图上的挂点：两个按钮（扫描 / 清屏）、每帧一次的热力图、悬停详情与扫描进度圈。
+ * Xaero 世界地图上的挂点：三个按钮（扫描 / 清屏 / 设置）、每帧一次的热力图、悬停详情、扫描进度圈
+ * 与扫描总览。
  *
  * <p>目标类及其引用的类型全在 Xaero 中，故该 mixin 单独放在客户端配置
  * （msptmap.client.mixins.json，required:false）：未装世界地图时不至于起不来，最多是没有热力图。
  */
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class GuiMapMixin {
-	/** 扫描按钮的框：进度圈贴着它画，故按钮与圈共用这组常量。 */
+	/**
+	 * 扫描按钮的框：进度圈贴着它画，故按钮与圈共用这组常量。
+	 *
+	 * <p>x 取 2 而非 0：使图标墨迹（贴图内自 (2,2) 起）距屏幕左缘 4 px，与 Xaero 左下角按钮的
+	 * 图标对齐（其按钮 20×20，图标在按钮内居中偏 2、墨迹在贴图单元内再偏 2，屏幕最左同为 4）。
+	 */
 	@Unique
-	private static final int SCAN_BUTTON_X = 0;
+	private static final int SCAN_BUTTON_X = 2;
 	@Unique
-	private static final int SCAN_BUTTON_Y = 40;
+	private static final int SCAN_BUTTON_Y = 60;
 	@Unique
-	private static final int SCAN_BUTTON_SIZE = 20;
+	private static final int SCAN_BUTTON_SIZE = 16;
+
+	/** 扫描总览的左上角与扫描按钮右缘的距离（上边与按钮齐平）。 */
+	@Unique
+	private static final int SUMMARY_GAP = 4;
 
 	/**
 	 * 维度 ID 字符串的按对象缓存：同一帧中热力图与悬停详情各要取一次 ID，而两次拿到的是同一个维度
@@ -98,10 +110,15 @@ public abstract class GuiMapMixin {
 				button -> MsptMapClient.onButtonPress(),
 				() -> new Tooltip(Component.translatable(MsptMapClient.scanButtonHint())), 256, 256));
 		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
-		((GuiMap) (Object) this).addButton(new GuiTexturedButton(0, 62, 20, 20, 0, 0, 16, 16,
+		((GuiMap) (Object) this).addButton(new GuiTexturedButton(2, 78, 16, 16, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
 				new Tooltip(Component.translatable("msptmap.button.clear")), 256, 256));
+		// 设置：位于清屏按钮下一格。parent 传地图屏幕，关闭设置后回地图。
+		((GuiMap) (Object) this).addButton(new GuiTexturedButton(2, 96, 16, 16, 0, 0, 16, 16,
+				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
+				button -> MsptMapClient.onConfigPress((Screen) (Object) this),
+				new Tooltip(Component.translatable("msptmap.button.config")), 256, 256));
 		//?} else {
 		/*((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, 16, 16,
@@ -109,10 +126,15 @@ public abstract class GuiMapMixin {
 				button -> MsptMapClient.onButtonPress(),
 				() -> new Tooltip(Component.translatable(MsptMapClient.scanButtonHint()))));
 		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
-		((GuiMap) (Object) this).addButton(new GuiTexturedButton(0, 62, 20, 20, 0, 0, 16, 16,
+		((GuiMap) (Object) this).addButton(new GuiTexturedButton(2, 78, 16, 16, 0, 0, 16, 16,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
 				new Tooltip(Component.translatable("msptmap.button.clear"))));
+		// 设置：位于清屏按钮下一格。parent 传地图屏幕，关闭设置后回地图。
+		((GuiMap) (Object) this).addButton(new GuiTexturedButton(2, 96, 16, 16, 0, 0, 16, 16,
+				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
+				button -> MsptMapClient.onConfigPress((Screen) (Object) this),
+				new Tooltip(Component.translatable("msptmap.button.config"))));
 		*///?}
 	}
 
@@ -255,5 +277,37 @@ public abstract class GuiMapMixin {
 			return;
 		}
 		ScanRing.draw(graphics, ScanProgress.fraction(), SCAN_BUTTON_X, SCAN_BUTTON_Y, SCAN_BUTTON_SIZE);
+	}
+
+	/**
+	 * 扫描总览：同挂在 TAIL（坐标为普通屏幕坐标），位置固定在扫描按钮右上角。无数据时
+	 * {@link ScanSummary#draw} 拿到空行，自然不会画。
+	 */
+	//? if >=26.1 {
+	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
+	private void msptmap$drawSummary(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick,
+			CallbackInfo ci) {
+		msptmap$summary(graphics);
+	}
+	//?} else {
+	/*@Inject(method = "method_25394", at = @At("TAIL"), remap = false)
+	private void msptmap$drawSummary(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+			CallbackInfo ci) {
+		msptmap$summary(graphics);
+	}
+	*///?}
+
+	/** 总览的绘制体（与注入点的方法名 / 屏幕类型无关，两种形态共用）。 */
+	@Unique
+	//? if >=26.1 {
+	private void msptmap$summary(GuiGraphicsExtractor graphics) {
+	//?} else {
+	/*private void msptmap$summary(GuiGraphics graphics) {
+	*///?}
+		// 按「隐藏界面」键时随按钮一起隐藏（和悬停详情一个规矩）
+		if (GuiMap.hiddenUI) {
+			return;
+		}
+		ScanSummary.draw(graphics, SCAN_BUTTON_X + SCAN_BUTTON_SIZE + SUMMARY_GAP, SCAN_BUTTON_Y);
 	}
 }

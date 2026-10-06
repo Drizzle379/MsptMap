@@ -4,7 +4,6 @@ import msptmap.Decimals;
 import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketSources;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
@@ -30,14 +29,10 @@ import java.util.List;
  * 故切换语言无需作废 {@link #lines} 的缓存。
  */
 public final class ChunkTooltip {
-	private static final int PADDING = 3;
 	/** 面板与鼠标的距离。 */
 	private static final int OFFSET = 8;
 	/** 面板与屏幕边缘的最小距离。 */
 	private static final int MARGIN = 2;
-	/** 深色半透明底：地图颜色杂乱，需垫底才看得清字。 */
-	private static final int BACKGROUND = 0xC0000000;
-	private static final int TEXT_COLOR = 0xFFFFFFFF;
 	/** 附注文字色（RGB）：正文为纯白，附注色暗一档。 */
 	private static final int NOTE_COLOR = 0xB0B0B0;
 
@@ -141,7 +136,7 @@ public final class ChunkTooltip {
 		}
 		for (TickCategory category : ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {
-				lines.add(categoryLine(chunk, windowTicks, category));
+				lines.add(categoryLine(chunk.nanos()[category.ordinal()], windowTicks, category));
 			}
 		}
 		if (doubtful) {
@@ -150,20 +145,24 @@ public final class ChunkTooltip {
 		return lines;
 	}
 
-	/** 「合计」行：单位固定显示，不受「显示单位」开关管。 */
-	private static Component msptLine(Component label, String mspt) {
+	/** 「合计」行：单位固定显示，不受「显示单位」开关管。包内可见：扫描总览的「总卡顿」行也用它。 */
+	static Component msptLine(Component label, String mspt) {
 		return Component.translatable("msptmap.tooltip.mspt_line", label, mspt);
 	}
 
-	/** 各类明细行：单位是否显示由「显示单位」开关决定。 */
-	private static MutableComponent valueLine(Component label, String mspt) {
+	/** 各类明细行：单位是否显示由「显示单位」开关决定。包内可见：扫描总览的明细行也用它。 */
+	static MutableComponent valueLine(Component label, String mspt) {
 		return Component.translatable(ClientConfig.tooltipMsptUnit
 				? "msptmap.tooltip.mspt_line" : "msptmap.tooltip.plain_line", label, mspt);
 	}
 
-	/** 某类的明细行。方块更新行附加注样式：合计不计它，以灰、斜体、带星区别于计入合计的其余行。 */
-	private static Component categoryLine(ClientSnapshot.Chunk chunk, int windowTicks, TickCategory category) {
-		String value = ms(chunk.nanos()[category.ordinal()], windowTicks);
+	/**
+	 * 某类的明细行。方块更新行附加注样式：合计不计它，以灰、斜体、带星区别于计入合计的其余行。
+	 *
+	 * <p>包内可见，吃纳秒而非区块：扫描总览的明细行取自跨维度合计的同类数组。
+	 */
+	static Component categoryLine(long nanos, int windowTicks, TickCategory category) {
+		String value = ms(nanos, windowTicks);
 		if (category != TickCategory.NEIGHBOR_UPDATE) {
 			return valueLine(label(category), value);
 		}
@@ -207,8 +206,8 @@ public final class ChunkTooltip {
 		return enabled && TicketSources.doubtful(code);
 	}
 
-	/** 加载票名称的语言键，与类型一一对应；新增票种时此处与语言文件需同步更新。 */
-	private static String ticketName(int type) {
+	/** 加载票名称的语言键，与类型一一对应；新增票种时此处与语言文件需同步更新。包内可见：扫描总览的细分行也用它。 */
+	static String ticketName(int type) {
 		return switch (type) {
 			case TicketSources.PLAYER_LOADING -> "msptmap.ticket.player_loading";
 			case TicketSources.PLAYER_SIMULATION -> "msptmap.ticket.player_simulation";
@@ -265,7 +264,7 @@ public final class ChunkTooltip {
 		return false;
 	}
 
-	/** 在鼠标右下方绘制小面板。无行可画时直接返回，不留空框。 */
+	/** 在鼠标右下方绘制小面板（外观与度量见 {@link MapPanel}）。无行可画时直接返回，不留空框。 */
 	//? if >=26.1 {
 	public static void draw(GuiGraphicsExtractor graphics, int mouseX, int mouseY, List<Component> lines) {
 	//?} else {
@@ -274,28 +273,11 @@ public final class ChunkTooltip {
 		if (lines.isEmpty()) {
 			return;
 		}
-		Font font = Minecraft.getInstance().font;
-		int lineHeight = font.lineHeight + 1;
-		int textWidth = 0;
-		for (Component line : lines) {
-			textWidth = Math.max(textWidth, font.width(line));
-		}
-		int boxWidth = textWidth + PADDING * 2;
-		int boxHeight = lines.size() * lineHeight + PADDING * 2;
-		int[] at = position(mouseX, mouseY, boxWidth, boxHeight,
+		int[] size = MapPanel.size(lines);
+		int[] at = position(mouseX, mouseY, size[0], size[1],
 				Minecraft.getInstance().getWindow().getGuiScaledWidth(),
 				Minecraft.getInstance().getWindow().getGuiScaledHeight());
-
-		graphics.fill(at[0], at[1], at[0] + boxWidth, at[1] + boxHeight, BACKGROUND);
-		// 附注行的样式已内嵌在组件里（见 NOTE_DOUBTFUL），此处无需再区分
-		for (int i = 0; i < lines.size(); i++) {
-			int y = at[1] + PADDING + i * lineHeight;
-			//? if >=26.1 {
-			graphics.text(font, lines.get(i), at[0] + PADDING, y, TEXT_COLOR);
-			//?} else {
-			/*graphics.drawString(font, lines.get(i), at[0] + PADDING, y, TEXT_COLOR);
-			*///?}
-		}
+		MapPanel.draw(graphics, at[0], at[1], size, lines);
 	}
 
 	/**
@@ -335,7 +317,7 @@ public final class ChunkTooltip {
 	}
 
 	/** 纳秒 → 毫秒/tick 文本，与 MsptSampler 打印共用 {@link Decimals} 的口径。 */
-	private static String ms(long nanos, int windowTicks) {
+	static String ms(long nanos, int windowTicks) {
 		return Decimals.format3(nanos / 1_000_000.0 / Math.max(1, windowTicks));
 	}
 
