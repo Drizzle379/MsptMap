@@ -11,6 +11,8 @@
 
   "msptmap.hint.server": "绘制Mspt地图（向服务端请求）",
   "msptmap.hint.singleplayer": "绘制Mspt地图（单人档要关闭地图等待一段时间，否则无法生成）",
+  "msptmap.hint.summary_expand": "展开扫描总览",
+  "msptmap.hint.summary_collapse": "收起扫描总览",
 
   "msptmap.button.clear": "清空Mspt地图",
   "msptmap.button.config": "打开MsptMap设置",

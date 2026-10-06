@@ -226,6 +226,17 @@ public class MsptMapClient implements ClientModInitializer {
 	}
 
 	/**
+	 * 地图上的折叠钮：展开 / 收起扫描总览。
+	 *
+	 * 立即落盘：这是玩家一次显式选择，不必等到退出游戏（见 {@link ClientConfig#save}）。只翻开关，
+	 * 不写聊天栏 —— 总览的显隐本身就是回执。
+	 */
+	public static void onSummaryToggle() {
+		ClientConfig.summaryExpanded = !ClientConfig.summaryExpanded;
+		ClientConfig.save();
+	}
+
+	/**
 	 * 地图上的设置按钮：打开设置界面。parent 传地图屏幕，关闭设置后回地图，而非退到游戏。
 	 *
 	 * 只开界面：不在聊天栏发消息。

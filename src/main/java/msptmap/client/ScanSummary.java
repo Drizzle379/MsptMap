@@ -16,7 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 扫描总览：固定在扫描按钮右上角的数据框，扫描成功（收到 DONE 包）后出现，清屏后消失。
+ * 扫描总览：挂在扫描按钮右侧的数据框，扫描成功（收到 DONE 包）后出现，清屏后消失；展开与否则由地图
+ * 上的折叠钮决定，跨次记忆（见 {@link ClientConfig#summaryExpanded}）。
  *
  * <p>数据是三个维度的合计（见 {@link ClientSnapshot.Totals}）：Xaero 地图一次只显示一个维度，
  * 总览给的是全局视角。组装与绘制分离（同 {@link ChunkTooltip}）：{@link #lines} 只拼文本组件

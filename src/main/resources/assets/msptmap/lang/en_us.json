@@ -11,6 +11,8 @@
 
   "msptmap.hint.server": "Draw the Mspt map (requests the server)",
   "msptmap.hint.singleplayer": "Draw the Mspt map (in singleplayer, close the map and wait a while, or nothing can be generated)",
+  "msptmap.hint.summary_expand": "Show the scan summary",
+  "msptmap.hint.summary_collapse": "Hide the scan summary",
 
   "msptmap.button.clear": "Clear the Mspt map",
   "msptmap.button.config": "Open the MsptMap settings",

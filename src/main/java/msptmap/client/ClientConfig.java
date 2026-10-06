@@ -55,6 +55,9 @@ public final class ClientConfig {
 	/** 弱加载（加载等级 ≥32）且整段窗口无耗时的区块是否铺淡灰。 */
 	public static boolean showWeakGray;
 
+	/** 地图上那框扫描总览是否展开；由折叠钮翻转，跨次记忆（见 {@link ScanSummary}）。 */
+	public static boolean summaryExpanded;
+
 	/** 悬停详情中四条单行信息各自的显示开关。 */
 	public static boolean tooltipCoords;
 	public static boolean tooltipLevels;
@@ -94,6 +97,7 @@ public final class ClientConfig {
 		relativeColor = false;
 		fillAlpha = 0.35;
 		showWeakGray = true;
+		summaryExpanded = true;
 		tooltipCoords = true;
 		tooltipLevels = true;
 		tooltipTotal = true;
@@ -134,6 +138,7 @@ public final class ClientConfig {
 		relativeColor = readBoolean(properties, "color.relative", relativeColor);
 		fillAlpha = readDouble(properties, "color.fillAlpha", fillAlpha);
 		showWeakGray = readBoolean(properties, "color.showWeakGray", showWeakGray);
+		summaryExpanded = readBoolean(properties, "summary.expanded", summaryExpanded);
 		tooltipCoords = readBoolean(properties, "tooltip.coords", tooltipCoords);
 		tooltipLevels = readBoolean(properties, "tooltip.levels", tooltipLevels);
 		tooltipTotal = readBoolean(properties, "tooltip.total", tooltipTotal);
@@ -163,6 +168,7 @@ public final class ClientConfig {
 		text.append("color.relative=").append(relativeColor).append('\n');
 		text.append("color.fillAlpha=").append(fillAlpha).append('\n');
 		text.append("color.showWeakGray=").append(showWeakGray).append('\n');
+		text.append("summary.expanded=").append(summaryExpanded).append('\n');
 		text.append("tooltip.coords=").append(tooltipCoords).append('\n');
 		text.append("tooltip.levels=").append(tooltipLevels).append('\n');
 		text.append("tooltip.total=").append(tooltipTotal).append('\n');
