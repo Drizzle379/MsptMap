@@ -53,7 +53,7 @@
   "msptmap.summary.source_item": "%s %s",
   "msptmap.summary.total": "Total",
   "msptmap.summary.top_title": "Top 3 laggy chunks",
-  "msptmap.summary.top_line": "%s mspt @ %s %s,%s",
+  "msptmap.summary.top_line": "%s @ %s %s,%s",
 
   "msptmap.dimension.overworld": "Overworld",
   "msptmap.dimension.nether": "Nether",
@@ -83,10 +83,10 @@
   "msptmap.tooltip.mspt_line": "%s %s mspt",
   "msptmap.tooltip.plain_line": "%s %s",
   "msptmap.tooltip.doubtful": "* this line could not be verified",
-  "msptmap.tooltip.ticket_doubtful": " · unknown *",
-  "msptmap.tooltip.ticket_name": " · %s",
-  "msptmap.tooltip.ticket_center": " · %s center",
-  "msptmap.tooltip.ticket_at": " · %s @%s,%s",
+  "msptmap.tooltip.ticket_doubtful": "  unknown *",
+  "msptmap.tooltip.ticket_name": "  %s",
+  "msptmap.tooltip.ticket_center": "  %s center",
+  "msptmap.tooltip.ticket_at": "  %s @%s,%s",
 
   "msptmap.ticket.player_loading": "player_loading",
   "msptmap.ticket.player_simulation": "player_simulation",

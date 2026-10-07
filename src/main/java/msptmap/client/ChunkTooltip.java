@@ -35,6 +35,8 @@ public final class ChunkTooltip {
 	private static final int MARGIN = 2;
 	/** 附注文字色（RGB）：正文为纯白，附注色暗一档。 */
 	private static final int NOTE_COLOR = 0xB0B0B0;
+	/** 二级条目（明细、来源细分、TOP3 数据行）的缩进。 */
+	private static final String INDENT = "  ";
 
 	/**
 	 * 存疑说明行。{@link #lines} 只在确有区块对不上时把它追加在末尾；斜体与附注色内嵌在样式里，
@@ -121,9 +123,9 @@ public final class ChunkTooltip {
 		if (ClientConfig.tooltipLevels) {
 			// 两条链各配自己的票：加载票与模拟票在同一区块上可能不是同一张
 			lines.add(Component.translatable("msptmap.tooltip.load_level", chunk.loadLevel())
-					.append(ticket(chunk.loadTicket(), ClientConfig.tooltipTicketLoad, chunkX, chunkZ)));
+					.append(note(ticket(chunk.loadTicket(), ClientConfig.tooltipTicketLoad, chunkX, chunkZ))));
 			lines.add(Component.translatable("msptmap.tooltip.compute_level", chunk.computeLevel())
-					.append(ticket(chunk.simTicket(), ClientConfig.tooltipTicketSim, chunkX, chunkZ)));
+					.append(note(ticket(chunk.simTicket(), ClientConfig.tooltipTicketSim, chunkX, chunkZ))));
 			doubtful = ticketDoubtful(chunk.loadTicket(), ClientConfig.tooltipTicketLoad)
 					|| ticketDoubtful(chunk.simTicket(), ClientConfig.tooltipTicketSim);
 		}
@@ -136,7 +138,8 @@ public final class ChunkTooltip {
 		}
 		for (TickCategory category : ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {
-				lines.add(categoryLine(chunk.nanos()[category.ordinal()], windowTicks, category));
+				lines.add(secondary(categoryLine(
+						chunk.nanos()[category.ordinal()], windowTicks, category)));
 			}
 		}
 		if (doubtful) {
@@ -171,7 +174,21 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 等级行后半段：「 · 票名中心」或「 · 票名 @x,z」；存疑时是「 · 未知 *」。
+	 * 二级条目：缩进两格、附注灰。悬停详情的七类明细与扫描总览的细分、明细、TOP3 行共用
+	 * （包内可见）。
+	 */
+	static Component secondary(Component content) {
+		return Component.literal(INDENT).append(content)
+				.withStyle(style -> style.withColor(TextColor.fromRgb(NOTE_COLOR)));
+	}
+
+	/** 等级行后半段（票名…）：附注灰，与前半段的白色正文相区分。 */
+	private static Component note(Component content) {
+		return content.copy().withStyle(style -> style.withColor(TextColor.fromRgb(NOTE_COLOR)));
+	}
+
+	/**
+	 * 等级行后半段：票名——「玩家加载」「强制加载 @x,z」「玩家模拟中心」；存疑时是「未知 *」。
 	 * 未勾选该开关、或该链没有来源（理论上不应发生）时返回空组件。
 	 */
 	private static Component ticket(int code, boolean enabled, int chunkX, int chunkZ) {

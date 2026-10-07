@@ -70,18 +70,20 @@ public abstract class GuiMapMixin {
 	private static final int CONFIG_BUTTON_Y = CLEAR_BUTTON_Y + SCAN_BUTTON_SIZE;
 
 	/**
-	 * 总览折叠钮：面积为扫描按钮的 1/4，贴在列上方空位的右下角 —— 下沿接扫描按钮上沿、右缘接列右缘。
+	 * 总览折叠钮：面积为扫描按钮的 1/4，贴在列上方空位的右下角 —— 右缘接列右缘。钮底不接扫描
+	 * 按钮上沿，而是留 4 px（主按钮图标在钮内单侧的留白），图标与扫描图标的含投影视觉间距由
+	 * 此同三个主按钮图标之间的一致（8 px）。
 	 */
 	@Unique
 	private static final int FOLD_BUTTON_SIZE = SCAN_BUTTON_SIZE / 2;
 	@Unique
 	private static final int FOLD_BUTTON_X = SCAN_BUTTON_X + SCAN_BUTTON_SIZE - FOLD_BUTTON_SIZE;
 	@Unique
-	private static final int FOLD_BUTTON_Y = SCAN_BUTTON_Y - FOLD_BUTTON_SIZE;
+	private static final int FOLD_BUTTON_Y = SCAN_BUTTON_Y - FOLD_BUTTON_SIZE - 4;
 
-	/** 扫描总览的左上角与扫描按钮右缘的距离（上沿与折叠钮齐平，见 {@link #FOLD_BUTTON_Y}）。 */
+	/** 扫描总览的左上角与扫描按钮右缘的距离。 */
 	@Unique
-	private static final int SUMMARY_GAP = 4;
+	private static final int SUMMARY_GAP = 2;
 
 	/**
 	 * 维度 ID 字符串的按对象缓存：同一帧中热力图与悬停详情各要取一次 ID，而两次拿到的是同一个维度
@@ -383,8 +385,8 @@ public abstract class GuiMapMixin {
 	}
 
 	/**
-	 * 扫描总览：同挂在 TAIL（坐标为普通屏幕坐标），左上角贴着折叠钮右上角（上沿与之齐平）。收起时
-	 * 整个不画。无数据时 {@link ScanSummary#draw} 拿到空行，自然也不会画。
+	 * 扫描总览：同挂在 TAIL（坐标为普通屏幕坐标），左上角贴着折叠钮右上角（上沿与折叠钮图标齐平，
+	 * 见下方调用处注释）。收起时整个不画。无数据时 {@link ScanSummary#draw} 拿到空行，自然也不会画。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
@@ -411,6 +413,8 @@ public abstract class GuiMapMixin {
 		if (GuiMap.hiddenUI || !ClientConfig.summaryExpanded) {
 			return;
 		}
-		ScanSummary.draw(graphics, SCAN_BUTTON_X + SCAN_BUTTON_SIZE + SUMMARY_GAP, FOLD_BUTTON_Y);
+		// 上沿与折叠钮图标的上沿齐平：图标悬停时会上浮 1 px（见 GuiTexturedButton），故比钮上沿高
+		// 1 px；点击开合后鼠标停在钮上，看到的即是齐平状态。
+		ScanSummary.draw(graphics, SCAN_BUTTON_X + SCAN_BUTTON_SIZE + SUMMARY_GAP, FOLD_BUTTON_Y - 1);
 	}
 }

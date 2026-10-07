@@ -53,7 +53,7 @@
   "msptmap.summary.source_item": "%s %s",
   "msptmap.summary.total": "总卡顿",
   "msptmap.summary.top_title": "卡顿区块TOP3",
-  "msptmap.summary.top_line": "%s mspt @ %s %s,%s",
+  "msptmap.summary.top_line": "%s @ %s %s,%s",
 
   "msptmap.dimension.overworld": "主世界",
   "msptmap.dimension.nether": "下界",
@@ -83,10 +83,10 @@
   "msptmap.tooltip.mspt_line": "%s %s mspt",
   "msptmap.tooltip.plain_line": "%s %s",
   "msptmap.tooltip.doubtful": "* 该行数据未能核实",
-  "msptmap.tooltip.ticket_doubtful": " · 未知 *",
-  "msptmap.tooltip.ticket_name": " · %s",
-  "msptmap.tooltip.ticket_center": " · %s中心",
-  "msptmap.tooltip.ticket_at": " · %s @%s,%s",
+  "msptmap.tooltip.ticket_doubtful": "  未知 *",
+  "msptmap.tooltip.ticket_name": "  %s",
+  "msptmap.tooltip.ticket_center": "  %s中心",
+  "msptmap.tooltip.ticket_at": "  %s @%s,%s",
 
   "msptmap.ticket.player_loading": "玩家加载",
   "msptmap.ticket.player_simulation": "玩家模拟",

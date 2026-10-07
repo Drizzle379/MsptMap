@@ -10,7 +10,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TextColor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +24,6 @@ import java.util.List;
  * 文件里的键，翻译在绘制时才按当前语言解析。
  */
 public final class ScanSummary {
-	/** 二级条目（细分、明细、TOP3 数据行）的缩进。 */
-	private static final String INDENT = "  ";
-	/** 二级条目的文字色（RGB），与悬停详情的附注色同值。 */
-	private static final int NOTE_COLOR = 0xB0B0B0;
-
 	/**
 	 * 细分行的显示顺序（票类型序号），越具体的来源越靠前，同 {@link TicketSources#priority}。
 	 *
@@ -91,7 +85,7 @@ public final class ScanSummary {
 		for (int type : SOURCE_ORDER) {
 			int count = totals.sourcesByType()[type];
 			if (count > 0) {
-				lines.add(secondary(Component.translatable("msptmap.summary.source_item",
+				lines.add(ChunkTooltip.secondary(Component.translatable("msptmap.summary.source_item",
 						Component.translatable(ChunkTooltip.ticketName(type)), count)));
 			}
 		}
@@ -100,14 +94,14 @@ public final class ScanSummary {
 				ChunkTooltip.ms(totals.totalNanos(), windowTicks)));
 		// 七类明细：整体缩进；方块更新的附注样式（灰、斜体、带星）内嵌在行组件里
 		for (TickCategory category : ChunkTooltip.ORDER) {
-			lines.add(secondary(ChunkTooltip.categoryLine(
+			lines.add(ChunkTooltip.secondary(ChunkTooltip.categoryLine(
 					totals.categoryNanos()[category.ordinal()], windowTicks, category)));
 		}
 		// 卡顿区块TOP3：分区标题白字不加粗；一个都没有时连分区标题都不出现
 		if (!totals.heaviest().isEmpty()) {
 			lines.add(Component.translatable("msptmap.summary.top_title"));
 			for (ClientSnapshot.Heavy heavy : totals.heaviest()) {
-				lines.add(secondary(Component.translatable("msptmap.summary.top_line",
+				lines.add(ChunkTooltip.secondary(Component.translatable("msptmap.summary.top_line",
 						Decimals.format3(heavy.totalNanos() / 1_000_000.0 / windowTicks),
 						Component.translatable(dimensionKey(heavy.dimension())),
 						heavy.chunkX(), heavy.chunkZ())));
@@ -133,12 +127,6 @@ public final class ScanSummary {
 			case "minecraft:the_end" -> "msptmap.dimension.end";
 			default -> "dimension." + dimId.replace(':', '.');
 		};
-	}
-
-	/** 二级条目：缩进两格、灰色。 */
-	private static Component secondary(Component content) {
-		return Component.literal(INDENT).append(content)
-				.withStyle(style -> style.withColor(TextColor.fromRgb(NOTE_COLOR)));
 	}
 
 	/**
