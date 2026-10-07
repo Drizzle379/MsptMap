@@ -1,51 +1,176 @@
+<div align="center">
+
+<img src="src/main/resources/assets/msptmap/icon.png" alt="MsptMap" width="128">
+
 # MsptMap
 
-[English](README.md) | **简体中文**
+**在 [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map)上，绘制区块 mspt 热力图。**
+定位造成服务端卡顿的具体区块，而非仅给出服务端总耗时。
 
-在 [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map)上，绘制区块 mspt（每 tick 毫秒数）热力图。
+[![Modrinth](https://img.shields.io/badge/Modrinth-msptmap-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/msptmap)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.20--26.3-62b47a?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTQgMmgxNmEyIDIgMCAwIDEgMiAydjE2YTIgMiAwIDAgMS0yIDJINGEyIDIgMCAwIDEtMi0yVjRhMiAyIDAgMCAxIDItMm0yIDR2NGg0djJIOHY2aDJ2LTJoNHYyaDJ2LTZoLTJ2LTJoNFY2aC00djRoLTRWNnoiLz48L3N2Zz4%3D)](#支持版本)
+[![Fabric Loader](https://img.shields.io/badge/Fabric_Loader-0.19.3%2B-dbd0b4?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI%2BPHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNOCAxdjFIN3YySDZ2MUg1djFINHYxSDN2MUgydjFIMXYyaDF2MWgxdjFoMXYxaDF2MWgydi0xaDF2LTJoMXYtMWgxdi0xaDFWOWgyVjhoMVY2aC0xVjVoLTFWNGgtMVYzaC0xVjJIOVYxeiIvPjwvc3ZnPg%3D%3D)](#-环境要求)
+[![Java](https://img.shields.io/badge/Java-17--25-e76f00?style=flat-square&logo=openjdk&logoColor=white)](#支持版本)
+[![Environment](https://img.shields.io/badge/Environment-client_%2B_server-4c8eda?style=flat-square)](#-安装)
+[![License](https://img.shields.io/github/license/Drizzle379/MsptMap?style=flat-square&label=License&color=3da639)](#-许可)
+[![Release](https://img.shields.io/github/v/release/Drizzle379/MsptMap?style=flat-square&label=Release&sort=semver&color=8957e5)](https://github.com/Drizzle379/MsptMap/releases)
+[![Stars](https://img.shields.io/github/stars/Drizzle379/MsptMap?style=flat-square&label=Stars&color=e3b341)](https://github.com/Drizzle379/MsptMap)
 
-服务端采样随机刻、计划刻、方块更新、方块事件、方块实体、实体、刷怪七类工作的耗时，结果发给发起扫描的客户端，按区块铺色。
+[English](README.md) · **简体中文**
 
-## 环境
+[功能](#-功能) · [环境要求](#-环境要求) · [安装](#-安装) · [用法](#-用法) · [设置](#-设置) · [工作原理](#-工作原理) · [构建](#-构建)
+
+</div>
+
+---
+
+## ✨ 功能
+
+| | |
+| :--- | :--- |
+| 🌡️ **区块级热力图** | 按区块所占用的刻耗时着色，由绿经黄至红。整段窗口内未产生可测耗时的弱加载区块保持淡灰，以免掩盖真正的高负载区域。 |
+| 🧩 **七类耗时分别计量** | 随机刻、计划刻、方块更新、方块事件、方块实体、实体与刷怪各自独立计量；悬停详情指出耗时所属的类别。 |
+| 🏷️ **加载来源反查** | 反查各区块的加载票来源：`玩家加载`、`强制加载`、`传送门`、`末影珍珠`、`末影龙` 等。持有加载票的区块以蓝框标出，悬停详情给出票名及其所在区块的 `@x,z` 坐标。 |
+| 📊 **扫描总览** | 单一面板汇总总卡顿、实体数、加载源与卡顿区块 TOP5，且按**三个维度合计**；地图本身一次仅显示一个维度。 |
+| 🖱️ **点击定位** | 点击总览中的条目可将地图定位至对应区块；折叠行可展开完整的加载源列表，并支持滚动。 |
+| 🔁 **版本宽容** | 客户端与服务端不要求运行相同版本。版本不一致时仍会给出结果，并在聊天栏附注说明；无法解析的数据包仅在聊天栏报告失败，不会导致客户端断开连接。 |
+
+## 📦 环境要求
 
 | 依赖 | 必需性 | 说明 |
-|---|---|---|
-| Minecraft 1.20–1.21.11 或 26.1–26.1.2 / 26.2 / 26.3 + Fabric Loader ≥ 0.19.3 | 必需 | 具体可用版本见下表后清单 |
+| :--- | :--- | :--- |
+| **Minecraft** | 必需 | 可用版本见[下表](#支持版本) |
+| **Fabric Loader** | 必需 | ≥ 0.19.3 |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | 必需 | |
-| [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 客户端必需 | 注入锚点在 Xaero 1.44.2 / 1.46.0 / 1.46.4 上核对过（多数版本用 1.46.0）；Xaero 将来更新致锚点失配时，按钮与热力图停用，游戏照常启动 |
-| [Carpet](https://modrinth.com/mod/carpet) | 可选 | 安装后可以管理指令使用权限 |
-| [Mod Menu](https://modrinth.com/mod/modmenu) | 建议安装 | 安装后可以快捷进行设置 |
+| [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 仅客户端 | 注入锚点已在 Xaero 1.44.2 / 1.46.0 / 1.46.4 上验证（多数版本使用 1.46.0）。若 Xaero 后续更新导致锚点失配，按钮与热力图将被停用，游戏仍可正常启动。 |
+| [Carpet](https://modrinth.com/mod/carpet) | 可选 | 用于管理指令的使用权限 |
+| [Mod Menu](https://modrinth.com/mod/modmenu) | 建议安装 | 提供设置界面的快捷入口 |
 
-目前支持的版本：1.20–1.20.2、1.20.3–1.20.4、1.21–1.21.1、1.21.2–1.21.4、1.21.6–1.21.10、1.21.11，与 26.1–26.1.2 / 26.2 / 26.3；1.20.5、1.20.6、1.21.5 暂不支持。
+### 支持版本
 
-## 构建
+| Minecraft | 构建目录 | 运行期 Java | Fabric API 下限 |
+| :--- | :--- | :--- | :--- |
+| 1.20 – 1.20.2 | `versions/1.20.1` | 17 | `0.91.0+1.20.1` |
+| 1.20.3 – 1.20.4 | `versions/1.20.4` | 17 | `0.97.1+1.20.4` |
+| 1.21 – 1.21.1 | `versions/1.21.1` | 21 | `0.116.17+1.21.1` |
+| 1.21.2 – 1.21.4 | `versions/1.21.4` | 21 | `0.119.4+1.21.4` |
+| 1.21.6 – 1.21.10 | `versions/1.21.8` | 21 | `0.136.1+1.21.8` |
+| 1.21.11 | `versions/1.21.11` | 21 | `0.141.6+1.21.11` |
+| 26.1 – 26.1.2 | `versions/26.1.2` | 25 | `0.155.3+26.1.2` |
+| 26.2 | `versions/26.2` | 25 | `0.158.0+26.2` |
+| 26.3 | `versions/26.3` | 25 | `0.158.0+26.3` |
 
-需要 JDK 25；`./gradlew build` 为每个支持的 Minecraft 版本各产出一个 jar，在 `versions/<MC 版本>/build/libs/` 下（Windows 用 `gradlew.bat`）。
+> [!NOTE]
+> **1.20.5、1.20.6、1.21.5 暂不支持。** 上表每一行对应一个 jar；完整构建会为每一行各产出一个。
 
-```shell
-./gradlew build
+## 🚀 安装
+
+从 [Modrinth](https://modrinth.com/mod/msptmap) 或 [Releases 页](https://github.com/Drizzle379/MsptMap/releases) 下载最新构建，再将 jar 放入 `mods/` 目录。
+
+> [!IMPORTANT]
+> 采样在**服务端**进行，故两侧均需安装本模组；客户端另需安装 Xaero 的世界地图。单人游戏时两侧运行于同一台机器，安装一份即可。
+
+服务端与客户端可运行不同版本的 MsptMap。版本不一致时仍会给出结果，并在聊天栏附注说明（结果可能不准确）；数据包无法解析时仅在聊天栏报告失败，不会断开连接。
+
+## 🎮 用法
+
+1. 打开世界地图，点击左上角的**扫描**按钮以开始扫描，或输入 `/msptmap scan [秒数]`
+2. 采样完成后，地图按区块的卡顿程度着色：绿 → 黄 → 红；弱加载区块为淡灰色
+3. 悬停任意区块可查看详情：坐标、加载等级、加载票、实体数、合计 mspt 与各类耗时明细
+4. **扫描总览**显示在扫描按钮旁，给出合计、加载源与卡顿区块 TOP5。点击某一行可将地图定位至该区块；折叠行可展开完整的加载源列表
+5. 点击 ✕ 按钮清空热力图
+
+### 加载票说明
+
+加载票指明该区块被保持加载的机制：`玩家加载` 表示附近有玩家，`强制加载` 表示经由 `/forceload` 加载，`末影珍珠` 表示珍珠落点，等等。其后的 `@x,z` 为票所在区块的坐标；以蓝框标出的区块即持有加载票。
+
+<details>
+<summary>全部票名</summary>
+
+| 票名 | 保持加载的原因 |
+| :--- | :--- |
+| `玩家加载` | 视距内有玩家（逐区块应用，无中心） |
+| `玩家模拟` | 模拟距离内有玩家 |
+| `强制加载` | 该区块被 `/forceload` 强制加载 |
+| `传送门` | 附近存在传送门 |
+| `末影珍珠` | 有末影珍珠落于此 |
+| `世界出生点` | 该区块为世界出生点（1.21.10 及以前名为 `start`） |
+| `出生点搜索` | 正在执行出生点搜索（1.21.11 起） |
+| `末影龙` | 末影龙战斗占用 |
+| `未知` | 原版的兜底票类型 |
+
+> [!NOTE]
+> 1.21.4 及以前的游戏没有可查询的票表，故不显示票名与 `@x,z`，仅显示加载等级。
+</details>
+
+> [!NOTE]
+> 合计 mspt 不含方块更新：其耗时已计入触发它的类别，重复计入会使合计偏高。
+
+> [!TIP]
+> **单人游戏**：地图打开时世界暂停；点击扫描按钮后须关闭地图再等待。
+
+服务端控制台与管理员亦可使用同名命令，其结果仅输出到服务端控制台。
+
+## 🔧 设置
+
+打开 **Mod Menu → 设置**，或输入 `/msptmap config`。设置保存在 `config/msptmap-client.properties`。
+
+<details>
+<summary>全部设置项</summary>
+
+| 分组 | 设置项 | 作用 |
+| :--- | :--- | :--- |
+| 扫描 | **秒数** | 采样窗口长度，单位为秒（按游戏刻换算） |
+| 颜色 | **采用相对模式** | 颜色按**本次扫描**中的相对大小判定：最重的区块显示为红色，其余区块与之比较——整体负载较低时，相对卡顿的区块仍可分辨。取消勾选则一律按下方固定的红色阈值判定。 |
+| 颜色 | **红色阈值** | 区块耗时达到此值（ms/tick）即显示为最高等级红色；低于此值的区块，颜色由绿经黄连续过渡到红。勾选相对模式时此项不参与判定，且不可调整。 |
+| 颜色 | **不透明度** | 热力色填充的不透明度，0.05 ~ 1.00；数值越小，透出的底图越清晰。 |
+| 颜色 | **显示弱加载区块** | 以淡灰显示加载等级 32 及以上、整段窗口未产生可测耗时的区块。 |
+| 悬停详情 | **坐标** / **等级** / **实体数** | 决定哪些行出现在悬停详情中。 |
+| 悬停详情 | **加载票** / **计算票** | 在加载等级 / 计算等级行后附带票的来源。 |
+| 悬停详情 | **显示为缩写** | 类别名显示为二字母缩写：`RT ST BU EV BE EN SP`。 |
+| 悬停详情 | **显示单位（mspt）** | 每类明细行后附 `mspt`；合计行的单位固定显示，不受此项影响。 |
+
+**恢复默认** 可将以上各项恢复为默认值。
+</details>
+
+## 🧭 工作原理
+
+```mermaid
+flowchart LR
+    A["客户端<br/>地图按钮 / /msptmap scan"] -->|扫描请求| B["服务端<br/>MsptSampler"]
+    B --> C["逐区块计时<br/>七类工作"]
+    C -->|扫描结果| D["客户端<br/>热力图 + 总览"]
 ```
 
-## 安装
+服务端采样七类工作的耗时，并将结果发送给发起扫描的客户端，由客户端按区块着色。
 
-jar 放进 `mods/`。采样在服务端进行，**服务端也要装**；客户端另外需要 Xaero 的世界地图。单人档两侧同机，装一份即可。
+| 类别 | 计量位置 |
+| :--- | :--- |
+| 随机刻 | `ServerLevel.tickChunk` |
+| 计划刻 | `ServerLevel.tickBlock` / `tickFluid` |
+| 方块更新 | `ServerLevel` 的邻居更新各入口 |
+| 方块事件 | `ServerLevel.doBlockEvent` |
+| 方块实体 | `LevelChunk$BoundTickingBlockEntity.tick` |
+| 实体 | `ServerLevel.tickNonPassenger` |
+| 刷怪 | `NaturalSpawner.spawnForChunk` |
 
-服务端与客户端可运行不同版本的 MsptMap：版本不一致时照常出结果，完成时在聊天栏附一句提示（结果可能不准）；包完全不兼容时只在聊天栏提示失败，不会掉线。
+> [!NOTE]
+> 方块更新会被计量，但不计入合计：其耗时已包含在触发它的类别中，例如由计划刻引发的红石连锁。
 
-## 用法
+## 🔨 构建
 
-1. 打开世界地图，点左上角的热力图按钮开始扫描（或输入 `/msptmap scan [秒数]`）
-2. 采样成功后地图按区块卡顿情况铺色：绿 → 黄 → 红；弱加载区块为淡灰色
-3. 悬停任意区块看详情：坐标、加载等级、加载票、实体数、合计 mspt、各类耗时明细。加载票写明这个区块是靠什么被加载着的 —— `玩家加载` = 附近有玩家、`强制加载` = `/forceload`、`末影珍珠` = 珍珠落点，等等；后面的 `@x,z` 是票所在的区块（1.21.4 及以前的游戏没有可查询的票表，此项不显示）
-4. ✕ 按钮清空热力图
-5. 设置：Mod Menu → 设置，或 `/msptmap config`；存在 `config/msptmap-client.properties`
+需要 **JDK 25**。
 
-合计 mspt 不含方块更新：它的耗时已含在触发它的那一类里（如计划刻、随机刻中触发的红石连锁），计入两次会使合计偏高。
+```shell
+./gradlew build    # Windows 使用 gradlew.bat
+```
 
-**单人档**：地图打开时世界暂停，点击扫描按钮后要关闭地图等待。
+为每个支持的 Minecraft 版本各产出一个 jar，命名为 `MsptMap-Fabric-v<模组版本>+<最高支持版本>.jar`，输出于 `versions/<MC 版本>/build/libs/` 下。
 
-服务端控制台与管理员也可使用同名命令，结果只输出到服务端控制台。
+## 📄 许可
 
-## 许可
+[MIT](LICENSE) © 2026 Drizzle379
 
-[MIT](LICENSE)。
+<sub>问题反馈与功能建议：[提交 issue](https://github.com/Drizzle379/MsptMap/issues) · 作者：[Bilibili](https://space.bilibili.com/433418393)</sub>
+
+<div align="right"><a href="#msptmap">↑ 回到顶部</a></div>
