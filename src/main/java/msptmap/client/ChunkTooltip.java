@@ -294,7 +294,7 @@ public final class ChunkTooltip {
 		int[] at = position(mouseX, mouseY, size[0], size[1],
 				Minecraft.getInstance().getWindow().getGuiScaledWidth(),
 				Minecraft.getInstance().getWindow().getGuiScaledHeight());
-		MapPanel.draw(graphics, at[0], at[1], size, lines);
+		MapPanel.draw(graphics, at[0], at[1], size, lines, -1);
 	}
 
 	/**

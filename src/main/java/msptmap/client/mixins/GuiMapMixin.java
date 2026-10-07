@@ -13,13 +13,19 @@ import msptmap.client.MsptMapClient;
 import msptmap.client.ScanProgress;
 import msptmap.client.ScanRing;
 import msptmap.client.ScanSummary;
+import net.minecraft.client.Minecraft;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.11 {
+import net.minecraft.client.input.MouseButtonEvent;
+//?}
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -27,11 +33,13 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import xaero.lib.client.gui.widget.Tooltip;
 import xaero.map.MapProcessor;
 import xaero.map.gui.GuiMap;
 import xaero.map.gui.GuiTexturedButton;
 import xaero.map.world.MapDimension;
+import xaero.map.world.MapWorld;
 
 /**
  * Xaero 世界地图上的挂点：四个按钮（扫描 / 清屏 / 设置 / 总览折叠）、每帧一次的热力图、悬停详情、
@@ -86,6 +94,15 @@ public abstract class GuiMapMixin {
 	private static final int SUMMARY_GAP = 2;
 
 	/**
+	 * 扫描总览左上角：右贴按钮列（隔 {@link #SUMMARY_GAP}）；上沿与折叠钮图标齐平——图标悬停时
+	 * 上浮 1 px（见 GuiTexturedButton），故取钮上沿 -1。绘制与点击命中共用这组坐标。
+	 */
+	@Unique
+	private static final int SUMMARY_X = SCAN_BUTTON_X + SCAN_BUTTON_SIZE + SUMMARY_GAP;
+	@Unique
+	private static final int SUMMARY_Y = FOLD_BUTTON_Y - 1;
+
+	/**
 	 * 维度 ID 字符串的按对象缓存：同一帧中热力图与悬停详情各要取一次 ID，而两次拿到的是同一个维度
 	 * 对象，第二次直接复用。维度切换（换世界、走传送门）后对象随之更换，引用比较自然失效，无需清理。
 	 */
@@ -131,6 +148,18 @@ public abstract class GuiMapMixin {
 	/** 地图显示的维度、地图世界是否可用，均由它取得。 */
 	@Shadow
 	private MapProcessor mapProcessor;
+
+	/** 相机的动画目标（方块坐标）：非 null 时自下一帧起向它滑动，到达后置 null。定位区块即设它。 */
+	@Shadow
+	private int[] cameraDestination;
+
+	/** 相机是否跟随玩家：跟随中相机每帧被拉回玩家处，定位区块前须先行脱离（同 Xaero 拖图时）。 */
+	@Shadow
+	private static boolean attachedCamera;
+
+	/** 请求下一帧重建控件：脱离跟随后同步跟随按钮的外观（同 Xaero 拖图时）。 */
+	@Shadow
+	public boolean shouldReinit;
 
 	/** Xaero 算好的鼠标所在方块坐标：悬停详情指向哪一块由它俩决定。 */
 	@Shadow
@@ -300,8 +329,7 @@ public abstract class GuiMapMixin {
 	 * 在那里绘制的文字会随地图缩放。
 	 *
 	 * <p>读字段而非局部变量：{@code mouseBlockPosX/Z} 本帧最后一次写入在方法很靠前处，到 TAIL 早已
-	 * 定下；Xaero 自身高亮区块用的就是同一个值。鼠标压在控件上时整个不画，判定见
-	 * {@link ChunkTooltip#overWidget}。
+	 * 定下；Xaero 自身高亮区块用的就是同一个值。压在控件或总览框上时不画（见 {@link ChunkTooltip#overWidget}、{@link ScanSummary#overPanel}）。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
@@ -331,6 +359,10 @@ public abstract class GuiMapMixin {
 		// 鼠标压在控件上时不画：Xaero 自己的提示框同在鼠标处绘制，会重叠
 		// （两侧按钮、底边控件、搜索框、展开的下拉列表都算）
 		if (ChunkTooltip.overWidget(mouseX, mouseY, ((GuiMap) (Object) this).children())) {
+			return;
+		}
+		// 鼠标落在总览框上时也让位：详情绘制在总览之后，重叠处会盖住面板
+		if (ScanSummary.overPanel(mouseX, mouseY, SUMMARY_X, SUMMARY_Y)) {
 			return;
 		}
 		MapDimension dimension = mapProcessor.getMapWorld().getCurrentDimension();
@@ -385,36 +417,141 @@ public abstract class GuiMapMixin {
 	}
 
 	/**
-	 * 扫描总览：同挂在 TAIL（坐标为普通屏幕坐标），左上角贴着折叠钮右上角（上沿与折叠钮图标齐平，
-	 * 见下方调用处注释）。收起时整个不画。无数据时 {@link ScanSummary#draw} 拿到空行，自然也不会画。
+	 * 扫描总览：挂在 Xaero 绘制控件提示（{@code renderTooltips}）之前——压住地图与按钮、又让按钮
+	 * 的悬停提示画在自己上面（提示被挡住就看不见了）。收起或无数据时 {@link ScanSummary#draw} 跳过不画。
 	 */
 	//? if >=26.1 {
-	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
+	@Inject(method = "extractRenderState",
+			at = @At(value = "INVOKE",
+					target = "Lxaero/map/gui/GuiMap;renderTooltips(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)Z",
+					shift = At.Shift.BEFORE),
+			remap = false)
 	private void msptmap$drawSummary(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick,
 			CallbackInfo ci) {
-		msptmap$summary(graphics);
+		msptmap$summary(graphics, mouseX, mouseY);
 	}
 	//?} else {
-	/*@Inject(method = "method_25394", at = @At("TAIL"), remap = false)
+	/*@Inject(method = "method_25394",
+			at = @At(value = "INVOKE",
+					target = "Lxaero/map/gui/GuiMap;renderTooltips(Lnet/minecraft/class_332;IIF)Z",
+					shift = At.Shift.BEFORE),
+			remap = false)
 	private void msptmap$drawSummary(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
 			CallbackInfo ci) {
-		msptmap$summary(graphics);
+		msptmap$summary(graphics, mouseX, mouseY);
 	}
 	*///?}
 
 	/** 总览的绘制体（与注入点的方法名 / 屏幕类型无关，两种形态共用）。 */
 	@Unique
 	//? if >=26.1 {
-	private void msptmap$summary(GuiGraphicsExtractor graphics) {
+	private void msptmap$summary(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
 	//?} else {
-	/*private void msptmap$summary(GuiGraphics graphics) {
+	/*private void msptmap$summary(GuiGraphics graphics, int mouseX, int mouseY) {
 	*///?}
 		// 按「隐藏界面」键时随按钮一起隐藏（和悬停详情一个规矩）；收起由折叠钮决定，与隐藏界面无关
 		if (GuiMap.hiddenUI || !ClientConfig.summaryExpanded) {
 			return;
 		}
-		// 上沿与折叠钮图标的上沿齐平：图标悬停时会上浮 1 px（见 GuiTexturedButton），故比钮上沿高
-		// 1 px；点击开合后鼠标停在钮上，看到的即是齐平状态。
-		ScanSummary.draw(graphics, SCAN_BUTTON_X + SCAN_BUTTON_SIZE + SUMMARY_GAP, FOLD_BUTTON_Y - 1);
+		// 鼠标坐标用于给悬停的 TOP3 数据行垫高亮底（见 ScanSummary.draw）
+		ScanSummary.draw(graphics, SUMMARY_X, SUMMARY_Y, mouseX, mouseY);
+	}
+
+	/**
+	 * 总览 TOP3 行的点击定位：挂在 mouseClicked 最前，命中即消费——否则 Xaero 会把这次按下当作
+	 * 拖图起点。左键编号按版本：26.3 起为 1、其余（含 26.1.2、26.2、1.21.11 及更早）为 0。
+	 */
+	//? if >=26.1 {
+	@Inject(method = "mouseClicked", at = @At("HEAD"), remap = false, cancellable = true)
+	private void msptmap$clickSummary(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
+		//? if >=26.3 {
+		/*boolean left = event.button() == 1;
+		*///?} else {
+		boolean left = event.button() == 0;
+		//?}
+		if (msptmap$summaryClick(left, (int) event.x(), (int) event.y())) {
+			cir.setReturnValue(true);
+		}
+	}
+	//?} else if >=1.21.11 {
+	/*@Inject(method = "method_25402", at = @At("HEAD"), remap = false, cancellable = true)
+	private void msptmap$clickSummary(MouseButtonEvent event, boolean doubleClick,
+			CallbackInfoReturnable<Boolean> cir) {
+		if (msptmap$summaryClick(event.button() == 0, (int) event.x(), (int) event.y())) {
+			cir.setReturnValue(true);
+		}
+	}
+	*///?} else {
+	/*@Inject(method = "method_25402", at = @At("HEAD"), remap = false, cancellable = true)
+	private void msptmap$clickSummary(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+		if (msptmap$summaryClick(button == 0, (int) mouseX, (int) mouseY)) {
+			cir.setReturnValue(true);
+		}
+	}
+	*///?}
+
+	/**
+	 * 点击的命中判定与定位：命中（左键、总览可见、鼠标正指着一条 TOP3 数据行）则把地图定位到该区块
+	 * 并返回 true，调用处据此消费；坐标由调用处从事件取（GUI 缩放坐标，勿用 Xaero 的 {@code Misc}）。
+	 */
+	@Unique
+	private boolean msptmap$summaryClick(boolean leftButton, int mouseX, int mouseY) {
+		if (!leftButton || GuiMap.hiddenUI || !ClientConfig.summaryExpanded) {
+			return false;
+		}
+		if (mapProcessor == null || !mapProcessor.isMapWorldUsable()) {
+			return false;
+		}
+		// 鼠标压在控件上时让位：与悬停详情的判据一致，画不出详情的地方也不该响应点击
+		if (ChunkTooltip.overWidget(mouseX, mouseY, ((GuiMap) (Object) this).children())) {
+			return false;
+		}
+		ClientSnapshot.Heavy heavy = ScanSummary.hitTarget(mouseX, mouseY, SUMMARY_X, SUMMARY_Y);
+		if (heavy == null) {
+			return false;
+		}
+		msptmap$focusChunk(heavy);
+		return true;
+	}
+
+	/**
+	 * 把地图定位到某区块：必要时先切维度（同 Xaero 的维度按钮：目标即玩家所在维度时回「跟随玩家」），
+	 * 再设相机的动画目标（区块中心）并脱离跟随相机——后两步照抄 Xaero 的「跳转坐标」流程。
+	 */
+	@Unique
+	private void msptmap$focusChunk(ClientSnapshot.Heavy heavy) {
+		MapWorld mapWorld = mapProcessor.getMapWorld();
+		MapDimension target = msptmap$findDimension(mapWorld, heavy.dimension());
+		if (target == null) {
+			// 该维度的地图从未加载过（玩家没去过）：切不过去，这次点击不响应
+			MsptMapMod.LOGGER.info("定位 {} 区块 ({}, {})：该维度地图未加载，忽略",
+					heavy.dimension(), heavy.chunkX(), heavy.chunkZ());
+			return;
+		}
+		ResourceKey<Level> key = target.getDimId();
+		if (key == Minecraft.getInstance().level.dimension()) {
+			key = null;
+		}
+		MsptMapMod.LOGGER.info("定位 {} 区块 ({}, {})：目标维度 {}", heavy.dimension(),
+				heavy.chunkX(), heavy.chunkZ(), key == null ? "当前（跟随）" : Ids.id(key));
+		mapWorld.setCustomDimensionId(key);
+		mapProcessor.checkForWorldUpdate();
+		if (attachedCamera) {
+			attachedCamera = false;
+			shouldReinit = true;
+		}
+		// 区块中心：Xaero 的相机目标就是方块坐标
+		cameraDestination = new int[]{heavy.chunkX() * 16 + 8, heavy.chunkZ() * 16 + 8};
+	}
+
+	/** 从地图已加载的维度里按 ID 找目标；没有则 null。按 ID 字符串反查，避开各版本构造维度键的差异。 */
+	@Unique
+	private static MapDimension msptmap$findDimension(MapWorld mapWorld, String dimId) {
+		for (MapDimension dimension : mapWorld.getDimensionsList()) {
+			if (dimId.equals(msptmapDimensionId(dimension))) {
+				return dimension;
+			}
+		}
+		return null;
 	}
 }
