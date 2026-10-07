@@ -29,7 +29,7 @@ import java.util.function.LongToIntFunction;
 /**
  * 反查每个区块的加载来源：即该区块被哪张加载票覆盖。
  *
- * <p>票的分布有两种：forced / portal / ender_pearl 等是稀疏的，只落在一个区块上；26.2 的
+ * <p>票的分布有两种：forced / portal / ender_pearl 等是稀疏的，只落在一个区块上；
  * player_loading 则是逐区块铺的，视距内每格一张。稀疏票靠等级传播覆盖周围：从持票区块向外传播
  * 值逐格 +1（传播值 = 票自身等级 + 到锚点的距离），某邻居的实际等级恰等于本票的传播值时，说明
  * 本票是覆盖它的（并列）最强来源，继续往外走。逐区块铺的票则每格自身即为持票区块，扩散退化为
@@ -40,7 +40,7 @@ import java.util.function.LongToIntFunction;
  * 照它 +1 会顺着强票的等级梯度一路扩散，把强票的半片区域误认成本票的覆盖区。本类不自算等级，
  * 一律读传播器给出的实际等级比对。
  *
- * <p>加载链与模拟链是两条独立的传播链，须各推一遍（玩家票在 26.2 拆为 player_loading 与
+ * <p>加载链与模拟链是两条独立的传播链，须各推一遍（玩家票自 1.21.8 起拆为 player_loading 与
  * player_simulation，同一区块上两条链的源头可能不同）。
  *
  * <p>结果记录源头坐标相对本区块的偏移而非距离：客户端要显示 {@code @x,z}，且偏移量很小
@@ -282,9 +282,9 @@ public final class TicketSources {
 	/**
 	 * 票类型 → 协议序号。
 	 *
-	 * 认的是注册表里的名字，而非 {@code equals}：{@code TicketType} 是 record，相等性只看
-	 * (timeout, flags) 两个字段，而 {@code spawn_search} 与 {@code player_loading} 这两项取值完全相同
-	 * （都是 0 / 2），用 equals 会把前者认成后者。名字才是唯一的。
+	 * 认的是注册表里的名字，而非 {@code equals}：{@code TicketType} 是 record，相等性只看字段值，
+	 * 而不同票的字段值可能完全相同（如 1.21.8 的 {@code start} 与 {@code dragon}），用 equals 会把
+	 * 它们认成同一张。名字才是唯一的。
 	 */
 	private static int computeIndexOf(TicketType type) {
 		String path = Ids.path(BuiltInRegistries.TICKET_TYPE, type);
@@ -293,8 +293,6 @@ public final class TicketSources {
 		}
 		return switch (path) {
 			case "player_loading" -> PLAYER_LOADING;
-			// 1.21.4 及以前玩家票未拆分（该区间票来源已降级，此处仅保底）
-			case "player" -> PLAYER_LOADING;
 			case "player_simulation" -> PLAYER_SIMULATION;
 			case "forced" -> FORCED;
 			case "portal" -> PORTAL;
@@ -339,7 +337,7 @@ public final class TicketSources {
 	 * 该编码是否指向本区块上的票，即本区块是某张票的中心。
 	 *
 	 * <p>编码只有两处产出：持票区块（偏移恒为 0）与扩散覆盖区（偏移恒非 0），故「有来源且偏移为 0」
-	 * 即票就在本区块上。player_loading 除外：它逐区块铺、视距内每格偏移都是 0，没有中心可言 ——
+	 * 即票就在本区块上。player_loading 除外：它逐区块铺、视距内每格偏移都是 0，没有中心可言——
 	 * 玩家位置由模拟链上的 player_simulation 代表。无来源与存疑编码不会命中。
 	 *
 	 * <p>客户端画中心蓝框、显示「…中心」，以及服务端把中心补进快照，都以此为准。

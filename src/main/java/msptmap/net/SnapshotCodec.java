@@ -34,13 +34,7 @@ public final class SnapshotCodec {
 			int loadTicket, int simTicket) {
 		/** 合计：各类耗时之和，不计方块更新（同 ChunkTiming.totalNanos）。除以窗口 tick 数即 ms/tick，故不单独传输。 */
 		public long totalNanos() {
-			long total = 0L;
-			for (int i = 0; i < TickCategory.COUNT; i++) {
-				if (i != TickCategory.NEIGHBOR_UPDATE.ordinal()) {
-					total += nanos[i];
-				}
-			}
-			return total;
+			return TickCategory.totalNanos(nanos);
 		}
 	}
 
@@ -56,7 +50,7 @@ public final class SnapshotCodec {
 
 	public static final int[] ZERO_COUNTS = new int[TickCategory.COUNT];
 
-	/** 单个区块编码后的最小字节数（坐标为小 varint、七组计数为 0 时约 21 字节，取 20 留余量）。 */
+	/** 单个区块编码后的最小字节数：坐标为小 varint、七组计数为 0 时约 21 字节，取 20 作保守下限。 */
 	private static final int MIN_CHUNK_BYTES = 20;
 
 	/** 单个维度编码后的最小字节数（名称长度前缀 1 + 名称 1 + 区块个数 1）。 */

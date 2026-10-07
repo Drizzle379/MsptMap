@@ -76,15 +76,12 @@ public final class ScanRing {
 	/** 把圈画在按钮边框上：先铺整圈暗轨道，再覆盖已走过的部分。 */
 	//? if >=26.1 {
 	public static void draw(GuiGraphicsExtractor graphics, float fraction, int x, int y, int size) {
-		fillRing(graphics, 1f, x, y, size, TRACK_COLOR);
-		fillRing(graphics, fraction, x, y, size, PROGRESS_COLOR);
-	}
 	//?} else {
 	/*public static void draw(GuiGraphics graphics, float fraction, int x, int y, int size) {
+	*///?}
 		fillRing(graphics, 1f, x, y, size, TRACK_COLOR);
 		fillRing(graphics, fraction, x, y, size, PROGRESS_COLOR);
 	}
-	*///?}
 
 	/**
 	 * 逐条边填充；不走 {@link #segments}（每帧省下列表与 int[] 的分配），几何算式与之共用。

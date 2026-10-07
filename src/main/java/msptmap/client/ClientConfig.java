@@ -28,7 +28,7 @@ public final class ClientConfig {
 	public static final int MIN_SECONDS = 1;
 	public static final int MAX_SECONDS = MsptSampler.MAX_SECONDS;
 
-	/** 红阈值与透明度的合法区间。滑块与 setProperty 都按它走。 */
+	/** 红阈值与透明度的合法区间；滑块与 {@link #clamp()} 都按它夹取。 */
 	public static final double MIN_RED_AT = 0.05;
 	public static final double MAX_RED_AT = 5.0;
 	public static final double MIN_FILL_ALPHA = 0.05;
@@ -58,7 +58,7 @@ public final class ClientConfig {
 	/** 地图上那框扫描总览是否展开；由折叠钮翻转，跨次记忆（见 {@link ScanSummary}）。 */
 	public static boolean summaryExpanded;
 
-	/** 悬停详情中四条单行信息各自的显示开关。 */
+	/** 悬停详情中坐标、等级与合计三行各自的显示开关；实体单列（见下）。 */
 	public static boolean tooltipCoords;
 	public static boolean tooltipLevels;
 	public static boolean tooltipTotal;
@@ -76,7 +76,7 @@ public final class ClientConfig {
 	/** 各类名称是否显示为二字母缩写（详情与设置界面共用；两个语言下相同）。 */
 	public static boolean tooltipAbbreviate;
 
-	/** 各类明细行的 mspt 单位是否显示；合计行的单位固定显示，不受它管。 */
+	/** 各类明细行的 mspt 单位是否显示；合计行的单位固定显示，不受此开关影响。 */
 	public static boolean tooltipMsptUnit;
 
 	/** 各类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
@@ -121,7 +121,7 @@ public final class ClientConfig {
 
 	/** 实际读盘。带参数是为了离线测试能喂入临时文件。 */
 	static void load(Path file) {
-		// 先回默认值再覆盖：缺失的键用默认值，坏值也不会残留半个旧状态
+		// 先回默认值再覆盖：缺失的键用默认值，坏值也不会残留部分旧状态
 		resetToDefaults();
 		if (!Files.exists(file)) {
 			return;
@@ -194,7 +194,7 @@ public final class ClientConfig {
 		return tooltipCategories[category.ordinal()];
 	}
 
-	/** 悬停详情是否一行都不显示 —— 全关时整个面板不画，不留空框。 */
+	/** 悬停详情是否一行都不显示——全关时整个面板不画，不留空框。 */
 	public static boolean anyTooltipLine() {
 		if (tooltipCoords || tooltipLevels || tooltipTotal || tooltipEntities) {
 			return true;
@@ -255,7 +255,7 @@ public final class ClientConfig {
 
 	private static boolean readBoolean(Properties properties, String key, boolean fallback) {
 		String value = properties.getProperty(key);
-		// 只认这两个词：Boolean.parseBoolean 会把任意文本当作 false，等于静默改写设置
+		// 只认这两个词：Boolean.parseBoolean 会把任意文本当作 false，相当于静默改写设置
 		if ("true".equalsIgnoreCase(value)) {
 			return true;
 		}

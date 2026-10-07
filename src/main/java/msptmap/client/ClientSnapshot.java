@@ -5,6 +5,7 @@ import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketSources;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,28 +31,57 @@ public final class ClientSnapshot {
 	 * {@link msptmap.sampler.TicketSources}），供悬停详情写出「 · 玩家加载中心」一类的后缀。
 	 */
 	public record Chunk(int x1, int z1, int x2, int z2, float mspt, int loadLevel, int computeLevel, int entities,
-		int loadTicket, int simTicket, boolean timed, long[] nanos, int[] counts) {
+		int loadTicket, int simTicket, boolean timed, long[] nanos) {
 	}
 
-	/** 最重榜的容量（「卡顿区块TOP3」的 3）。 */
-	private static final int TOP_COUNT = 3;
+	/** 最重榜的容量（「卡顿区块 TOP5」的 5）。 */
+	private static final int TOP_COUNT = 5;
 
 	/** 最重榜上的一格：区块（区块坐标）及其总耗时。跨维度排名，故记住所属维度。 */
 	public record Heavy(long totalNanos, int chunkX, int chunkZ, String dimension) {
 	}
 
 	/**
+	 * 一个加载源：票种序号 + 中心区块坐标 + 所属维度；与蓝框、「加载源」计数同源（见 {@link #accept}），
+	 * 每区块至多一个（两条链都命中时取加载链），坐标即中心区块自身（{@link TicketSources#isCenter}）。
+	 */
+	public record Source(int type, int chunkX, int chunkZ, String dimension) {
+	}
+
+	/**
 	 * 扫描总览用的合计：三个维度一并累加。
 	 *
-	 * <p>{@code sources} 与蓝框同源（见 {@link TicketSources#isCenter}），即蓝框数；
-	 * {@code sourcesByType} 把前者按票种拆开（下标 = 票类型序号），各项之和恒等于前者。
+	 * <p>{@code sourceList} 是全部加载源（票种 + 维度 + 坐标），与蓝框同源（见
+	 * {@link TicketSources#isCenter}），已按显示顺序排好（见 {@link #SOURCE_ORDER}）；
 	 * {@code heaviest} 按总耗时降序，至多 {@link #TOP_COUNT} 个。
 	 *
 	 * <p>{@code categoryNanos} 与 {@code totalNanos} 的口径同
 	 * {@link SnapshotCodec.ChunkData#totalNanos}：七个类别各自累加，合计不计方块更新。
 	 */
-	public record Totals(int chunks, int timed, int entities, int sources, int[] sourcesByType,
+	public record Totals(int chunks, int timed, int entities, List<Source> sourceList,
 			List<Heavy> heaviest, long totalNanos, long[] categoryNanos, int windowTicks) {
+	}
+
+	/**
+	 * 加载源的显示顺序：票种按 {@link TicketSources#priority}（越具体越前），同票种按维度
+	 * （主世界 / 下界 / 末地在前，其余按 ID）、区块 x、z；收快照时一次排定（遍历顺序不稳定）。
+	 */
+	private static final Comparator<Source> SOURCE_ORDER =
+			Comparator.comparingInt((Source source) -> TicketSources.priority(source.type()))
+					.thenComparingInt(Source::type)
+					.thenComparingInt(source -> dimensionRank(source.dimension()))
+					.thenComparing(Source::dimension)
+					.thenComparingInt(Source::chunkX)
+					.thenComparingInt(Source::chunkZ);
+
+	/** 维度排序档次：三个原版维度按主世界 / 下界 / 末地的习惯序排在前，其余维度按 ID 字典序排在其后。 */
+	private static int dimensionRank(String dimension) {
+		return switch (dimension) {
+			case "minecraft:overworld" -> 0;
+			case "minecraft:the_nether" -> 1;
+			case "minecraft:the_end" -> 2;
+			default -> 3;
+		};
 	}
 
 	private static final Map<String, Chunk[]> byDimension = new HashMap<>();
@@ -87,8 +117,7 @@ public final class ClientSnapshot {
 		int chunkCount = 0;
 		int timedCount = 0;
 		int entityCount = 0;
-		int sourceCount = 0;
-		int[] sourcesByType = new int[TicketSources.UNRECOGNIZED + 1];
+		List<Source> sourceList = new ArrayList<>();
 		long totalNanos = 0L;
 		long[] categoryNanos = new long[TickCategory.COUNT];
 		List<Heavy> heaviest = new ArrayList<>(TOP_COUNT);
@@ -116,8 +145,7 @@ public final class ClientSnapshot {
 						chunk.loadTicket(),
 						chunk.simTicket(),
 						timedHere,
-						chunk.nanos(),
-						chunk.counts());
+						chunk.nanos());
 				chunkCount++;
 				if (timedHere) {
 					timedCount++;
@@ -128,19 +156,20 @@ public final class ClientSnapshot {
 				for (int c = 0; c < TickCategory.COUNT; c++) {
 					categoryNanos[c] += nanos[c];
 				}
-				// 加载源计数与蓝框同源（见 TicketSources.isCenter）：每区块最多记一格，两条链都
-				// 命中时加载链优先，使细分行之和恒等于 sourceCount
+				// 加载源与蓝框同源（见 TicketSources.isCenter）：每区块最多记一个，两条链都
+				// 命中时加载链优先
 				boolean loadCenter = TicketSources.isCenter(chunk.loadTicket());
 				if (loadCenter || TicketSources.isCenter(chunk.simTicket())) {
-					sourceCount++;
-					sourcesByType[TicketSources.type(loadCenter ? chunk.loadTicket() : chunk.simTicket())]++;
+					int code = loadCenter ? chunk.loadTicket() : chunk.simTicket();
+					sourceList.add(new Source(TicketSources.type(code), chunk.x(), chunk.z(), dimensionId));
 				}
 				insertHeaviest(heaviest, total, chunk.x(), chunk.z(), dimensionId);
 			}
 			byDimension.put(dimensionId, converted);
 			heaviestByDimension.put(dimensionId, heaviestHere);
 		}
-		totals = new Totals(chunkCount, timedCount, entityCount, sourceCount, sourcesByType, heaviest,
+		sourceList.sort(SOURCE_ORDER);
+		totals = new Totals(chunkCount, timedCount, entityCount, sourceList, heaviest,
 				totalNanos, categoryNanos, window);
 	}
 

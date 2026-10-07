@@ -22,8 +22,8 @@ import org.slf4j.LoggerFactory;
 /**
  * 模组主入口，服务端与客户端都会执行。
  *
- * <p>注册四项：服务端 tick 结束时调用采样器、{@code /msptmap} 命令、网络包与扫描请求接收器，
- * 以及装了地毯时把权限交给地毯规则。
+ * <p>注册五项：服务端 tick 结束时调用采样器、服务器停止时复位采样状态、{@code /msptmap} 命令、
+ * 网络包与扫描请求接收器，以及装了地毯时把权限交给地毯规则。
  */
 public class MsptMapMod implements ModInitializer {
 	public static final String MOD_ID = "msptmap";
@@ -81,7 +81,7 @@ public class MsptMapMod implements ModInitializer {
 	/** 收扫描请求：校魔数、查权限、开窗口。结果由结果包回发，不在这里。 */
 	private static void handleScanRequest(ScanRequestPayload payload, ServerPlayer player) {
 		if (payload.protocol() == ScanRequestPayload.MISMATCH) {
-			// 包体读不出来：无从知道对面要什么，只能不作声
+			// 包体读不出来：无从知道对面要什么，故不回复
 			LOGGER.warn("玩家 {} 的 MsptMap 请求包解析不了，已忽略", playerName(player));
 			return;
 		}

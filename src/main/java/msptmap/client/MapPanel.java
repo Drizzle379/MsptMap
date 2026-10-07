@@ -55,6 +55,11 @@ public final class MapPanel {
 		return (mouseY - y - PADDING) / lineHeight;
 	}
 
+	/** 点是否落在 ({@code x}, {@code y}) 起、{@code size} 尺寸的框内（悬停让位面板的判据）。 */
+	public static boolean contains(int mouseX, int mouseY, int x, int y, int[] size) {
+		return mouseX >= x && mouseX < x + size[0] && mouseY >= y && mouseY < y + size[1];
+	}
+
 	/**
 	 * 以 ({@code x}, {@code y}) 为左上角画面板；{@code size} 由 {@link #size} 预先算出。
 	 * {@code highlightRow} 为要高亮底的行号（{@link #rowAt} 的结果），-1 表示不高亮任何行。

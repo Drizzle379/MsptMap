@@ -11,10 +11,10 @@ import net.minecraft.resources.Identifier;
 *///?}
 
 /**
- * 资源位置工具：贴图 / 包 ID 的构造与维度 ID 的取用。
+ * 资源位置工具：贴图 / 包 ID 的构造与维度 ID、注册表键路径的取用。
  *
  * <p>1.21.11 起 {@code ResourceLocation} 更名为 {@code Identifier}，{@code ResourceKey.location()}
- * 更名为 {@code identifier()}；调用点分散在客户端与网络层，故统一由本类收口。
+ * 更名为 {@code identifier()}；调用点分散在服务端采样、客户端与网络层，故统一由本类收口。
  */
 public final class Ids {
 	private Ids() {

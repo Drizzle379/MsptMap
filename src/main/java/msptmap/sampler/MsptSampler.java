@@ -43,7 +43,7 @@ public final class MsptSampler {
 	public static final int MAX_SECONDS = 60;
 
 	/**
-	 * 一次扫描所有维度合计的字节预算：原版自定义包上限 1MB，此处留一倍余量（单区块编码后约
+	 * 一次扫描所有维度合计的字节预算：原版自定义包上限 1MB，此处留约三成余量（单区块编码后约
 	 * 14~28 字节）。
 	 */
 	public static final int MAX_SNAPSHOT_BYTES = 700 * 1024;
@@ -97,8 +97,8 @@ public final class MsptSampler {
 	/**
 	 * 上一 tick 收尾、本 tick 才发的完成包（见 {@link #finish()}）；没有待发时为 null。
 	 *
-	 * <p>压后一 tick 是为了让客户端有整整一 tick 把进度圈画满：窗口最后一刻直接发送的话，圈会从
-	 * 90% 跳到消失，观感如同未转满即中断。
+	 * <p>压后一 tick 是为了让客户端有整整一 tick 把进度圈画满：窗口最后一刻直接发送的话，圈会停在
+	 * 差两刻未满处直接消失，观感如同未转满即中断。
 	 */
 	private static ServerPlayer pendingPlayer;
 	private static ScanResultPayload pendingDone;
@@ -154,7 +154,7 @@ public final class MsptSampler {
 			return StartResult.COOLDOWN;
 		}
 		// 服务端当前未运行：窗口数不到刻，控制台（无发起人）拿不到结果，直接拒绝；玩家请求照旧
-		// 开窗等待 —— 单人档在地图上点按钮时世界本就暂停，关掉地图即会开始数刻
+		// 开窗等待——单人档在地图上点按钮时世界本就暂停，关掉地图即会开始数刻
 		if (stalled && requester == null) {
 			return StartResult.STALLED;
 		}

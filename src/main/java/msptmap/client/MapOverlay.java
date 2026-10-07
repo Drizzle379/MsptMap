@@ -42,7 +42,7 @@ public final class MapOverlay {
 	/**
 	 * 绘制一个维度的热力图。参数均为 Xaero 当前帧的现成对象（见 {@code GuiMapMixin} 的注入点）。
 	 *
-	 * @param dimension 地图当前显示的维度，非玩家所在维度 —— 切到地狱地图即绘制地狱的数据
+	 * @param dimension 地图当前显示的维度，非玩家所在维度——切到地狱地图即绘制地狱的数据
 	 */
 	public static void draw(Matrix4f matrix, VertexConsumer buffer, int flooredCameraX, int flooredCameraZ,
 			String dimension) {

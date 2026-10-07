@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
@@ -32,16 +33,16 @@ abstract class ConfigScreenBase extends Screen {
 	/** 一行的高度（控件 20 + 1 像素间隔）。 */
 	protected static final int ROW = 21;
 	/** 顶部标题的高度。 */
-	protected static final int TITLE_HEIGHT = 22;
+	private static final int TITLE_HEIGHT = 22;
 	/** 最后一排控件与底部按钮的间隔。 */
-	protected static final int BUTTON_GAP = 12;
+	private static final int BUTTON_GAP = 12;
 	/** 列与列之间的间隔。 */
-	protected static final int COLUMN_GAP = 24;
+	private static final int COLUMN_GAP = 24;
 	/** 面板与屏幕边缘的最小距离。 */
 	protected static final int MARGIN = 20;
 	/** 底部按钮的标准宽度。 */
 	protected static final int BUTTON_WIDTH = 100;
-	protected static final int TEXT_COLOR = 0xFFFFFFFF;
+	private static final int TEXT_COLOR = 0xFFFFFFFF;
 
 	/** 上一级界面；null = 无上一级，关闭后直接回游戏（仅主界面会出现）。 */
 	protected final Screen parent;
@@ -77,8 +78,12 @@ abstract class ConfigScreenBase extends Screen {
 	/** 子类给出本页的列；宽度须先行测量，摆放时由本类决定整体居中的位置。 */
 	protected abstract List<Column> planColumns();
 
-	/** 子类摆放底部按钮：centerX 为屏幕水平中心，y 为按钮顶。 */
-	protected abstract void placeBottomButtons(int centerX, int y);
+	/** 摆放底部按钮：centerX 为屏幕水平中心，y 为按钮顶。默认为居中的「返回」钮。 */
+	protected void placeBottomButtons(int centerX, int y) {
+		addRenderableWidget(Button.builder(Component.translatable("msptmap.config.back"), button -> onClose())
+				.bounds(centerX - BUTTON_WIDTH / 2, y, BUTTON_WIDTH, WIDGET_HEIGHT)
+				.build());
+	}
 
 	@Override
 	protected void init() {
@@ -95,7 +100,7 @@ abstract class ConfigScreenBase extends Screen {
 		int panelX = Math.max(MARGIN, (width - panelWidth) / 2);
 
 		int totalHeight = TITLE_HEIGHT + bodyHeight + BUTTON_GAP + WIDGET_HEIGHT;
-		// 矮窗口（GUI 高度常见下限为 240）从 18 起，宁可下溢也不把标题顶出屏幕
+		// 矮窗口（GUI 高度常见下限为 240）从 18 起，宁可面板探出屏幕底部，也不把标题顶出屏幕
 		titleY = Math.max(18, (height - totalHeight) / 2);
 		int bodyTop = titleY + TITLE_HEIGHT;
 
@@ -107,13 +112,13 @@ abstract class ConfigScreenBase extends Screen {
 		placeBottomButtons(width / 2, bodyTop + bodyHeight + BUTTON_GAP);
 	}
 
-	/** 增加一条待绘制的文字。 */
-	protected void addLabel(Component text, int x, int y) {
-		labels.add(new Label(text, x, y));
+	/** 增加一条行标签：y 为行顶，文字下沉 6 px，与同排控件内的文字对齐。 */
+	protected void addRowLabel(Component text, int x, int y) {
+		labels.add(new Label(text, x, y + 6));
 	}
 
 	/** 计划占的总高度。 */
-	protected static int planHeight(List<Row> rows) {
+	private static int planHeight(List<Row> rows) {
 		int height = 0;
 		for (Row row : rows) {
 			height += row.height();
@@ -121,8 +126,7 @@ abstract class ConfigScreenBase extends Screen {
 		return height;
 	}
 
-	/** 按计划逐行摆放：每行在累计到的 y 上执行摆放动作，再累加它的高度。 */
-	protected static void applyPlan(List<Row> rows, int x, int top) {
+	private static void applyPlan(List<Row> rows, int x, int top) {
 		int y = top;
 		for (Row row : rows) {
 			row.place().at(x, y);
@@ -172,15 +176,6 @@ abstract class ConfigScreenBase extends Screen {
 	*///?}
 
 	/**
-	 * 窗口改大小走这条路径：{@code init(int, int)} 只在首次调用 {@link #init()}，之后都调这里。
-	 * 不接则窗口拉大后控件留在原处、旁边的文字却按新布局走，整块就散了。
-	 */
-	@Override
-	protected void repositionElements() {
-		rebuildWidgets();
-	}
-
-	/**
 	 * 切到目标界面。26.2 起为 {@code Gui.setScreen}，此前为 {@code Minecraft.setScreen}——
 	 * 各版本的原版界面均走这条路径。
 	 *
@@ -204,6 +199,12 @@ abstract class ConfigScreenBase extends Screen {
 	/** 返回上一级。 */
 	protected void goBack() {
 		showScreen(parent);
+	}
+
+	/** 「返回」与 Esc 同效：回上一级（不保存；保存集中在主界面退出时）。 */
+	@Override
+	public void onClose() {
+		goBack();
 	}
 
 	/** 不带悬停说明的勾选框（子页的开关：勾的是什么看标签即可）。 */
@@ -234,7 +235,7 @@ abstract class ConfigScreenBase extends Screen {
 	}
 
 	//? if <1.20.3 {
-	/*// 1.20.2 及以前：Checkbox 没有值变化回调，覆写 onPress 上报新值 —— 由 super 先翻转选择，
+	/*// 1.20.2 及以前：Checkbox 没有值变化回调，覆写 onPress 上报新值——由 super 先翻转选择，
 	// 再读 selected()（此时已是新值）
 	private static class MsptCheckbox extends Checkbox {
 		private final Consumer<Boolean> apply;

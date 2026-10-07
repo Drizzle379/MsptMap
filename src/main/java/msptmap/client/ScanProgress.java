@@ -38,7 +38,7 @@ public final class ScanProgress {
 		}
 	}
 
-	/** 收到 DONE / DENIED / BUSY：本次等待结束，圈收掉。 */
+	/** 收到 DONE / DENIED / BUSY / COOLDOWN 或连接断开：本次等待结束，圈收掉。 */
 	public static void stop() {
 		active = false;
 		totalTicks = 0;

@@ -5,8 +5,8 @@ import java.util.Locale;
 /**
  * 小数显示的唯一出口：固定 {@link Locale#ROOT}，界面与日志共用同一套精度。
  *
- * <p>若不收口，默认 Locale（德语、法语等以逗号作小数点）与散落在悬停详情、设置界面、控制台三处的
- * 精度口径都会各自漂移，改一处必漏其余。
+ * <p>若不收口，默认 Locale（德语、法语等以逗号作小数点）与散落在悬停详情、总览、设置界面与
+ * 控制台的精度口径都会各自漂移，改一处必漏其余。
  */
 public final class Decimals {
 	private Decimals() {

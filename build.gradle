@@ -31,8 +31,8 @@ dependencies {
 
 	// 声明方式随模式：remap 模式下 mod 依赖须走 Loom 的 mod* 配置，Loom 才会把 jar 重映射到当前映射
 	// 空间（fabric-api 的类引用 MC 类型，不重映射就对不上）；未混淆模式无重映射可言，用普通配置。
-	// 两者都进运行时 classpath —— loader / fabric-api 都不可用 compileOnly：那只在编译期可见，
-	// runServer/runClient 的运行时 classpath 上没有它，Fabric Loader 会报 HARD_DEP_NO_CANDIDATE。
+	// 两者都进运行时 classpath：loader / fabric-api 都不能用 compileOnly，那只在编译期可见，
+	// 启动时会报 HARD_DEP_NO_CANDIDATE。
 	def core = obfuscated ? 'modImplementation' : 'implementation'
 	dependencies.add(core, "net.fabricmc:fabric-loader:${project.loader_version}")
 	// 服务端与客户端各自会装 Fabric API，故不打包进 jar（打包只有 include() 会做）。
@@ -66,7 +66,7 @@ base.archivesName = "${project.archives_base_name}-Fabric"
 version = "v${project.mod_version}+${project.jar_mc}"
 
 // fabric.mod.json 里的占位符由这里填，让该文件与具体版本脱钩：升版本、换 MC 版本只需改
-// gradle.properties，不会出现两边不一致。filteringCharset 仍显式写 UTF-8：过滤读取不依赖
+// gradle.properties，不会出现两边不一致。filteringCharset 仍显式写 UTF-8：不指定会用到
 // 平台默认编码。
 processResources {
 	filteringCharset = "UTF-8"

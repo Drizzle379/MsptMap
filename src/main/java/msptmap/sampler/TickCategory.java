@@ -27,4 +27,15 @@ public enum TickCategory {
 	 * 路径上会积成数万次克隆。
 	 */
 	public static final int COUNT = values().length;
+
+	/** 合计：各类耗时之和（纳秒），不计方块更新（见 {@link #NEIGHBOR_UPDATE}）。 */
+	public static long totalNanos(long[] nanos) {
+		long total = 0L;
+		for (int i = 0; i < COUNT; i++) {
+			if (i != NEIGHBOR_UPDATE.ordinal()) {
+				total += nanos[i];
+			}
+		}
+		return total;
+	}
 }

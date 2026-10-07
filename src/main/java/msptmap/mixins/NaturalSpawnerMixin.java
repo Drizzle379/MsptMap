@@ -41,6 +41,9 @@ public abstract class NaturalSpawnerMixin {
 	@Inject(method = "spawnForChunk", at = @At("RETURN"))
 	private static void msptmapSpawnEnd(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState state,
 			List<MobCategory> spawningCategories, CallbackInfo ci) {
+		if (msptmapSpawnStart == 0L) {
+			return;
+		}
 		MsptSampler.end(TickCategory.SPAWN, level, ChunkKeys.pack(chunk.getPos()), msptmapSpawnStart);
 	}
 	//?} else {
@@ -53,6 +56,9 @@ public abstract class NaturalSpawnerMixin {
 	@Inject(method = "spawnForChunk", at = @At("RETURN"))
 	private static void msptmapSpawnEnd(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState state,
 			boolean spawnFriendlies, boolean spawnMonsters, boolean rareSpawn, CallbackInfo ci) {
+		if (msptmapSpawnStart == 0L) {
+			return;
+		}
 		MsptSampler.end(TickCategory.SPAWN, level, ChunkKeys.pack(chunk.getPos()), msptmapSpawnStart);
 	}
 	*///?}

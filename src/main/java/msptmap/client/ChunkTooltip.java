@@ -35,14 +35,14 @@ public final class ChunkTooltip {
 	private static final int MARGIN = 2;
 	/** 附注文字色（RGB）：正文为纯白，附注色暗一档。 */
 	private static final int NOTE_COLOR = 0xB0B0B0;
-	/** 二级条目（明细、来源细分、TOP3 数据行）的缩进。 */
+	/** 二级条目（明细、加载源、TOP5 数据行）的缩进。 */
 	private static final String INDENT = "  ";
 
 	/**
 	 * 存疑说明行。{@link #lines} 只在确有区块对不上时把它追加在末尾；斜体与附注色内嵌在样式里，
 	 * {@link #draw} 统一绘制。
 	 */
-	static final Component NOTE_DOUBTFUL = Component.translatable("msptmap.tooltip.doubtful")
+	private static final Component NOTE_DOUBTFUL = Component.translatable("msptmap.tooltip.doubtful")
 			.withStyle(style -> style.withItalic(true).withColor(TextColor.fromRgb(NOTE_COLOR)));
 
 	/**
@@ -148,13 +148,13 @@ public final class ChunkTooltip {
 		return lines;
 	}
 
-	/** 「合计」行：单位固定显示，不受「显示单位」开关管。包内可见：扫描总览的「总卡顿」行也用它。 */
+	/** 「合计」行：单位固定显示，不受「显示单位」开关影响。包内可见：扫描总览的「总卡顿」行也用它。 */
 	static Component msptLine(Component label, String mspt) {
 		return Component.translatable("msptmap.tooltip.mspt_line", label, mspt);
 	}
 
-	/** 各类明细行：单位是否显示由「显示单位」开关决定。包内可见：扫描总览的明细行也用它。 */
-	static MutableComponent valueLine(Component label, String mspt) {
+	/** 各类明细行：单位是否显示由「显示单位」开关决定。 */
+	private static MutableComponent valueLine(Component label, String mspt) {
 		return Component.translatable(ClientConfig.tooltipMsptUnit
 				? "msptmap.tooltip.mspt_line" : "msptmap.tooltip.plain_line", label, mspt);
 	}
@@ -174,7 +174,7 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 二级条目：缩进两格、附注灰。悬停详情的七类明细与扫描总览的细分、明细、TOP3 行共用
+	 * 二级条目：缩进两格、附注灰。悬停详情的七类明细与扫描总览的明细、加载源、TOP5 行共用
 	 * （包内可见）。
 	 */
 	static Component secondary(Component content) {
@@ -189,7 +189,7 @@ public final class ChunkTooltip {
 
 	/**
 	 * 等级行后半段：票名——「玩家加载」「强制加载 @x,z」「玩家模拟中心」；存疑时是「未知 *」。
-	 * 未勾选该开关、或该链没有来源（理论上不应发生）时返回空组件。
+	 * 未勾选该开关、或该链没有来源（如无模拟票的弱加载区块）时返回空组件。
 	 */
 	private static Component ticket(int code, boolean enabled, int chunkX, int chunkZ) {
 		if (!enabled) {
@@ -204,7 +204,7 @@ public final class ChunkTooltip {
 		}
 		Component name = Component.translatable(ticketName(type));
 		if (type == TicketSources.PLAYER_LOADING) {
-			// 26.2 的 player_loading 是逐区块铺的：视距内每格一张、等级相同，故此链上不存在「中心」
+			// player_loading 是逐区块铺的：视距内每格一张、等级相同，故此链上不存在「中心」
 			// 与距离（每格算出来都是自己）。只写票名，不编造一个恒为 0 的距离。其余票种（forced /
 			// portal / ender_pearl 等）是稀疏的，中心与距离才有意义。
 			return Component.translatable("msptmap.tooltip.ticket_name", name);
@@ -223,7 +223,7 @@ public final class ChunkTooltip {
 		return enabled && TicketSources.doubtful(code);
 	}
 
-	/** 加载票名称的语言键，与类型一一对应；新增票种时此处与语言文件需同步更新。包内可见：扫描总览的细分行也用它。 */
+	/** 加载票名称的语言键，与类型一一对应；新增票种时此处与语言文件需同步更新。包内可见：扫描总览的加载源行也用它。 */
 	static String ticketName(int type) {
 		return switch (type) {
 			case TicketSources.PLAYER_LOADING -> "msptmap.ticket.player_loading";

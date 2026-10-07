@@ -123,7 +123,7 @@ public class MsptMapClient implements ClientModInitializer {
 				MsptMapMod.LOGGER.info("收到 冷却：距上次扫描结束不足 {} 秒", MsptSampler.COOLDOWN_SECONDS);
 			}
 		}
-		// 收尾的几种状态（完成 / 被拒 / 忙碌 / 冷却）在聊天栏说一句，START 与 PROGRESS 不说话
+		// 收尾的几种状态（完成 / 被拒 / 忙碌 / 冷却）在聊天栏提示；START 与 PROGRESS 不提示
 		say(statusMessage(payload.status()));
 		// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
 		// START 时还不知道跑不跑得完，都不提示
@@ -219,7 +219,7 @@ public class MsptMapClient implements ClientModInitializer {
 	/**
 	 * 地图上的 ✕ 按钮：丢弃当前结果，地图立即恢复干净状态（纯客户端操作，不发包）。
 	 *
-	 * 只写日志：聊天栏只留状态话，按了没反应（本来就是空的）也能在日志里查出来。
+	 * 地图上立即可见，聊天栏不必再说；按了没反应（本来就是空的）也能在日志里查到。
 	 */
 	public static void onClearPress() {
 		MsptMapMod.LOGGER.info("清屏：丢掉 {} 个维度的热力图", ClientSnapshot.clear());
@@ -229,7 +229,7 @@ public class MsptMapClient implements ClientModInitializer {
 	 * 地图上的折叠钮：展开 / 收起扫描总览。
 	 *
 	 * 立即落盘：这是玩家一次显式选择，不必等到退出游戏（见 {@link ClientConfig#save}）。只翻开关，
-	 * 不写聊天栏 —— 总览的显隐本身就是回执。
+	 * 不写聊天栏——总览的显隐本身就是回执。
 	 */
 	public static void onSummaryToggle() {
 		ClientConfig.summaryExpanded = !ClientConfig.summaryExpanded;

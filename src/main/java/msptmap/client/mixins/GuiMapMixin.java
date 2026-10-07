@@ -13,6 +13,7 @@ import msptmap.client.MsptMapClient;
 import msptmap.client.ScanProgress;
 import msptmap.client.ScanRing;
 import msptmap.client.ScanSummary;
+import msptmap.client.SourceListPanel;
 import net.minecraft.client.Minecraft;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -43,7 +44,7 @@ import xaero.map.world.MapWorld;
 
 /**
  * Xaero 世界地图上的挂点：四个按钮（扫描 / 清屏 / 设置 / 总览折叠）、每帧一次的热力图、悬停详情、
- * 扫描进度圈与扫描总览。
+ * 扫描进度圈、扫描总览与右侧完整源列表。
  *
  * <p>目标类及其引用的类型全在 Xaero 中，故该 mixin 单独放在客户端配置
  * （msptmap.client.mixins.json，required:false）：未装世界地图时不至于起不来，最多是没有热力图。
@@ -69,7 +70,7 @@ public abstract class GuiMapMixin {
 	private static final int BUTTON_ICON_SIZE = 16;
 
 	/**
-	 * 清屏 / 设置按钮的上沿：间隔取按钮边长，框与框严丝合缝 —— 同 Xaero 的按钮列（20×20、相隔 20），
+	 * 清屏 / 设置按钮的上沿：间隔取按钮边长，框与框严丝合缝——同 Xaero 的按钮列（20×20、相隔 20），
 	 * 两钮之间没有既不算上也不算下的死区。
 	 */
 	@Unique
@@ -78,9 +79,9 @@ public abstract class GuiMapMixin {
 	private static final int CONFIG_BUTTON_Y = CLEAR_BUTTON_Y + SCAN_BUTTON_SIZE;
 
 	/**
-	 * 总览折叠钮：面积为扫描按钮的 1/4，贴在列上方空位的右下角 —— 右缘接列右缘。钮底不接扫描
-	 * 按钮上沿，而是留 4 px（主按钮图标在钮内单侧的留白），图标与扫描图标的含投影视觉间距由
-	 * 此同三个主按钮图标之间的一致（8 px）。
+	 * 总览折叠钮：面积为扫描按钮的 1/4，贴在列上方空位的右下角，右缘接列右缘。钮底不接扫描
+	 * 按钮上沿，留 4 px（单侧留白的 2 倍），折叠钮图标与扫描图标之间的含投影视觉间距由此同
+	 * 三个主按钮图标之间的一致（8 px）。
 	 */
 	@Unique
 	private static final int FOLD_BUTTON_SIZE = SCAN_BUTTON_SIZE / 2;
@@ -115,7 +116,7 @@ public abstract class GuiMapMixin {
 	 * 折叠钮的两个控件：展开态显示 ▾、收起态显示 ▸，同一位置上只留一个可见。
 	 *
 	 * <p>之所以是两个控件：{@code GuiTexturedButton} 的贴图区域在构造时定死、之后只读，运行中改不了
-	 * （其字段为 protected，本包也够不着），而折叠钮要在界面开着的时候换图标。
+	 * （其字段为 protected，本包访问不到），而折叠钮要在界面开着的时候换图标。
 	 */
 	@Unique
 	private GuiTexturedButton msptmapFoldExpanded;
@@ -123,7 +124,7 @@ public abstract class GuiMapMixin {
 	private GuiTexturedButton msptmapFoldCollapsed;
 
 	/**
-	 * 折叠钮的悬停提示：说的是下一击会做什么。
+	 * 折叠钮的悬停提示：说的是下一次点击会做什么。
 	 *
 	 * <p>两个控件共用同一个 Supplier：Xaero 扫描提示时只比坐标矩形、不看 {@code visible}（见
 	 * {@code xaero.lib.client.gui.ScreenBase#renderTooltips}），隐藏的那个照样会被命中，故文案必须
@@ -176,8 +177,8 @@ public abstract class GuiMapMixin {
 	*///?}
 	private void msptmap$addButton(CallbackInfo ci) {
 		// 左侧空置的一列：齿轮在 (0,0) 的 30×30，Xaero 自己的按钮都在右边一列和底边。
-		// 用 Xaero 的 GuiTexturedButton：无底框、只有图标，悬停时图标上浮 1 px 并在其区域盖一层半透
-		// 明白，无需自行绘制。按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示由其
+		// 用 Xaero 的 GuiTexturedButton：无底框、只有图标，悬停时图标上浮 1 px 并在其区域盖一层
+		// 半透明白，无需自行绘制。按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示由其
 		// ScreenBase 扫描控件绘制，为 Supplier，悬停时每帧调用一次，故用 lambda。
 		// GuiTexturedButton 构造器两代不同：1.21.1 及以前为 11 参，贴图边长由 Xaero 写死为 256
 		// （内部经 GuiGraphics.blit 的 7 参重载绘制，该重载固定按 256×256 采样，给 16×16 的贴图
@@ -201,7 +202,6 @@ public abstract class GuiMapMixin {
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
 				button -> MsptMapClient.onConfigPress((Screen) (Object) this),
 				new Tooltip(Component.translatable("msptmap.button.config")), 256, 256));
-		msptmap$addFoldButtons();
 		//?} else {
 		/*((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,
@@ -220,8 +220,10 @@ public abstract class GuiMapMixin {
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
 				button -> MsptMapClient.onConfigPress((Screen) (Object) this),
 				new Tooltip(Component.translatable("msptmap.button.config"))));
-		msptmap$addFoldButtons();
 		*///?}
+		msptmap$addFoldButtons();
+		// 打开地图时复位右侧完整列表（状态不落盘，见 ScanSummary.resetSourcesPanel）
+		ScanSummary.resetSourcesPanel();
 	}
 
 	/**
@@ -315,7 +317,7 @@ public abstract class GuiMapMixin {
 	@Unique
 	private void msptmap$heatmap(VertexConsumer overlayBuffer, PoseStack matrixStack, int flooredCameraX,
 			int flooredCameraZ, MapDimension currentDim) {
-		// 维度未定时无可绘制内容（也免得下面取 getDimId() 空指针）
+		// 维度未定时无可绘制内容（也避免下面取 getDimId() 空指针）
 		if (currentDim == null) {
 			return;
 		}
@@ -329,7 +331,8 @@ public abstract class GuiMapMixin {
 	 * 在那里绘制的文字会随地图缩放。
 	 *
 	 * <p>读字段而非局部变量：{@code mouseBlockPosX/Z} 本帧最后一次写入在方法很靠前处，到 TAIL 早已
-	 * 定下；Xaero 自身高亮区块用的就是同一个值。压在控件或总览框上时不画（见 {@link ChunkTooltip#overWidget}、{@link ScanSummary#overPanel}）。
+	 * 定下；Xaero 自身高亮区块用的就是同一个值。压在控件、总览框或右侧完整列表上时不画（见
+	 * {@link ChunkTooltip#overWidget}、{@link ScanSummary#overPanel}、{@link SourceListPanel#overPanel}）。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
@@ -356,13 +359,13 @@ public abstract class GuiMapMixin {
 		if (GuiMap.hiddenUI || mapProcessor == null || !mapProcessor.isMapWorldUsable()) {
 			return;
 		}
-		// 鼠标压在控件上时不画：Xaero 自己的提示框同在鼠标处绘制，会重叠
-		// （两侧按钮、底边控件、搜索框、展开的下拉列表都算）
+		// 鼠标压在控件上时不画（判据见 ChunkTooltip.overWidget）
 		if (ChunkTooltip.overWidget(mouseX, mouseY, ((GuiMap) (Object) this).children())) {
 			return;
 		}
-		// 鼠标落在总览框上时也让位：详情绘制在总览之后，重叠处会盖住面板
-		if (ScanSummary.overPanel(mouseX, mouseY, SUMMARY_X, SUMMARY_Y)) {
+		// 鼠标落在总览框或右侧完整列表上时也让位：详情绘制在它们之后，重叠处会盖住面板
+		if (ScanSummary.overPanel(mouseX, mouseY, SUMMARY_X, SUMMARY_Y)
+				|| SourceListPanel.overPanel(mouseX, mouseY, msptmap$sourcesPanelX(), SUMMARY_Y)) {
 			return;
 		}
 		MapDimension dimension = mapProcessor.getMapWorld().getCurrentDimension();
@@ -409,7 +412,7 @@ public abstract class GuiMapMixin {
 	//?} else {
 	/*private void msptmap$scanRing(GuiGraphics graphics) {
 	*///?}
-		// 按「隐藏界面」键时随按钮一起隐藏（和悬停详情一个规矩）
+		// 按「隐藏界面」键时随按钮一起隐藏（与悬停详情一致）
 		if (GuiMap.hiddenUI || !ScanProgress.active()) {
 			return;
 		}
@@ -449,17 +452,26 @@ public abstract class GuiMapMixin {
 	//?} else {
 	/*private void msptmap$summary(GuiGraphics graphics, int mouseX, int mouseY) {
 	*///?}
-		// 按「隐藏界面」键时随按钮一起隐藏（和悬停详情一个规矩）；收起由折叠钮决定，与隐藏界面无关
+		// 按「隐藏界面」键时随按钮一起隐藏（与悬停详情一致）；收起由折叠钮决定，与隐藏界面无关
 		if (GuiMap.hiddenUI || !ClientConfig.summaryExpanded) {
 			return;
 		}
-		// 鼠标坐标用于给悬停的 TOP3 数据行垫高亮底（见 ScanSummary.draw）
+		// 鼠标坐标用于给悬停的可点击行垫高亮底（见 ScanSummary.draw 与 SourceListPanel.draw）
 		ScanSummary.draw(graphics, SUMMARY_X, SUMMARY_Y, mouseX, mouseY);
+		if (ScanSummary.sourcesPanelOpen()) {
+			SourceListPanel.draw(graphics, msptmap$sourcesPanelX(), SUMMARY_Y, mouseX, mouseY);
+		}
+	}
+
+	/** 右侧完整列表的横坐标：紧贴总览右缘（隔 {@link #SUMMARY_GAP}）；纵坐标与总览同用 {@link #SUMMARY_Y}。 */
+	@Unique
+	private static int msptmap$sourcesPanelX() {
+		return SUMMARY_X + ScanSummary.panelSize()[0] + SUMMARY_GAP;
 	}
 
 	/**
-	 * 总览 TOP3 行的点击定位：挂在 mouseClicked 最前，命中即消费——否则 Xaero 会把这次按下当作
-	 * 拖图起点。左键编号按版本：26.3 起为 1、其余（含 26.1.2、26.2、1.21.11 及更早）为 0。
+	 * 总览可点击行（TOP、源行、折叠行）与右侧完整列表的点击：挂在 mouseClicked 最前，命中即消费
+	 * （否则 Xaero 会当作拖图起点）；左键编号：26.3 起为 1、其余（含 26.1.2、26.2）为 0。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "mouseClicked", at = @At("HEAD"), remap = false, cancellable = true)
@@ -491,8 +503,8 @@ public abstract class GuiMapMixin {
 	*///?}
 
 	/**
-	 * 点击的命中判定与定位：命中（左键、总览可见、鼠标正指着一条 TOP3 数据行）则把地图定位到该区块
-	 * 并返回 true，调用处据此消费；坐标由调用处从事件取（GUI 缩放坐标，勿用 Xaero 的 {@code Misc}）。
+	 * 点击的命中判定与定位：命中（左键、总览可见、正指着某可定位行）则把地图定位到该区块并返回
+	 * true；折叠行只开合右侧列表。坐标由调用处从事件取（GUI 缩放坐标，勿用 Xaero 的 {@code Misc}）。
 	 */
 	@Unique
 	private boolean msptmap$summaryClick(boolean leftButton, int mouseX, int mouseY) {
@@ -506,11 +518,20 @@ public abstract class GuiMapMixin {
 		if (ChunkTooltip.overWidget(mouseX, mouseY, ((GuiMap) (Object) this).children())) {
 			return false;
 		}
-		ClientSnapshot.Heavy heavy = ScanSummary.hitTarget(mouseX, mouseY, SUMMARY_X, SUMMARY_Y);
-		if (heavy == null) {
+		// 折叠行：只开合右侧完整列表，不定位
+		if (ScanSummary.hitFold(mouseX, mouseY, SUMMARY_X, SUMMARY_Y)) {
+			ScanSummary.toggleSourcesPanel();
+			return true;
+		}
+		// 先右框后总览：两框位置不重叠，先后不影响结果
+		ScanSummary.Target target = SourceListPanel.hitTarget(mouseX, mouseY, msptmap$sourcesPanelX(), SUMMARY_Y);
+		if (target == null) {
+			target = ScanSummary.hitTarget(mouseX, mouseY, SUMMARY_X, SUMMARY_Y);
+		}
+		if (target == null) {
 			return false;
 		}
-		msptmap$focusChunk(heavy);
+		msptmap$focusChunk(target);
 		return true;
 	}
 
@@ -519,21 +540,21 @@ public abstract class GuiMapMixin {
 	 * 再设相机的动画目标（区块中心）并脱离跟随相机——后两步照抄 Xaero 的「跳转坐标」流程。
 	 */
 	@Unique
-	private void msptmap$focusChunk(ClientSnapshot.Heavy heavy) {
+	private void msptmap$focusChunk(ScanSummary.Target target) {
 		MapWorld mapWorld = mapProcessor.getMapWorld();
-		MapDimension target = msptmap$findDimension(mapWorld, heavy.dimension());
-		if (target == null) {
+		MapDimension found = msptmap$findDimension(mapWorld, target.dimension());
+		if (found == null) {
 			// 该维度的地图从未加载过（玩家没去过）：切不过去，这次点击不响应
 			MsptMapMod.LOGGER.info("定位 {} 区块 ({}, {})：该维度地图未加载，忽略",
-					heavy.dimension(), heavy.chunkX(), heavy.chunkZ());
+					target.dimension(), target.chunkX(), target.chunkZ());
 			return;
 		}
-		ResourceKey<Level> key = target.getDimId();
+		ResourceKey<Level> key = found.getDimId();
 		if (key == Minecraft.getInstance().level.dimension()) {
 			key = null;
 		}
-		MsptMapMod.LOGGER.info("定位 {} 区块 ({}, {})：目标维度 {}", heavy.dimension(),
-				heavy.chunkX(), heavy.chunkZ(), key == null ? "当前（跟随）" : Ids.id(key));
+		MsptMapMod.LOGGER.info("定位 {} 区块 ({}, {})：目标维度 {}", target.dimension(),
+				target.chunkX(), target.chunkZ(), key == null ? "当前（跟随）" : Ids.id(key));
 		mapWorld.setCustomDimensionId(key);
 		mapProcessor.checkForWorldUpdate();
 		if (attachedCamera) {
@@ -541,7 +562,47 @@ public abstract class GuiMapMixin {
 			shouldReinit = true;
 		}
 		// 区块中心：Xaero 的相机目标就是方块坐标
-		cameraDestination = new int[]{heavy.chunkX() * 16 + 8, heavy.chunkZ() * 16 + 8};
+		cameraDestination = new int[]{target.chunkX() * 16 + 8, target.chunkZ() * 16 + 8};
+	}
+
+	/**
+	 * 右侧完整列表的滚轮翻动：同样挂在 mouseScrolled 最前，鼠标在面板上即消费（否则被当作地图
+	 * 缩放）；参数按版本三档（1.20.1 三参、1.20.2 起四参、26.x 起 named），都只取纵向量。
+	 */
+	//? if >=26.1 {
+	@Inject(method = "mouseScrolled", at = @At("HEAD"), remap = false, cancellable = true)
+	private void msptmap$scrollSources(double mouseX, double mouseY, double scrollX, double scrollY,
+			CallbackInfoReturnable<Boolean> cir) {
+		if (msptmap$sourcesScroll(mouseX, mouseY, scrollY)) {
+			cir.setReturnValue(true);
+		}
+	}
+	//?} else if >=1.20.2 {
+	/*@Inject(method = "method_25401", at = @At("HEAD"), remap = false, cancellable = true)
+	private void msptmap$scrollSources(double mouseX, double mouseY, double scrollX, double scrollY,
+			CallbackInfoReturnable<Boolean> cir) {
+		if (msptmap$sourcesScroll(mouseX, mouseY, scrollY)) {
+			cir.setReturnValue(true);
+		}
+	}
+	*///?} else {
+	/*@Inject(method = "method_25401", at = @At("HEAD"), remap = false, cancellable = true)
+	private void msptmap$scrollSources(double mouseX, double mouseY, double scrollY,
+			CallbackInfoReturnable<Boolean> cir) {
+		if (msptmap$sourcesScroll(mouseX, mouseY, scrollY)) {
+			cir.setReturnValue(true);
+		}
+	}
+	*///?}
+
+	/** 滚轮的判定体（与注入点的方法名 / 参数个数无关，三档共用）：在面板上则翻动并返回 true。 */
+	@Unique
+	private static boolean msptmap$sourcesScroll(double mouseX, double mouseY, double amount) {
+		if (GuiMap.hiddenUI || !ScanSummary.sourcesPanelOpen()) {
+			return false;
+		}
+		return SourceListPanel.scroll((int) mouseX, (int) mouseY, msptmap$sourcesPanelX(), SUMMARY_Y,
+				(int) Math.signum(amount));
 	}
 
 	/** 从地图已加载的维度里按 ID 找目标；没有则 null。按 ID 字符串反查，避开各版本构造维度键的差异。 */

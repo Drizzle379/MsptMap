@@ -3,7 +3,6 @@ package msptmap.client;
 import msptmap.Clamp;
 import msptmap.Decimals;
 import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -46,7 +45,7 @@ class ColorConfigScreen extends ConfigScreenBase {
 							redSlider.active = !value;
 						})),
 				new Row(ROW, (x, y) -> {
-					addLabel(Component.translatable("msptmap.config.red_at"), x, y + 6);
+					addRowLabel(Component.translatable("msptmap.config.red_at"), x, y);
 					redSlider = addSlider(x + labelWidth, y, control,
 							ClientConfig.MIN_RED_AT, ClientConfig.MAX_RED_AT, ClientConfig.redAt,
 							value -> Decimals.format2(value) + " mspt",
@@ -56,7 +55,7 @@ class ColorConfigScreen extends ConfigScreenBase {
 					redSlider.active = !ClientConfig.relativeColor;
 				}),
 				new Row(ROW, (x, y) -> {
-					addLabel(Component.translatable("msptmap.config.opacity"), x, y + 6);
+					addRowLabel(Component.translatable("msptmap.config.opacity"), x, y);
 					addSlider(x + labelWidth, y, control, ClientConfig.MIN_FILL_ALPHA, 1.0,
 							ClientConfig.fillAlpha, Decimals::format2,
 							value -> ClientConfig.fillAlpha = value,
@@ -66,19 +65,6 @@ class ColorConfigScreen extends ConfigScreenBase {
 						ClientConfig.showWeakGray,
 						Component.translatable("msptmap.config.weak_tooltip"),
 						value -> ClientConfig.showWeakGray = value)))));
-	}
-
-	@Override
-	protected void placeBottomButtons(int centerX, int y) {
-		addRenderableWidget(Button.builder(Component.translatable("msptmap.config.back"), button -> onClose())
-				.bounds(centerX - BUTTON_WIDTH / 2, y, BUTTON_WIDTH, WIDGET_HEIGHT)
-				.build());
-	}
-
-	/** 「返回」与 Esc 同效：回主界面（不保存，保存集中在主界面退出时）。 */
-	@Override
-	public void onClose() {
-		goBack();
 	}
 
 	/** 行标签宽度：取当前语言中最长者（英文标签通常更宽）。 */

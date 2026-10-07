@@ -65,10 +65,6 @@ public class MsptMapConfigScreen extends ConfigScreenBase {
 	@Override
 	public void onClose() {
 		ClientConfig.save();
-		if (parent == null) {
-			super.onClose();
-		} else {
-			goBack();
-		}
+		goBack();
 	}
 }

@@ -1,7 +1,6 @@
 package msptmap.client;
 
 import msptmap.sampler.TickCategory;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -64,7 +63,7 @@ class TooltipConfigScreen extends ConfigScreenBase {
 						value -> ClientConfig.tooltipTotal = value));
 	}
 
-	/** 列3：七类明细的开关：标签与开关都取自同一份显示定义。 */
+	/** 列3：七类明细的开关；类别与标签都随 {@link ChunkTooltip#ORDER} 走。 */
 	private List<Entry> categoryEntries() {
 		List<Entry> entries = new ArrayList<>();
 		for (TickCategory category : ChunkTooltip.ORDER) {
@@ -95,16 +94,4 @@ class TooltipConfigScreen extends ConfigScreenBase {
 		return width;
 	}
 
-	@Override
-	protected void placeBottomButtons(int centerX, int y) {
-		addRenderableWidget(Button.builder(Component.translatable("msptmap.config.back"), button -> onClose())
-				.bounds(centerX - BUTTON_WIDTH / 2, y, BUTTON_WIDTH, WIDGET_HEIGHT)
-				.build());
-	}
-
-	/** 「返回」与 Esc 同效：回主界面（不保存，保存集中在主界面退出时）。 */
-	@Override
-	public void onClose() {
-		goBack();
-	}
 }

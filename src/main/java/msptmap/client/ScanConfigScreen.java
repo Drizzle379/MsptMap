@@ -1,6 +1,5 @@
 package msptmap.client;
 
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
@@ -25,22 +24,9 @@ class ScanConfigScreen extends ConfigScreenBase {
 		int labelWidth = font.width(label) + 8;
 		return List.of(new Column(labelWidth + SECONDS_BOX_WIDTH, List.of(
 				new Row(ROW, (x, y) -> {
-					addLabel(label, x, y + 6);
+					addRowLabel(label, x, y);
 					addSecondsBox(x + labelWidth, y);
 				}))));
-	}
-
-	@Override
-	protected void placeBottomButtons(int centerX, int y) {
-		addRenderableWidget(Button.builder(Component.translatable("msptmap.config.back"), button -> onClose())
-				.bounds(centerX - BUTTON_WIDTH / 2, y, BUTTON_WIDTH, WIDGET_HEIGHT)
-				.build());
-	}
-
-	/** 「返回」与 Esc 同效：回主界面（不保存，保存集中在主界面退出时）。 */
-	@Override
-	public void onClose() {
-		goBack();
 	}
 
 	/**
