@@ -113,6 +113,20 @@ public abstract class GuiMapMixin {
 	private static String msptmapLastDimensionId;
 
 	/**
+	 * 待执行的定位：维度 + 区块中心方块坐标，记录在点击当帧，实际设置相机目标推迟到维度切换落地
+	 * 之后（见 {@link #msptmap$pendingFocus()}）。{@code msptmapPendingDimension} 为 null 表示玩家
+	 * 所在维度（同「跟随」）。
+	 *
+	 * <p>不可在点击当帧就设：Xaero 的维度切换在后台线程落地，而相机坐标空间随显示维度变化，落地
+	 * 那一帧 Xaero 会清空相机目标与动画（见 GuiMap 的维度比例变化分支）——提前设的目标会在旧维度
+	 * 先滑起来，随后被清掉、停在中途。
+	 */
+	@Unique
+	private ResourceKey<Level> msptmapPendingDimension;
+	@Unique
+	private int[] msptmapPendingFocus;
+
+	/**
 	 * 折叠钮的两个控件：展开态显示 ▾、收起态显示 ▸，同一位置上只留一个可见。
 	 *
 	 * <p>之所以是两个控件：{@code GuiTexturedButton} 的贴图区域在构造时定死、之后只读，运行中改不了
@@ -537,7 +551,8 @@ public abstract class GuiMapMixin {
 
 	/**
 	 * 把地图定位到某区块：必要时先切维度（同 Xaero 的维度按钮：目标即玩家所在维度时回「跟随玩家」），
-	 * 再设相机的动画目标（区块中心）并脱离跟随相机——后两步照抄 Xaero 的「跳转坐标」流程。
+	 * 并脱离跟随相机；相机的动画目标（区块中心）延后到切换落地再设（见
+	 * {@link #msptmap$pendingFocus()}）。
 	 */
 	@Unique
 	private void msptmap$focusChunk(ScanSummary.Target target) {
@@ -561,8 +576,47 @@ public abstract class GuiMapMixin {
 			attachedCamera = false;
 			shouldReinit = true;
 		}
-		// 区块中心：Xaero 的相机目标就是方块坐标
-		cameraDestination = new int[]{target.chunkX() * 16 + 8, target.chunkZ() * 16 + 8};
+		// 区块中心：Xaero 的相机目标就是方块坐标；先记下，切换落地后才设（见字段注释）
+		msptmapPendingDimension = key;
+		msptmapPendingFocus = new int[]{target.chunkX() * 16 + 8, target.chunkZ() * 16 + 8};
+	}
+
+	/**
+	 * 待执行定位的落地：挂在每帧渲染末尾（TAIL）——该处晚于 Xaero 的相机复位（维度比例变化、拉回
+	 * 玩家等清空相机目标与动画的分支），此时设的目标不会被清掉。切换未完成时继续等。
+	 */
+	//? if >=26.1 {
+	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
+	private void msptmap$applyPendingFocus(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick,
+			CallbackInfo ci) {
+		msptmap$pendingFocus();
+	}
+	//?} else {
+	/*@Inject(method = "method_25394", at = @At("TAIL"), remap = false)
+	private void msptmap$applyPendingFocus(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+			CallbackInfo ci) {
+		msptmap$pendingFocus();
+	}
+	*///?}
+
+	/** 应用待执行的定位：维度已切到目标、地图可用且不再等待世界更新时，把区块中心设为相机目标。 */
+	@Unique
+	private void msptmap$pendingFocus() {
+		if (msptmapPendingFocus == null || mapProcessor == null) {
+			return;
+		}
+		// 切换中或地图世界重建中：此时设了也会被 Xaero 清掉，继续等
+		if (mapProcessor.isWaitingForWorldUpdate() || !mapProcessor.isMapWorldUsable()) {
+			return;
+		}
+		ResourceKey<Level> expected = msptmapPendingDimension != null ? msptmapPendingDimension
+				: Minecraft.getInstance().level.dimension();
+		// 当前显示维度尚未切到目标：地图空间不同，坐标不可用，继续等
+		if (!expected.equals(mapProcessor.getMapWorld().getCurrentDimensionId())) {
+			return;
+		}
+		cameraDestination = msptmapPendingFocus;
+		msptmapPendingFocus = null;
 	}
 
 	/**
