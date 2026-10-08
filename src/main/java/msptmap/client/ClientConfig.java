@@ -58,6 +58,9 @@ public final class ClientConfig {
 	/** 地图上那框扫描总览是否展开；由折叠钮翻转，跨次记忆（见 {@link ScanSummary}）。 */
 	public static boolean summaryExpanded;
 
+	/** 扫描总览的数值行是否按热力梯度着色：明细红点固定 20 mspt、合计 40 mspt、TOP5 跟随地图配色。 */
+	public static boolean summaryColored;
+
 	/** 悬停详情中坐标、等级与合计三行各自的显示开关；实体单列（见下）。 */
 	public static boolean tooltipCoords;
 	public static boolean tooltipLevels;
@@ -98,6 +101,7 @@ public final class ClientConfig {
 		fillAlpha = 0.35;
 		showWeakGray = true;
 		summaryExpanded = true;
+		summaryColored = true;
 		tooltipCoords = true;
 		tooltipLevels = true;
 		tooltipTotal = true;
@@ -139,6 +143,7 @@ public final class ClientConfig {
 		fillAlpha = readDouble(properties, "color.fillAlpha", fillAlpha);
 		showWeakGray = readBoolean(properties, "color.showWeakGray", showWeakGray);
 		summaryExpanded = readBoolean(properties, "summary.expanded", summaryExpanded);
+		summaryColored = readBoolean(properties, "summary.colored", summaryColored);
 		tooltipCoords = readBoolean(properties, "tooltip.coords", tooltipCoords);
 		tooltipLevels = readBoolean(properties, "tooltip.levels", tooltipLevels);
 		tooltipTotal = readBoolean(properties, "tooltip.total", tooltipTotal);
@@ -169,6 +174,7 @@ public final class ClientConfig {
 		text.append("color.fillAlpha=").append(fillAlpha).append('\n');
 		text.append("color.showWeakGray=").append(showWeakGray).append('\n');
 		text.append("summary.expanded=").append(summaryExpanded).append('\n');
+		text.append("summary.colored=").append(summaryColored).append('\n');
 		text.append("tooltip.coords=").append(tooltipCoords).append('\n');
 		text.append("tooltip.levels=").append(tooltipLevels).append('\n');
 		text.append("tooltip.total=").append(tooltipTotal).append('\n');

@@ -26,6 +26,14 @@ public final class ScanSummary {
 	/** 总览内逐条列出的加载源行数上限；超出的折到右侧完整列表。 */
 	private static final int SOURCE_ROWS = 8;
 
+	/** 七类明细数值的着色区间（mspt）：绿点 3、红点 20，均匀过渡（黄在 11.5）；低于绿点也取起点绿。 */
+	private static final float CATEGORY_GREEN_MS = 3.0f;
+	private static final float CATEGORY_RED_MS = 20.0f;
+
+	/** 「总卡顿」数值的着色区间（mspt）：绿点 10、红点 40，取明细区间两倍；低于绿点同样取起点绿。 */
+	private static final float TOTAL_GREEN_MS = 10.0f;
+	private static final float TOTAL_RED_MS = 40.0f;
+
 	/** 空结果：清屏（合计取不到）时缓存的形状，也是 {@link #cached} 的初值。 */
 	private static final Built EMPTY = new Built(List.of(), List.of(), -1, List.of(), List.of(), 0, 0, -1);
 
@@ -110,28 +118,71 @@ public final class ScanSummary {
 			foldRow = lines.size();
 			lines.add(foldLine(sourceRows.size() - SOURCE_ROWS));
 		}
-		// 总卡顿：单位固定显示（同悬停详情的「合计」行）
-		lines.add(ChunkTooltip.msptLine(Component.translatable("msptmap.summary.total"),
-				ChunkTooltip.ms(totals.totalNanos(), windowTicks)));
-		// 七类明细：整体缩进；方块更新的附注样式（灰、斜体、带星）内嵌在行组件里
+		// 总卡顿：单位固定显示（同悬停详情的「合计」行）；着色开启时按固定区间给数值铺色、低于绿点取
+		// 起点绿，名称与单位保持白字（一级行不压暗）
+		float totalMspt = mspt(totals.totalNanos(), windowTicks);
+		String totalValue = ChunkTooltip.ms(totals.totalNanos(), windowTicks);
+		lines.add(ClientConfig.summaryColored
+				? ChunkTooltip.msptLine(Component.translatable("msptmap.summary.total"), totalValue,
+						rangeColor(totalMspt, TOTAL_GREEN_MS, TOTAL_RED_MS))
+				: ChunkTooltip.msptLine(Component.translatable("msptmap.summary.total"), totalValue));
+		// 七类明细：整体缩进、类别名附注灰；着色开启时梯度色只给数值（压暗一档），星号与斜体照旧
 		for (TickCategory category : ChunkTooltip.ORDER) {
-			lines.add(ChunkTooltip.secondary(ChunkTooltip.categoryLine(
-					totals.categoryNanos()[category.ordinal()], windowTicks, category)));
+			long nanos = totals.categoryNanos()[category.ordinal()];
+			float categoryMspt = mspt(nanos, windowTicks);
+			lines.add(ChunkTooltip.secondary(ClientConfig.summaryColored
+					? ChunkTooltip.categoryLine(nanos, windowTicks, category,
+							soften(rangeColor(categoryMspt, CATEGORY_GREEN_MS, CATEGORY_RED_MS)))
+					: ChunkTooltip.categoryLine(nanos, windowTicks, category)));
 		}
-		// 卡顿区块 TOP5：分区标题白字不加粗；一个都没有时连分区标题都不出现
+		// 卡顿区块 TOP5：分区标题白字不加粗；一个都没有时连分区标题都不出现。着色时数值色与地图同源
+		// （红点：固定模式读红色阈值、相对模式读该维度最重的区块），再压暗一档
 		List<ClientSnapshot.Heavy> heaviest = totals.heaviest();
 		int topFirstRow = -1;
 		if (!heaviest.isEmpty()) {
 			lines.add(Component.translatable("msptmap.summary.top_title"));
 			topFirstRow = lines.size();
 			for (ClientSnapshot.Heavy heavy : heaviest) {
-				lines.add(ChunkTooltip.secondary(Component.translatable("msptmap.summary.line",
-						ChunkTooltip.ms(heavy.totalNanos(), windowTicks),
+				String value = ChunkTooltip.ms(heavy.totalNanos(), windowTicks);
+				Component shown = ClientConfig.summaryColored
+						? ChunkTooltip.colored(value, soften(heatColor(mspt(heavy.totalNanos(), windowTicks),
+								MapOverlay.redPoint(ClientSnapshot.heaviestMspt(heavy.dimension())))))
+						: Component.literal(value);
+				lines.add(ChunkTooltip.secondary(Component.translatable("msptmap.summary.line", shown,
 						Component.translatable(dimensionKey(heavy.dimension())),
 						heavy.chunkX(), heavy.chunkZ())));
 			}
 		}
 		return new Built(lines, heaviest, topFirstRow, sources, sourceRows, sourceFirstRow, sourceShown, foldRow);
+	}
+
+	/** 按热力图同一公式（{@link MapOverlay#red} / {@link MapOverlay#green}）把耗时换算成 0xRRGGBB 文字色；TOP5 行用它。 */
+	private static int heatColor(float mspt, float redPoint) {
+		int r = Math.round(MapOverlay.red(mspt, redPoint) * 255.0f);
+		int g = Math.round(MapOverlay.green(mspt, redPoint) * 255.0f);
+		return r << 16 | g << 8;
+	}
+
+	/**
+	 * 绿点与红点之间均匀渐变（黄在正中间）的 0xRRGGBB，低于绿点取起点绿；明细与合计的固定区间
+	 * 用它——热力图那条公式的黄点在红点 1/3 处，低段颜色变化过快。
+	 */
+	private static int rangeColor(float mspt, float greenMspt, float redMspt) {
+		float t = Math.min(1.0f, Math.max(0.0f, (mspt - greenMspt) / (redMspt - greenMspt)));
+		float twoT = t * 2.0f;
+		int red = Math.round(Math.min(1.0f, twoT) * 255.0f);
+		int green = Math.round(Math.min(1.0f, 2.0f - twoT) * 255.0f);
+		return red << 16 | green << 8;
+	}
+
+	/** 明细与 TOP5 行的数值柔化：每通道 ×0xD0/0xFF（比灰字档 0xB0 亮约 18%），色相不变。 */
+	private static int soften(int rgb) {
+		return ((rgb >> 16 & 0xFF) * 0xD0 / 0xFF) << 16 | ((rgb >> 8 & 0xFF) * 0xD0 / 0xFF) << 8;
+	}
+
+	/** 纳秒 → ms/tick，与 {@link ChunkTooltip#ms} 的字符串同口径。 */
+	private static float mspt(long nanos, int windowTicks) {
+		return (float) (nanos / 1_000_000.0 / Math.max(1, windowTicks));
 	}
 
 	/** 标题行：加粗白字，不缩进。 */
@@ -170,7 +221,8 @@ public final class ScanSummary {
 
 	/**
 	 * 参与拼行的配置项压成位掩码：与悬停详情共用的两个开关（类别名缩写、明细单位）各占一位，
-	 * 右侧列表的开关也占一位（折叠行文案随之变），任一变动则签名改变，缓存随之作废。
+	 * 右侧列表的开关也占一位（折叠行文案随之变），着色开关与它的两个输入（相对模式、红色阈值——
+	 * TOP5 行的颜色跟随地图红点）同样计入，任一变动则签名改变，缓存随之作废。
 	 *
 	 * <p>类别勾选不进签名：它只决定悬停详情显示哪几行，总览的七类明细恒全列。
 	 */
@@ -185,6 +237,14 @@ public final class ScanSummary {
 		if (sourcesExpanded) {
 			bits |= 1 << 2;
 		}
+		if (ClientConfig.summaryColored) {
+			bits |= 1 << 3;
+		}
+		if (ClientConfig.relativeColor) {
+			bits |= 1 << 4;
+		}
+		// 红色阈值量化成两位整数（5~500），占 bit 5..13
+		bits |= (int) Math.round(ClientConfig.redAt * 100.0) << 5;
 		return bits;
 	}
 

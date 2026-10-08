@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * 「悬停详情」子页：区块详情面板的内容开关，按三列分组——
- * 单行信息（5）| 显示方式与合计（3）| 类别明细（7）。
+ * 「悬停 / 总览」子页：区块详情面板的内容开关与总览着色开关，按三列分组——
+ * 单行信息（5）| 显示方式与合计（4）| 类别明细（7）。
  *
- * <p>15 个开关原排两列、最高 10 行，把整页撑到 282px；三列后最高 7 行（147px），
- * 加标题与底部按钮也低于常见 GUI 高度下限 240px。
+ * <p>这些开关原排两列、把整页撑到 282px；三列后最高 7 行（147px），加标题与底部按钮也低于
+ * 常见 GUI 高度下限 240px。
  */
 class TooltipConfigScreen extends ConfigScreenBase {
 	TooltipConfigScreen(Screen parent) {
@@ -60,7 +60,9 @@ class TooltipConfigScreen extends ConfigScreenBase {
 				new Entry(Component.translatable("msptmap.config.unit"), ClientConfig.tooltipMsptUnit,
 						value -> ClientConfig.tooltipMsptUnit = value),
 				new Entry(Component.translatable("msptmap.label.total"), ClientConfig.tooltipTotal,
-						value -> ClientConfig.tooltipTotal = value));
+						value -> ClientConfig.tooltipTotal = value),
+				new Entry(Component.translatable("msptmap.config.summary_colored"), ClientConfig.summaryColored,
+						value -> ClientConfig.summaryColored = value));
 	}
 
 	/** 列3：七类明细的开关；类别与标签都随 {@link ChunkTooltip#ORDER} 走。 */

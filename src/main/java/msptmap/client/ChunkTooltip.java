@@ -148,29 +148,52 @@ public final class ChunkTooltip {
 		return lines;
 	}
 
-	/** 「合计」行：单位固定显示，不受「显示单位」开关影响。包内可见：扫描总览的「总卡顿」行也用它。 */
+	/** 「合计」行：单位固定显示，不受「显示单位」开关影响。 */
 	static Component msptLine(Component label, String mspt) {
 		return Component.translatable("msptmap.tooltip.mspt_line", label, mspt);
 	}
 
-	/** 各类明细行：单位是否显示由「显示单位」开关决定。 */
-	private static MutableComponent valueLine(Component label, String mspt) {
+	/** 「合计」行的数值着色版：扫描总览的「总卡顿」行用——梯度色只挂在数值上，其余部分随外层样式。 */
+	static Component msptLine(Component label, String mspt, int msptRgb) {
+		return Component.translatable("msptmap.tooltip.mspt_line", label, colored(mspt, msptRgb));
+	}
+
+	/**
+	 * 各类明细行：单位是否显示由「显示单位」开关决定；数值可传 String（无色）或带样式的组件。返回
+	 * 可变类型：方块更新行的斜体要补在返回值上（1.20.1 的 Component 接口没有 withStyle 变体）。
+	 */
+	private static MutableComponent valueLine(Component label, Object mspt) {
 		return Component.translatable(ClientConfig.tooltipMsptUnit
 				? "msptmap.tooltip.mspt_line" : "msptmap.tooltip.plain_line", label, mspt);
 	}
 
+	/** 数值组件的着色包装：扫描总览把梯度色只挂在数值上，名称、单位等其余部分不受影响。 */
+	static Component colored(String value, int rgb) {
+		return Component.literal(value).withStyle(style -> style.withColor(TextColor.fromRgb(rgb)));
+	}
+
 	/**
-	 * 某类的明细行。方块更新行附加注样式：合计不计它，以灰、斜体、带星区别于计入合计的其余行。
+	 * 某类的明细行。方块更新行以斜体与行尾星号标示合计不计它；行色由调用方给——悬停详情经
+	 * {@link #secondary} 得附注灰，扫描总览的着色版只给数值上梯度色。
 	 *
 	 * <p>包内可见，吃纳秒而非区块：扫描总览的明细行取自跨维度合计的同类数组。
 	 */
 	static Component categoryLine(long nanos, int windowTicks, TickCategory category) {
-		String value = ms(nanos, windowTicks);
+		return categoryLine(category, ms(nanos, windowTicks));
+	}
+
+	/** 数值着色版（扫描总览）：梯度色只挂在数值上，名称、星号等保持外层样式。 */
+	static Component categoryLine(long nanos, int windowTicks, TickCategory category, int msptRgb) {
+		return categoryLine(category, colored(ms(nanos, windowTicks), msptRgb));
+	}
+
+	/** 拼行本体：value 为 String（无色）或带样式的组件。 */
+	private static Component categoryLine(TickCategory category, Object value) {
 		if (category != TickCategory.NEIGHBOR_UPDATE) {
 			return valueLine(label(category), value);
 		}
 		return valueLine(label(category).copy().append("*"), value)
-				.withStyle(style -> style.withItalic(true).withColor(TextColor.fromRgb(NOTE_COLOR)));
+				.withStyle(style -> style.withItalic(true));
 	}
 
 	/**
