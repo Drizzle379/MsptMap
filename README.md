@@ -117,7 +117,7 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 | `/msptmap access <ops\|all>` | Server | Who may start a scan: operators only (default) or every player. |
 | `/msptmap config` | Client | Opens the settings screen, for when Mod Menu is not installed. |
 | `/msptmap monitor` | Server | Prints the monitoring state and its settings. |
-| `/msptmap monitor on` / `off` | Server | Master switch, off by default; turning it off also discards the current window and the cooldown. |
+| `/msptmap monitor <on\|off>` | Server | Master switch, off by default; turning it off also discards the current window and the cooldown. |
 | `/msptmap monitor threshold <mspt>` | Server | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
 | `/msptmap monitor consecutive <times>` | Server | Consecutive above-threshold checks required to trigger, 1 – 60 (default `3`). |
 | `/msptmap monitor cooldown <minutes>` | Server | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |

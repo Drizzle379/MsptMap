@@ -117,7 +117,7 @@
 | `/msptmap access <ops\|all>` | 服务端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
 | `/msptmap config` | 客户端 | 打开设置界面（未装 Mod Menu 时的备用入口）。 |
 | `/msptmap monitor` | 服务端 | 打印监控状态与各项设置。 |
-| `/msptmap monitor on` / `off` | 服务端 | 总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
+| `/msptmap monitor <on\|off>` | 服务端 | 总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
 | `/msptmap monitor threshold <mspt>` | 服务端 | 触发阈值，1.0 ~ 1000.0（默认 `40.0`）。 |
 | `/msptmap monitor consecutive <次>` | 服务端 | 连续超标多少次才触发，1 ~ 60（默认 `3`）。 |
 | `/msptmap monitor cooldown <分钟>` | 服务端 | 触发后多长时间内不再扫描，1 ~ 1440（默认 `5`）。 |
