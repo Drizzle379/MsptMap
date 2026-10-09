@@ -36,6 +36,9 @@ public final class MsptMonitor {
 	/** 自动扫描的时长（秒）：固定值，不对外可调。 */
 	static final int AUTO_SCAN_SECONDS = 5;
 
+	/** 去抖次数：连续这么多次评估超标才算数，固定值，不对外可调。 */
+	static final int CONSECUTIVE_CHECKS = 5;
+
 	/** 环形缓冲容量 = 窗口刻数：窗口固定，一次配足后不再分配。 */
 	private static final int CAPACITY = WINDOW_SECONDS * MsptSampler.TICKS_PER_SECOND;
 
@@ -132,7 +135,7 @@ public final class MsptMonitor {
 			return false;
 		}
 		consecutiveChecks++;
-		return consecutiveChecks >= ServerConfig.consecutive && now >= cooldownUntilNanos;
+		return consecutiveChecks >= CONSECUTIVE_CHECKS && now >= cooldownUntilNanos;
 	}
 
 	/** 本次扫描确实发起了：进冷却、清零去抖计数。 */

@@ -11,7 +11,7 @@ import java.util.Locale;
 import java.util.Properties;
 
 /**
- * 服务端的可调值：扫描权限，以及常态 MSPT 监控的开关、阈值、去抖、冷却与接收范围。
+ * 服务端的可调值：扫描权限，以及常态 MSPT 监控的开关、阈值、冷却与接收范围。
  *
  * <p>存 config/msptmap-server.properties，与客户端那份（msptmap-client.properties）互不覆盖。
  *
@@ -22,10 +22,6 @@ public final class ServerConfig {
 	/** 触发阈值的合法区间（mspt）；一位小数。 */
 	public static final double MIN_THRESHOLD = 1.0;
 	public static final double MAX_THRESHOLD = 1000.0;
-
-	/** 去抖次数：连续这么多次评估超标才算数，避免一两秒的抖动就告警。 */
-	public static final int MIN_CONSECUTIVE = 1;
-	public static final int MAX_CONSECUTIVE = 60;
 
 	/** 一次告警后的冷却时长（分钟）。 */
 	public static final int MIN_COOLDOWN_MINUTES = 1;
@@ -59,9 +55,6 @@ public final class ServerConfig {
 	/** 触发阈值（mspt）：平滑均值高于它即计一次超标。 */
 	public static double threshold;
 
-	/** 去抖次数。 */
-	public static int consecutive;
-
 	/** 触发后的冷却（分钟）。 */
 	public static int cooldownMinutes;
 
@@ -81,7 +74,6 @@ public final class ServerConfig {
 		access = Access.OPS;
 		monitorEnabled = false;
 		threshold = 40.0;
-		consecutive = 3;
 		cooldownMinutes = 5;
 		audience = Audience.OP;
 	}
@@ -113,7 +105,6 @@ public final class ServerConfig {
 		access = readAccess(properties, "access", access);
 		monitorEnabled = readBoolean(properties, "monitor.enabled", monitorEnabled);
 		threshold = readDouble(properties, "monitor.threshold", threshold);
-		consecutive = readInt(properties, "monitor.consecutive", consecutive);
 		cooldownMinutes = readInt(properties, "monitor.cooldownMinutes", cooldownMinutes);
 		audience = readAudience(properties, "monitor.audience", audience);
 		clamp();
@@ -132,7 +123,6 @@ public final class ServerConfig {
 		text.append("access=").append(access.name().toLowerCase(Locale.ROOT)).append('\n');
 		text.append("monitor.enabled=").append(monitorEnabled).append('\n');
 		text.append("monitor.threshold=").append(threshold).append('\n');
-		text.append("monitor.consecutive=").append(consecutive).append('\n');
 		text.append("monitor.cooldownMinutes=").append(cooldownMinutes).append('\n');
 		text.append("monitor.audience=").append(audience.name().toLowerCase(Locale.ROOT)).append('\n');
 		try {
@@ -146,7 +136,6 @@ public final class ServerConfig {
 	/** 各值夹回合法区间。 */
 	private static void clamp() {
 		threshold = clampRange(threshold, MIN_THRESHOLD, MAX_THRESHOLD);
-		consecutive = Clamp.of(consecutive, MIN_CONSECUTIVE, MAX_CONSECUTIVE);
 		cooldownMinutes = Clamp.of(cooldownMinutes, MIN_COOLDOWN_MINUTES, MAX_COOLDOWN_MINUTES);
 	}
 
