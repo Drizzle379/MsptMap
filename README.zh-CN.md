@@ -74,7 +74,7 @@
 
 ## 🎮 用法
 
-1. 打开世界地图，点击左上角的**扫描**按钮以开始扫描，或输入 `/msptmap scan [秒数]`
+1. 打开世界地图，点击左上角的**扫描**按钮以开始扫描
 2. 采样完成后，地图按区块的卡顿程度着色：绿 → 黄 → 红；弱加载区块为淡灰色
 3. 悬停任意区块可查看详情：坐标、加载等级、加载票、实体数、合计 mspt 与各类耗时明细
 4. **扫描总览**显示在扫描按钮旁，给出合计、加载源与卡顿区块 TOP5。点击某一行可将地图定位至该区块；折叠行可展开完整的加载源列表
@@ -113,14 +113,8 @@
 
 | 指令 | 端 | 作用 |
 | :--- | :--- | :--- |
-| `/msptmap scan [秒数]` | 两端 | 发起扫描并在地图上着色；省略秒数则用当前设置的秒数，范围 1 ~ 60。在控制台执行时结果只写入服务端日志。 |
+| `/msptmap scan [秒数]` | 服务端 | 发起扫描，结果只写入服务端日志；省略秒数则用当前设置的秒数，范围 1 ~ 60。 |
 | `/msptmap access <ops\|all>` | 两端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
-| `/msptmap config` | 客户端 | 打开设置界面（未装 Mod Menu 时的备用入口）。 |
-| `/msptmap config <键>` | 客户端 | 打印一项设置；键名与 `config/msptmap-client.properties` 中一致。 |
-| `/msptmap config <键> <值>` | 客户端 | 设置一项并保存；布尔值取 `on` / `off`。 |
-| `/msptmap config reset` | 客户端 | 将全部设置恢复为默认值。 |
-| `/msptmap status` | 客户端 | 打印本次扫描的状态与最近一次结果。 |
-| `/msptmap top [个数]` | 客户端 | 列出最近一次扫描最重的区块；默认 5 个，最多 50 个。 |
 | `/msptmap monitor` | 两端 | 打印监控状态与各项设置。 |
 | `/msptmap monitor <on\|off>` | 两端 | 总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
 | `/msptmap monitor threshold <mspt>` | 两端 | 触发阈值，1.0 ~ 1000.0（默认 `40.0`）。 |
@@ -137,7 +131,7 @@
 
 ## 🔧 设置
 
-打开 **Mod Menu → 设置**，或输入 `/msptmap config`。设置保存在 `config/msptmap-client.properties`，每一项也可用 `/msptmap config <键> [值]` 在游戏内读写，键名与文件中一致。
+打开 **Mod Menu → 设置**，或点击地图上的**设置**按钮。设置保存在 `config/msptmap-client.properties`，也可直接手改文件。
 
 <details>
 <summary>全部设置项</summary>
@@ -161,7 +155,7 @@
 
 ```mermaid
 flowchart LR
-    A["客户端<br/>地图按钮 / /msptmap scan"] -->|扫描请求| B["服务端<br/>MsptSampler"]
+    A["客户端<br/>地图按钮"] -->|扫描请求| B["服务端<br/>MsptSampler"]
     B --> C["逐区块计时<br/>七类工作"]
     C -->|扫描结果| D["客户端<br/>热力图 + 总览"]
 ```

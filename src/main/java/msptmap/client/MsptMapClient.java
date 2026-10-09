@@ -5,7 +5,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import msptmap.MsptMapMod;
 import msptmap.net.ScanRequestPayload;
 import msptmap.net.ScanResultPayload;
-import msptmap.sampler.MsptSampler;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 // 1.21.11 及以前叫 ClientCommandManager，26.1 起更名为 ClientCommands。literal / argument 两个
@@ -19,6 +18,7 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.lit
 *///?}
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
@@ -27,21 +27,20 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * 客户端入口：结果包转发、掉线清理、本地命令（scan / config / status / top / locate）与地图按钮回调。
+ * 客户端入口：结果包转发、掉线清理、本地命令（access / monitor / locate）与地图按钮回调。
  *
  * <p>聊天栏只输出状态提示（见 {@link Chat}：参数为语言键，按客户端语言解析；走客户端本地消息，
  * 不发往服务端），其余只写日志。
  *
- * <p>命令为本地执行：Fabric 在 ClientPacketListener.sendCommand 处拦截，命令能在客户端命令树上
- * 跑通即不发往服务端，故与服务端那条同名命令不冲突。
+ * <p>命令在客户端本地解析：解析得动就本地执行、不发往服务端（Fabric 在
+ * {@code ClientPacketListener.sendCommand} 处拦截），解析不动才放行给服务端。同一位置的服务端同名
+ * 命令因此被遮蔽，access 与 monitor 由客户端补上同样形状的子树、执行时转发过去。
  */
 public class MsptMapClient implements ClientModInitializer {
 	/** 点击后包确实发出时在聊天栏显示（服务端是否答应随后另说）。 */
 	static final String STARTING_KEY = "msptmap.message.starting";
 	/** 包发不出去：服务端未装本模组，或装的是协议不同的另一版本（Fabric 只告诉「对面不认识这个包 ID」）。 */
 	static final String NO_MOD_KEY = "msptmap.message.no_mod";
-	/** 上一次还没出结果（进度圈还在转）时又发起：命令用它报错，按钮路径直接忽略。 */
-	static final String WAITING_KEY = "msptmap.message.waiting";
 	/** 告警里的区块行点了要开地图，但客户端没装 Xaero 世界地图：无从定位。 */
 	static final String NO_XAERO_KEY = "msptmap.message.no_xaero";
 
@@ -61,6 +60,9 @@ public class MsptMapClient implements ClientModInitializer {
 			MapFocus.clear();
 		});
 
+		// 命令里排队的切屏（见 Screens.showLater）在此消费：命令跑完那一刻屏幕还没稳定
+		ClientTickEvents.END_CLIENT_TICK.register(Screens::applyPending);
+
 		//? if >=1.20.5 {
 		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE,
 				(payload, context) -> ScanResultHandler.handle(payload));
@@ -72,16 +74,9 @@ public class MsptMapClient implements ClientModInitializer {
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
 				literal("msptmap")
-						.then(literal("scan")
-								.executes(context -> requestScan(context.getSource(), ClientConfig.scanSeconds))
-								.then(argument("seconds", IntegerArgumentType.integer(1, MsptSampler.MAX_SECONDS))
-										.executes(context -> requestScan(context.getSource(),
-												IntegerArgumentType.getInteger(context, "seconds")))))
-						// 设置：无参打开设置界面，键名读写单项，reset 恢复默认
-						.then(ClientCommands.config())
-						// 本次扫描的运行状态与最重区块
-						.then(ClientCommands.status())
-						.then(ClientCommands.top())
+						// 服务端那两条被本地同名的根遮蔽，照同样的形状补上，执行时转发给服务端
+						.then(ClientCommands.access())
+						.then(ClientCommands.monitor())
 						// 聊天告警里点击区块行走这里（命令由服务端的组件携带，本地执行）
 						.then(literal("locate")
 								.then(argument("dimension", StringArgumentType.string())
@@ -183,21 +178,6 @@ public class MsptMapClient implements ClientModInitializer {
 		}
 		MapFocus.request(dimension, chunkX, chunkZ);
 		XaeroMapOpen.openIfClosed();
-		return 1;
-	}
-
-	/** 命令那条路：发不出去由命令自行报错（命令反馈不算刷屏），发得出去则与按钮一致。 */
-	private static int requestScan(FabricClientCommandSource source, int seconds) {
-		if (ScanProgress.active()) {
-			// 同 onButtonPress：等结果的途中再发没有意义，这里是显式输入，说清楚而不是静默
-			source.sendError(Component.translatable(WAITING_KEY));
-			return 0;
-		}
-		if (!send(seconds)) {
-			source.sendError(Component.translatable(NO_MOD_KEY));
-			return 0;
-		}
-		Chat.say(STARTING_KEY);
 		return 1;
 	}
 

@@ -7,7 +7,6 @@
   "msptmap.message.no_mod": "Analysis failed: the server does not have MsptMap installed, or the versions differ",
   "msptmap.message.mismatch": "Analysis failed: MsptMap client and server versions differ",
   "msptmap.message.version_mismatch": "MsptMap client and server versions differ; results may be inaccurate",
-  "msptmap.message.waiting": "The previous analysis has not finished yet; please wait for the result",
   "msptmap.message.no_xaero": "Cannot locate: Xaero's World Map is not installed",
 
   "msptmap.alert.title": "[MsptMap] Server MSPT stayed above %1$s mspt; scanned %2$s s - heaviest chunks:",
@@ -21,12 +20,6 @@
   "msptmap.monitor.cooldown_left": "cooldown: %1$s s left",
   "msptmap.set": "MsptMap: %1$s = %2$s",
 
-  "msptmap.status.scanning": "MsptMap: scanning the server...",
-  "msptmap.status.result": "MsptMap: %1$s s window, %2$s chunks, %3$s entities, total %4$s mspt",
-  "msptmap.no_result": "MsptMap: no scan result yet",
-  "msptmap.top.title": "MsptMap: heaviest chunks (top %1$s)",
-  "msptmap.top.row": "%1$d) %2$s - chunk (%3$d, %4$d) - %5$s mspt",
-  "msptmap.config.reset_done": "MsptMap: settings restored to defaults",
   "msptmap.monitor.state.off": "off",
   "msptmap.monitor.state.ok": "normal",
   "msptmap.monitor.state.watching": "watching",

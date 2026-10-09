@@ -7,7 +7,6 @@
   "msptmap.message.no_mod": "分析失败，服务端未安装 MsptMap 或版本不一致",
   "msptmap.message.mismatch": "分析失败，MsptMap 客户端与服务端版本不一致",
   "msptmap.message.version_mismatch": "MsptMap 客户端与服务端版本不一致，结果可能不准",
-  "msptmap.message.waiting": "上一次分析还没结束，请等待结果",
   "msptmap.message.no_xaero": "无法定位：未安装 Xaero 的世界地图",
 
   "msptmap.alert.title": "[MsptMap] 服务器 MSPT 持续高于 %1$s，已自动扫描 %2$s 秒，最重的区块：",
@@ -21,12 +20,6 @@
   "msptmap.monitor.cooldown_left": "冷却中：剩余 %1$s 秒",
   "msptmap.set": "MsptMap：%1$s = %2$s",
 
-  "msptmap.status.scanning": "MsptMap：正在扫描服务端…",
-  "msptmap.status.result": "MsptMap：窗口 %1$s 秒，区块 %2$s，实体 %3$s，合计 %4$s mspt",
-  "msptmap.no_result": "MsptMap：还没有扫描结果",
-  "msptmap.top.title": "MsptMap：最重区块（前 %1$s 个）",
-  "msptmap.top.row": "%1$d) %2$s · 区块 (%3$d, %4$d) · %5$s mspt",
-  "msptmap.config.reset_done": "MsptMap：已恢复默认设置",
   "msptmap.monitor.state.off": "已关闭",
   "msptmap.monitor.state.ok": "正常",
   "msptmap.monitor.state.watching": "观察中",

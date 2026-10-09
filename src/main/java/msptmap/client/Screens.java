@@ -5,6 +5,9 @@ import net.minecraft.client.gui.screens.Screen;
 
 /** 切屏工具：把各版本的原版界面切换 API 差异集中一处。 */
 final class Screens {
+	/** 命令路径排队的切屏目标，由客户端 tick 钩子取出，见 {@link #applyPending}。 */
+	private static Screen pending;
+
 	private Screens() {
 	}
 
@@ -22,5 +25,26 @@ final class Screens {
 		//?} else {
 		/*minecraft.setScreen(target);
 		*///?}
+	}
+
+	/**
+	 * 从命令里切屏：只记下目标，等下一次客户端 tick 再切（见 {@link #applyPending}）。
+	 *
+	 * <p>客户端命令是在 ChatScreen 提交那一刻同步跑完的，原版随后还会把屏幕清成 null
+	 * （{@code ChatScreen.keyPressed}：{@code handleChatInput} 之后紧跟 {@code setScreen(null)}），
+	 * 当即切过去会被这一手顶掉——命令不报错、界面却不出现。按钮回调不在此列，直接走 {@link #show}。
+	 */
+	static void showLater(Screen target) {
+		pending = target;
+	}
+
+	/** 客户端每 tick 末尾调用：把命令里排队的界面切过去。此刻聊天栏已关，屏幕稳定。 */
+	static void applyPending(Minecraft minecraft) {
+		if (pending == null) {
+			return;
+		}
+		Screen target = pending;
+		pending = null;
+		show(minecraft, target);
 	}
 }

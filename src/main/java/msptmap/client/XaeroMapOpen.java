@@ -12,7 +12,12 @@ public final class XaeroMapOpen {
 	private XaeroMapOpen() {
 	}
 
-	/** 地图未打开则打开；已在地图界面内什么都不做，帧循环自会取出待定位目标。 */
+	/**
+	 * 地图未打开则打开；已在地图界面内什么都不做，帧循环自会取出待定位目标。
+	 *
+	 * <p>只有命令那条路走到这里，切屏故走 {@link Screens#showLater}：当即切会被原版关聊天栏
+	 * 那一步顶掉（原因见该方法）。
+	 */
 	static void openIfClosed() {
 		Minecraft minecraft = Minecraft.getInstance();
 		// 当前屏幕：26.2 起挪进了 Gui（同 MsptMapClient.chat），26.1 及以前是 Minecraft 自己的字段
@@ -28,7 +33,6 @@ public final class XaeroMapOpen {
 			return;
 		}
 		// 两个 null 是上一级界面（Xaero 自己的按键处理同样传 null）：关闭地图后直接回游戏
-		Screens.show(minecraft,
-				new GuiMap(null, null, session.getMapProcessor(), minecraft.getCameraEntity()));
+		Screens.showLater(new GuiMap(null, null, session.getMapProcessor(), minecraft.getCameraEntity()));
 	}
 }

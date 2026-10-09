@@ -2,9 +2,11 @@ package msptmap;
 
 import msptmap.command.MsptMapCommand;
 import msptmap.monitor.MsptMonitor;
+import msptmap.net.CommandRelayPayload;
 import msptmap.net.ScanRequestPayload;
 import msptmap.net.ScanResultPayload;
 import msptmap.sampler.MsptSampler;
+import msptmap.server.CommandRelayHandler;
 import msptmap.server.ScanRequestHandler;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -59,24 +61,30 @@ public class MsptMapMod implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registryAccess, environment) -> MsptMapCommand.register(dispatcher));
 
-		// 请求包 客户端 → 服务端，结果包 服务端 → 客户端。包类型注册：1.20.5 起走
+		// 请求包与转发包 客户端 → 服务端，结果包 服务端 → 客户端。包类型注册：1.20.5 起走
 		// PayloadTypeRegistry（1.21.11 及以前为 playC2S/playS2C，26.1 起更名为
 		// serverboundPlay/clientboundPlay）；1.20.4 及以前的 FabricPacket 体系无需此步。
 		//? if >=26.1 {
 		PayloadTypeRegistry.serverboundPlay().register(ScanRequestPayload.TYPE, ScanRequestPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(CommandRelayPayload.TYPE, CommandRelayPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ScanResultPayload.TYPE, ScanResultPayload.CODEC);
 		//?} else if >=1.20.5 {
 		/*PayloadTypeRegistry.playC2S().register(ScanRequestPayload.TYPE, ScanRequestPayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(CommandRelayPayload.TYPE, CommandRelayPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(ScanResultPayload.TYPE, ScanResultPayload.CODEC);
 		*///?}
 
 		//? if >=1.20.5 {
 		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE,
 				(payload, context) -> ScanRequestHandler.handle(payload, context.player()));
+		ServerPlayNetworking.registerGlobalReceiver(CommandRelayPayload.TYPE,
+				(payload, context) -> CommandRelayHandler.handle(payload, context.player()));
 		//?} else {
 		/*// 1.20.4 及以前：handler 为三参数（包、玩家、回包器）
 		ServerPlayNetworking.registerGlobalReceiver(ScanRequestPayload.TYPE,
 				(payload, player, sender) -> ScanRequestHandler.handle(payload, player));
+		ServerPlayNetworking.registerGlobalReceiver(CommandRelayPayload.TYPE,
+				(payload, player, sender) -> CommandRelayHandler.handle(payload, player));
 		*///?}
 
 		LOGGER.info("msptmap loaded");

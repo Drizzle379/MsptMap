@@ -74,7 +74,7 @@ The server and the client may run different versions of MsptMap. A mismatch stil
 
 ## 🎮 Usage
 
-1. Open the world map and select the **scan** button in the upper-left corner, or run `/msptmap scan [seconds]`
+1. Open the world map and select the **scan** button in the upper-left corner
 2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are pale grey
 3. Hovering over a chunk displays its coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown
 4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; the fold row expands the complete source list
@@ -113,14 +113,8 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 
 | Command | Side | Effect |
 | :--- | :--- | :--- |
-| `/msptmap scan [seconds]` | Both | Starts a scan and paints the result on the map. Omit `seconds` to use the configured value; range 1 – 60. At the console the result is logged instead. |
+| `/msptmap scan [seconds]` | Server | Runs a scan and logs the result to the server console. Omit `seconds` to use the configured value; range 1 – 60. |
 | `/msptmap access <ops\|all>` | Both | Who may start a scan: operators only (default) or every player. |
-| `/msptmap config` | Client | Opens the settings screen, for when Mod Menu is not installed. |
-| `/msptmap config <key>` | Client | Prints one setting; the key names are the same as in `config/msptmap-client.properties`. |
-| `/msptmap config <key> <value>` | Client | Sets one setting and saves it. Booleans take `on` / `off`. |
-| `/msptmap config reset` | Client | Restores every setting to its default. |
-| `/msptmap status` | Client | Prints the state of the current scan and the last result. |
-| `/msptmap top [count]` | Client | Lists the most costly chunks of the last scan; 5 by default, up to 50. |
 | `/msptmap monitor` | Both | Prints the monitoring state and its settings. |
 | `/msptmap monitor <on\|off>` | Both | Master switch, off by default; turning it off also discards the current window and the cooldown. |
 | `/msptmap monitor threshold <mspt>` | Both | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
@@ -137,7 +131,7 @@ Monitoring is an operator command, switched with `/msptmap monitor <on\|off>`; i
 
 ## 🔧 Configuration
 
-Open **Mod Menu → Settings**, or run `/msptmap config`. Settings are stored in `config/msptmap-client.properties`; each one can also be read and written in game with `/msptmap config <key> [value]`, under the same key names as the file.
+Open **Mod Menu → Settings**, or select the **settings** button on the map. Settings are stored in `config/msptmap-client.properties`; the file can also be edited by hand.
 
 <details>
 <summary>All settings</summary>
@@ -161,7 +155,7 @@ Open **Mod Menu → Settings**, or run `/msptmap config`. Settings are stored in
 
 ```mermaid
 flowchart LR
-    A["Client<br/>map button / /msptmap scan"] -->|scan request| B["Server<br/>MsptSampler"]
+    A["Client<br/>map button"] -->|scan request| B["Server<br/>MsptSampler"]
     B --> C["per-chunk timing<br/>7 tick categories"]
     C -->|scan result| D["Client<br/>heatmap + overview"]
 ```
