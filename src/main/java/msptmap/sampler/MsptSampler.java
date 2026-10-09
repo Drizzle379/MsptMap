@@ -65,6 +65,9 @@ public final class MsptSampler {
 	/** 窗口内已过的服务端 tick 数：mspt 的分母，数够「秒数 × TICKS_PER_SECOND」即收尾。 */
 	private static int windowTicks;
 
+	/** 窗口内各 tick 耗时之和（纳秒）：总览「区块合计占整 tick」百分比的分母。 */
+	private static long windowTickNanos;
+
 	/** 本次窗口的秒数（已夹取），随「开始」包发回客户端。 */
 	private static int seconds;
 
@@ -104,6 +107,9 @@ public final class MsptSampler {
 
 	/** 上一次服务端 tick 的时刻（与是否采样无关，每 tick 更新）；0 = 服务器还没有 tick 过。 */
 	private static long lastTickNanos;
+
+	/** 本 tick 的起始时刻（START_SERVER_TICK 记），与本 tick 收尾时刻之差即整 tick 耗时；0 = 尚未记过。 */
+	private static long tickStartNanos;
 
 	/**
 	 * 上一 tick 收尾、本 tick 才发的完成包（见 {@link #finish()}）；没有待发时为 null。
@@ -189,6 +195,7 @@ public final class MsptSampler {
 		MsptSampler.seconds = clampSeconds(seconds);
 		clearTimings();
 		windowTicks = 0;
+		windowTickNanos = 0L;
 		sampling = true;
 		return StartResult.STARTED;
 	}
@@ -205,10 +212,16 @@ public final class MsptSampler {
 		broadcast = false;
 		broadcastServer = null;
 		windowTicks = 0;
+		windowTickNanos = 0L;
 		pendingPlayer = null;
 		pendingDone = null;
 		clearTimings();
 		lastEndNanos = 0L;
+	}
+
+	/** 每个服务端 tick 开始时调用一次：记下起始时刻，供 {@link #onServerTick} 算出整 tick 耗时。 */
+	public static void onTickStart() {
+		tickStartNanos = System.nanoTime();
 	}
 
 	/**
@@ -218,12 +231,17 @@ public final class MsptSampler {
 	 * <p>时间戳与是否采样无关：未采样时也要记录，停滞判定（{@link #stalled}）依赖它。
 	 */
 	public static void onServerTick() {
-		lastTickNanos = System.nanoTime();
+		long now = System.nanoTime();
+		lastTickNanos = now;
 		if (pendingDone != null) {
 			sendPendingDone();
 		}
 		if (!sampling) {
 			return;
+		}
+		// 本 tick 的耗时（起止之差，不含刻与刻之间的等待，与常态监控同口径）；未记过起始时刻则跳过
+		if (tickStartNanos != 0L) {
+			windowTickNanos += now - tickStartNanos;
 		}
 		windowTicks++;
 		if (windowTicks >= seconds * TICKS_PER_SECOND) {
@@ -322,7 +340,7 @@ public final class MsptSampler {
 			if (player != null && ServerPlayNetworking.canSend(player, ScanResultPayload.TYPE)) {
 				// 先补一格满格进度，完成包压到下一 tick（见 pendingDone）：圈画满整整一 tick 再消失
 				ServerPlayNetworking.send(player, ScanResultPayload.progress(seconds, windowTicks));
-				pendingDone = ScanResultPayload.done(seconds, windowTicks, snapshot());
+				pendingDone = ScanResultPayload.done(seconds, windowTicks, windowTickNanos, snapshot());
 				pendingPlayer = player;
 			} else if (toOperators && server != null) {
 				broadcastToOperators(server);
@@ -359,7 +377,7 @@ public final class MsptSampler {
 		}
 		// 一个能收包的都没有就不构建快照（实体遍历 + 逐块编码，成本不低），只发聊天告警
 		if (!receivers.isEmpty()) {
-			ScanResultPayload done = ScanResultPayload.done(seconds, windowTicks, snapshot());
+			ScanResultPayload done = ScanResultPayload.done(seconds, windowTicks, windowTickNanos, snapshot());
 			for (ServerPlayer receiver : receivers) {
 				ServerPlayNetworking.send(receiver, done);
 			}

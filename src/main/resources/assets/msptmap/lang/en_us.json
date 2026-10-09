@@ -78,6 +78,7 @@
   "msptmap.summary.sources_more": "Show all (+%s)",
   "msptmap.summary.sources_less": "Collapse",
   "msptmap.summary.total": "Total",
+  "msptmap.summary.total_line": "%1$s %2$s[%3$s](%4$s%%)",
   "msptmap.summary.top_title": "Top 5 laggy chunks",
 
   "msptmap.dimension.overworld": "Overworld",
@@ -104,7 +105,7 @@
   "msptmap.tooltip.unsampled": "Not sampled",
   "msptmap.tooltip.load_level": "Load level %s",
   "msptmap.tooltip.compute_level": "Compute level %s",
-  "msptmap.tooltip.entities": "Entities %s",
+  "msptmap.tooltip.entities": "Entity %s",
   "msptmap.tooltip.mspt_line": "%s %s mspt",
   "msptmap.tooltip.plain_line": "%s %s",
   "msptmap.tooltip.doubtful": "* this line could not be verified",

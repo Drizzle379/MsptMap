@@ -60,10 +60,11 @@ public final class ClientSnapshot {
 	 * {@code heaviest} 按总耗时降序，至多 {@link #TOP_COUNT} 个。
 	 *
 	 * <p>{@code categoryNanos} 与 {@code totalNanos} 的口径同
-	 * {@link SnapshotCodec.ChunkData#totalNanos}：七个类别各自累加，合计不计方块更新。
+	 * {@link SnapshotCodec.ChunkData#totalNanos}：七个类别各自累加，合计不计方块更新；
+	 * {@code tickNanos} 为窗口内各 tick 耗时之和（服务端所量），是「区块合计占整 tick」百分比的分母。
 	 */
 	public record Totals(int chunks, int timed, int entities, List<Source> sourceList,
-			List<Heavy> heaviest, long totalNanos, long[] categoryNanos, int windowTicks) {
+			List<Heavy> heaviest, long totalNanos, long[] categoryNanos, int windowTicks, long tickNanos) {
 	}
 
 	/**
@@ -112,8 +113,9 @@ public final class ClientSnapshot {
 	 * 总览则是全局视角。
 	 *
 	 * @param windowTicks 窗口实际经过的 tick 数，纳秒换算 ms/tick 的分母
+	 * @param tickNanos   窗口内各 tick 耗时之和（服务端所量），总览的「区块合计占整 tick」用；0 = 未量到
 	 */
-	public static void accept(int windowTicks, List<SnapshotCodec.DimensionData> dimensions) {
+	public static void accept(int windowTicks, long tickNanos, List<SnapshotCodec.DimensionData> dimensions) {
 		int window = Math.max(1, windowTicks);
 		ClientSnapshot.windowTicks = window;
 		byDimension.clear();
@@ -174,7 +176,7 @@ public final class ClientSnapshot {
 		}
 		sourceList.sort(SOURCE_ORDER);
 		totals = new Totals(chunkCount, timedCount, entityCount, sourceList, heaviest,
-				totalNanos, categoryNanos, window);
+				totalNanos, categoryNanos, window, tickNanos);
 	}
 
 	/**

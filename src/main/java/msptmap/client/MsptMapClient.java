@@ -121,7 +121,7 @@ public class MsptMapClient implements ClientModInitializer {
 			case PROGRESS -> ScanProgress.update(payload.windowTicks());
 			case DONE -> {
 				ScanProgress.stop();
-				ClientSnapshot.accept(payload.windowTicks(), payload.dimensions());
+				ClientSnapshot.accept(payload.windowTicks(), payload.tickNanos(), payload.dimensions());
 				MsptMapMod.LOGGER.info("收到 完成：窗口 {} tick、{} 个维度",
 						payload.windowTicks(), payload.dimensions().size());
 				for (SnapshotCodec.DimensionData dimension : payload.dimensions()) {

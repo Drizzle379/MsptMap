@@ -34,13 +34,16 @@ public class MsptMapMod implements ModInitializer {
 	 * <p>改动包的字节格式（字段增删、顺序调整、类别增删）时递增。两端都将其视为标记而非闸门：
 	 * 值不同仅提示版本可能不一致，仍照常解析，确实读不出来才判本次失败。
 	 */
-	public static final int PROTOCOL = 0x4D535033;
+	public static final int PROTOCOL = 0x4D535034;
 
 	@Override
 	public void onInitialize() {
-		// 监控要量整 tick 的耗时，故自己配一对 START / END 钩子：END 那头同时挂着采样器（保持无参签名，
-		// 离线测试直接调它），这里才拿得到 MinecraftServer
-		ServerTickEvents.START_SERVER_TICK.register(server -> MsptMonitor.onTickStart());
+		// 监控与采样都要量整 tick 的耗时，故自己配一对 START / END 钩子：END 那头同时挂着采样器（保持
+		// 无参签名，离线测试直接调它），这里才拿得到 MinecraftServer
+		ServerTickEvents.START_SERVER_TICK.register(server -> {
+			MsptSampler.onTickStart();
+			MsptMonitor.onTickStart();
+		});
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			MsptSampler.onServerTick();
 			MsptMonitor.onTickEnd(server);

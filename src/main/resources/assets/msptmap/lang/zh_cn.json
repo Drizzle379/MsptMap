@@ -78,6 +78,7 @@
   "msptmap.summary.sources_more": "…展开全部（+%s）",
   "msptmap.summary.sources_less": "…收起",
   "msptmap.summary.total": "总卡顿",
+  "msptmap.summary.total_line": "%1$s %2$s[%3$s](%4$s%%)",
   "msptmap.summary.top_title": "卡顿区块 TOP5",
 
   "msptmap.dimension.overworld": "主世界",
@@ -104,7 +105,7 @@
   "msptmap.tooltip.unsampled": "未采样",
   "msptmap.tooltip.load_level": "加载等级 %s",
   "msptmap.tooltip.compute_level": "计算等级 %s",
-  "msptmap.tooltip.entities": "实体数 %s",
+  "msptmap.tooltip.entities": "实体 %s",
   "msptmap.tooltip.mspt_line": "%s %s mspt",
   "msptmap.tooltip.plain_line": "%s %s",
   "msptmap.tooltip.doubtful": "* 该行数据未能核实",

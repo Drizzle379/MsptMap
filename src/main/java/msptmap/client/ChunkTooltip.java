@@ -153,11 +153,6 @@ public final class ChunkTooltip {
 		return Component.translatable("msptmap.tooltip.mspt_line", label, mspt);
 	}
 
-	/** 「合计」行的数值着色版：扫描总览的「总卡顿」行用——梯度色只挂在数值上，其余部分随外层样式。 */
-	static Component msptLine(Component label, String mspt, int msptRgb) {
-		return Component.translatable("msptmap.tooltip.mspt_line", label, colored(mspt, msptRgb));
-	}
-
 	/**
 	 * 各类明细行：单位是否显示由「显示单位」开关决定；数值可传 String（无色）或带样式的组件。返回
 	 * 可变类型：方块更新行的斜体要补在返回值上（1.20.1 的 Component 接口没有 withStyle 变体）。

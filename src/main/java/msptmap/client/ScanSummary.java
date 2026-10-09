@@ -1,5 +1,6 @@
 package msptmap.client;
 
+import msptmap.Decimals;
 import msptmap.Dimensions;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
@@ -119,14 +120,21 @@ public final class ScanSummary {
 			foldRow = lines.size();
 			lines.add(foldLine(sourceRows.size() - SOURCE_ROWS));
 		}
-		// 总卡顿：单位固定显示（同悬停详情的「合计」行）；着色开启时按固定区间给数值铺色、低于绿点取
-		// 起点绿，名称与单位保持白字（一级行不压暗）
-		float totalMspt = mspt(totals.totalNanos(), windowTicks);
-		String totalValue = ChunkTooltip.ms(totals.totalNanos(), windowTicks);
-		lines.add(ClientConfig.summaryColored
-				? ChunkTooltip.msptLine(Component.translatable("msptmap.summary.total"), totalValue,
-						rangeColor(totalMspt, TOTAL_GREEN_MS, TOTAL_RED_MS))
-				: ChunkTooltip.msptLine(Component.translatable("msptmap.summary.total"), totalValue));
+		// 总卡顿：区块合计 [整 tick]（区块合计占整 tick 的百分比），不带 mspt 单位。着色开启时梯度色
+		// 仍只挂区块合计这一个数值（低于绿点取起点绿），名称、整 tick 与百分比保持白字。服务端没量到
+		// 整 tick（tickNanos 为 0）时退化回只显示区块合计
+		long totalNanos = totals.totalNanos();
+		long tickNanos = totals.tickNanos();
+		Component totalLabel = Component.translatable("msptmap.summary.total");
+		Component totalValue = ClientConfig.summaryColored
+				? ChunkTooltip.colored(ChunkTooltip.ms(totalNanos, windowTicks),
+						rangeColor(mspt(totalNanos, windowTicks), TOTAL_GREEN_MS, TOTAL_RED_MS))
+				: Component.literal(ChunkTooltip.ms(totalNanos, windowTicks));
+		lines.add(tickNanos > 0L
+				? Component.translatable("msptmap.summary.total_line", totalLabel, totalValue,
+						ChunkTooltip.ms(tickNanos, windowTicks),
+						Decimals.format1(Math.min(100.0, totalNanos * 100.0 / tickNanos)))
+				: Component.translatable("msptmap.tooltip.plain_line", totalLabel, totalValue));
 		// 七类明细：整体缩进、类别名附注灰；着色开启时梯度色只给数值（压暗一档），星号与斜体照旧
 		for (TickCategory category : ChunkTooltip.ORDER) {
 			long nanos = totals.categoryNanos()[category.ordinal()];
