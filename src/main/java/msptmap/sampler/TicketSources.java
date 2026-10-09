@@ -3,8 +3,8 @@ package msptmap.sampler;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import msptmap.ChunkKeys;
-import msptmap.Ids;
+import msptmap.util.ChunkKeys;
+import msptmap.util.Ids;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -43,34 +43,9 @@ import java.util.function.LongToIntFunction;
  * <p>加载链与模拟链是两条独立的传播链，须各推一遍（玩家票自 1.21.8 起拆为 player_loading 与
  * player_simulation，同一区块上两条链的源头可能不同）。
  *
- * <p>结果记录源头坐标相对本区块的偏移而非距离：客户端要显示 {@code @x,z}，且偏移量很小
- * （加载范围 33 格以内），可与类型、存疑位一同编入一个 int。
+ * <p>结果按 {@link TicketCode} 的线格式编码：源头偏移、类型与存疑位打包进一个 int。
  */
 public final class TicketSources {
-	/** 该链没有来源。 */
-	public static final int NONE = 0;
-
-	public static final int PLAYER_LOADING = 1;
-	public static final int PLAYER_SIMULATION = 2;
-	public static final int FORCED = 3;
-	public static final int PORTAL = 4;
-	public static final int ENDER_PEARL = 5;
-	public static final int PLAYER_SPAWN = 6;
-	public static final int SPAWN_SEARCH = 7;
-	public static final int DRAGON = 8;
-	/** 原版的 unknown 票。 */
-	public static final int UNKNOWN = 9;
-	/** 本模组不认识的类型（原版新增票种时兜底，不解析崩溃）。 */
-	public static final int UNRECOGNIZED = 10;
-
-	private static final int TYPE_MASK = 0xF;
-	/** 两个偏移各占 7 位（-64 ~ 63），足以覆盖 33 格的加载半径。 */
-	private static final int OFFSET_BIAS = 64;
-	private static final int OFFSET_MASK = 0x7F;
-	private static final int DX_SHIFT = 4;
-	private static final int DZ_SHIFT = 11;
-	private static final int DOUBTFUL_BIT = 1 << 18;
-
 	private TicketSources() {
 	}
 
@@ -133,7 +108,7 @@ public final class TicketSources {
 			}
 			int x = ChunkPos.getX(key);
 			int z = ChunkPos.getZ(key);
-			sources.put(key, encode(anchor[0], 0, 0, false));
+			sources.put(key, TicketCode.encode(anchor[0], 0, 0, false));
 			// 传播值从票自身的等级起算（不是该区块的实际等级）：被更强票压住的锚点，实际等级里已
 			// 看不出本票，往外第一步就会与邻居的实际等级对不上而停下（见类注释）
 			queueKeys[queueTail] = key;
@@ -157,7 +132,7 @@ public final class TicketSources {
 			int anchorX = queueAnchorXs[queueHead];
 			int anchorZ = queueAnchorZs[queueHead];
 			queueHead++;
-			int type = type(sources.get(key));
+			int type = TicketCode.type(sources.get(key));
 			int x = ChunkPos.getX(key);
 			int z = ChunkPos.getZ(key);
 			for (int dx = -1; dx <= 1; dx++) {
@@ -174,7 +149,7 @@ public final class TicketSources {
 						continue;
 					}
 					// 偏移记的是「源头相对本区块」，客户端用「本区块 + 偏移」还原为源头坐标
-					sources.put(neighbor, encode(type, anchorX - (x + dx), anchorZ - (z + dz), false));
+					sources.put(neighbor, TicketCode.encode(type, anchorX - (x + dx), anchorZ - (z + dz), false));
 					// 扩容只在此处（锚点阶段的入队数不超过初始容量）：四个数组一同翻倍
 					if (queueTail == queueKeys.length) {
 						int grown = queueTail * 2;
@@ -209,14 +184,14 @@ public final class TicketSources {
 	 *
 	 * 一个区块可能同时挂着多张票：先比等级，取最低的那张（与
 	 * {@code TicketStorage.getTicketLevelAt} 的取法一致，它才决定该区块的状态）；等级相同时按
-	 * {@link #priority} 取舍（等级相同的票无强弱之分，但显示哪一张对查看者更有用）。
+	 * {@link TicketCode#priority} 取舍（等级相同的票无强弱之分，但显示哪一张对查看者更有用）。
 	 */
 	private static int[] anchorAt(List<Ticket> tickets, boolean simulation) {
 		if (tickets == null) {
 			return null;
 		}
 		int bestLevel = Integer.MAX_VALUE;
-		int bestType = NONE;
+		int bestType = TicketCode.NONE;
 		for (Ticket ticket : tickets) {
 			if (!belongsTo(ticket.getType(), simulation)) {
 				continue;
@@ -224,36 +199,15 @@ public final class TicketSources {
 			int level = ticket.getTicketLevel();
 			int type = indexOf(ticket.getType());
 			boolean better = level < bestLevel
-					|| (level == bestLevel && priority(type) < priority(bestType));
+					|| (level == bestLevel && TicketCode.priority(type) < TicketCode.priority(bestType));
 			if (better) {
 				bestLevel = level;
 				bestType = type;
 			}
 		}
-		return bestType == NONE ? null : new int[] {bestType, bestLevel};
+		return bestType == TicketCode.NONE ? null : new int[] {bestType, bestLevel};
 	}
 	//?}
-
-	/**
-	 * 等级相同时的取舍顺序：数值越小越优先。
-	 *
-	 * 把两张玩家票排在最后是有意的：{@code player_loading} 覆盖视距内每一格，几乎总与别的票同时在场
-	 * （比如脚下的 forceload 区块），若让它优先，其余来源将永远无法显示。其余按「越具体越优先」排：
-	 * 主动标记的（forceload）＞一次性成因（珍珠、传送门）＞世界结构（末地主岛、出生点）。
-	 */
-	public static int priority(int type) {
-		return switch (type) {
-			case FORCED -> 0;
-			case ENDER_PEARL -> 1;
-			case PORTAL -> 2;
-			case DRAGON -> 3;
-			case PLAYER_SPAWN -> 4;
-			case SPAWN_SEARCH -> 5;
-			case PLAYER_SIMULATION -> 6;
-			case PLAYER_LOADING -> 7;
-			default -> 8;
-		};
-	}
 
 	//? if >=1.21.5 {
 	/** 这张票参不参与本条链：加载链看 doesLoad，模拟链看 doesSimulate。 */
@@ -289,62 +243,22 @@ public final class TicketSources {
 	private static int computeIndexOf(TicketType type) {
 		String path = Ids.path(BuiltInRegistries.TICKET_TYPE, type);
 		if (path == null) {
-			return UNRECOGNIZED;
+			return TicketCode.UNRECOGNIZED;
 		}
 		return switch (path) {
-			case "player_loading" -> PLAYER_LOADING;
-			case "player_simulation" -> PLAYER_SIMULATION;
-			case "forced" -> FORCED;
-			case "portal" -> PORTAL;
-			case "ender_pearl" -> ENDER_PEARL;
+			case "player_loading" -> TicketCode.PLAYER_LOADING;
+			case "player_simulation" -> TicketCode.PLAYER_SIMULATION;
+			case "forced" -> TicketCode.FORCED;
+			case "portal" -> TicketCode.PORTAL;
+			case "ender_pearl" -> TicketCode.ENDER_PEARL;
 			// 出生点票：1.21.10 及以前叫 start，1.21.11 拆成 player_spawn + spawn_search
-			case "start" -> PLAYER_SPAWN;
-			case "player_spawn" -> PLAYER_SPAWN;
-			case "spawn_search" -> SPAWN_SEARCH;
-			case "dragon" -> DRAGON;
-			case "unknown" -> UNKNOWN;
-			default -> UNRECOGNIZED;
+			case "start" -> TicketCode.PLAYER_SPAWN;
+			case "player_spawn" -> TicketCode.PLAYER_SPAWN;
+			case "spawn_search" -> TicketCode.SPAWN_SEARCH;
+			case "dragon" -> TicketCode.DRAGON;
+			case "unknown" -> TicketCode.UNKNOWN;
+			default -> TicketCode.UNRECOGNIZED;
 		};
 	}
 	//?}
-
-	/** 编码：0~3 位类型，4~10 位与 11~17 位是源头相对本区块的偏移，18 位存疑。 */
-	public static int encode(int type, int offsetX, int offsetZ, boolean doubtful) {
-		return (type & TYPE_MASK)
-				| (((offsetX + OFFSET_BIAS) & OFFSET_MASK) << DX_SHIFT)
-				| (((offsetZ + OFFSET_BIAS) & OFFSET_MASK) << DZ_SHIFT)
-				| (doubtful ? DOUBTFUL_BIT : 0);
-	}
-
-	public static int type(int code) {
-		return code & TYPE_MASK;
-	}
-
-	/** 源头相对本区块的 X 偏移（源头坐标 - 本区块坐标）；0 表示票就在本区块上。 */
-	public static int offsetX(int code) {
-		return ((code >> DX_SHIFT) & OFFSET_MASK) - OFFSET_BIAS;
-	}
-
-	public static int offsetZ(int code) {
-		return ((code >> DZ_SHIFT) & OFFSET_MASK) - OFFSET_BIAS;
-	}
-
-	public static boolean doubtful(int code) {
-		return (code & DOUBTFUL_BIT) != 0;
-	}
-
-	/**
-	 * 该编码是否指向本区块上的票，即本区块是某张票的中心。
-	 *
-	 * <p>编码只有两处产出：持票区块（偏移恒为 0）与扩散覆盖区（偏移恒非 0），故「有来源且偏移为 0」
-	 * 即票就在本区块上。player_loading 除外：它逐区块铺、视距内每格偏移都是 0，没有中心可言——
-	 * 玩家位置由模拟链上的 player_simulation 代表。无来源与存疑编码不会命中。
-	 *
-	 * <p>客户端画中心蓝框、显示「…中心」，以及服务端把中心补进快照，都以此为准。
-	 */
-	public static boolean isCenter(int code) {
-		int type = type(code);
-		return type != NONE && type != PLAYER_LOADING
-				&& offsetX(code) == 0 && offsetZ(code) == 0;
-	}
 }

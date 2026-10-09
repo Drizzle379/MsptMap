@@ -2,7 +2,7 @@ package msptmap.mixins;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import msptmap.ChunkKeys;
+import msptmap.util.ChunkKeys;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.core.BlockPos;

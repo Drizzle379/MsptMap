@@ -3,19 +3,19 @@ package msptmap.client.mixins;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import msptmap.Ids;
+import msptmap.util.Ids;
 import msptmap.MsptMapMod;
+import msptmap.client.ChunkFocus;
+import msptmap.client.ChunkRef;
 import msptmap.client.ChunkTooltip;
 import msptmap.client.ClientConfig;
 import msptmap.client.ClientSnapshot;
-import msptmap.client.MapFocus;
 import msptmap.client.MapOverlay;
 import msptmap.client.MsptMapClient;
 import msptmap.client.ScanProgress;
 import msptmap.client.ScanRing;
 import msptmap.client.ScanSummary;
 import msptmap.client.SourceListPanel;
-import net.minecraft.client.Minecraft;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
@@ -26,8 +26,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 //?}
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.Level;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -41,7 +39,6 @@ import xaero.map.MapProcessor;
 import xaero.map.gui.GuiMap;
 import xaero.map.gui.GuiTexturedButton;
 import xaero.map.world.MapDimension;
-import xaero.map.world.MapWorld;
 
 /**
  * Xaero 世界地图上的挂点：四个按钮（扫描 / 清屏 / 设置 / 总览折叠）、每帧一次的热力图、悬停详情、
@@ -51,7 +48,7 @@ import xaero.map.world.MapWorld;
  * （msptmap.client.mixins.json，required:false）：未装世界地图时不至于起不来，最多是没有热力图。
  */
 @Mixin(value = GuiMap.class, remap = false)
-public abstract class GuiMapMixin {
+public abstract class GuiMapMixin implements ChunkFocus.Host {
 	/**
 	 * 扫描按钮的框：进度圈贴着它画，故按钮与圈共用这组常量。
 	 *
@@ -105,27 +102,29 @@ public abstract class GuiMapMixin {
 	private static final int SUMMARY_Y = FOLD_BUTTON_Y - 1;
 
 	/**
-	 * 维度 ID 字符串的按对象缓存：同一帧中热力图与悬停详情各要取一次 ID，而两次拿到的是同一个维度
-	 * 对象，第二次直接复用。维度切换（换世界、走传送门）后对象随之更换，引用比较自然失效，无需清理。
+	 * 区块定位的状态机：把点击总览行与外部请求的目标落到相机上，时序与理由见 {@link ChunkFocus}。
+	 * 本类作为宿主，提供地图处理器与相机、跟随状态的读写。
 	 */
 	@Unique
-	private static MapDimension msptmapLastDimension;
-	@Unique
-	private static String msptmapLastDimensionId;
+	private final ChunkFocus msptmapFocus = new ChunkFocus(this);
 
-	/**
-	 * 待执行的定位：维度 + 区块中心方块坐标，记录在点击当帧，实际设置相机目标推迟到维度切换落地
-	 * 之后（见 {@link #msptmap$pendingFocus()}）。{@code msptmapPendingDimension} 为 null 表示玩家
-	 * 所在维度（同「跟随」）。
-	 *
-	 * <p>不可在点击当帧就设：Xaero 的维度切换在后台线程落地，而相机坐标空间随显示维度变化，落地
-	 * 那一帧 Xaero 会清空相机目标与动画（见 GuiMap 的维度比例变化分支）——提前设的目标会在旧维度
-	 * 先滑起来，随后被清掉、停在中途。
-	 */
-	@Unique
-	private ResourceKey<Level> msptmapPendingDimension;
-	@Unique
-	private int[] msptmapPendingFocus;
+	@Override
+	public MapProcessor processor() {
+		return mapProcessor;
+	}
+
+	@Override
+	public void detachCamera() {
+		if (attachedCamera) {
+			attachedCamera = false;
+			shouldReinit = true;
+		}
+	}
+
+	@Override
+	public void setCameraDestination(int[] destination) {
+		cameraDestination = destination;
+	}
 
 	/**
 	 * 折叠钮的两个控件：展开态显示 ▾、收起态显示 ▸，同一位置上只留一个可见。
@@ -149,16 +148,6 @@ public abstract class GuiMapMixin {
 	private static Tooltip msptmapFoldTooltip() {
 		return new Tooltip(Component.translatable(ClientConfig.summaryExpanded
 				? "msptmap.hint.summary_collapse" : "msptmap.hint.summary_expand"));
-	}
-
-	/** 维度 ID（如 {@code minecraft:overworld}）。注册表反查 + 字符串构造不便宜，同一个对象只算一次。 */
-	@Unique
-	private static String msptmapDimensionId(MapDimension dimension) {
-		if (dimension != msptmapLastDimension) {
-			msptmapLastDimension = dimension;
-			msptmapLastDimensionId = Ids.id(dimension.getDimId());
-		}
-		return msptmapLastDimensionId;
 	}
 
 	/** 地图显示的维度、地图世界是否可用，均由它取得。 */
@@ -337,7 +326,7 @@ public abstract class GuiMapMixin {
 			return;
 		}
 		MapOverlay.draw(matrixStack.last().pose(), overlayBuffer, flooredCameraX, flooredCameraZ,
-				msptmapDimensionId(currentDim));
+				ChunkFocus.dimensionId(currentDim));
 	}
 
 	/**
@@ -387,7 +376,7 @@ public abstract class GuiMapMixin {
 		if (dimension == null) {
 			return;
 		}
-		String dimId = msptmapDimensionId(dimension);
+		String dimId = ChunkFocus.dimensionId(dimension);
 		// 该维度从未扫描则不显示：没有热力图的地方不应出现「未采样」
 		if (ClientSnapshot.get(dimId) == null) {
 			return;
@@ -539,47 +528,15 @@ public abstract class GuiMapMixin {
 			return true;
 		}
 		// 先右框后总览：两框位置不重叠，先后不影响结果
-		ScanSummary.Target target = SourceListPanel.hitTarget(mouseX, mouseY, msptmap$sourcesPanelX(), SUMMARY_Y);
+		ChunkRef target = SourceListPanel.hitTarget(mouseX, mouseY, msptmap$sourcesPanelX(), SUMMARY_Y);
 		if (target == null) {
 			target = ScanSummary.hitTarget(mouseX, mouseY, SUMMARY_X, SUMMARY_Y);
 		}
 		if (target == null) {
 			return false;
 		}
-		msptmap$focusChunk(target);
+		msptmapFocus.focus(target);
 		return true;
-	}
-
-	/**
-	 * 把地图定位到某区块：必要时先切维度（同 Xaero 的维度按钮：目标即玩家所在维度时回「跟随玩家」），
-	 * 并脱离跟随相机；相机的动画目标（区块中心）延后到切换落地再设（见
-	 * {@link #msptmap$pendingFocus()}）。
-	 */
-	@Unique
-	private void msptmap$focusChunk(ScanSummary.Target target) {
-		MapWorld mapWorld = mapProcessor.getMapWorld();
-		MapDimension found = msptmap$findDimension(mapWorld, target.dimension());
-		if (found == null) {
-			// 该维度的地图从未加载过（玩家没去过）：切不过去，这次点击不响应
-			MsptMapMod.LOGGER.info("定位 {} 区块 ({}, {})：该维度地图未加载，忽略",
-					target.dimension(), target.chunkX(), target.chunkZ());
-			return;
-		}
-		ResourceKey<Level> key = found.getDimId();
-		if (key == Minecraft.getInstance().level.dimension()) {
-			key = null;
-		}
-		MsptMapMod.LOGGER.info("定位 {} 区块 ({}, {})：目标维度 {}", target.dimension(),
-				target.chunkX(), target.chunkZ(), key == null ? "当前（跟随）" : Ids.id(key));
-		mapWorld.setCustomDimensionId(key);
-		mapProcessor.checkForWorldUpdate();
-		if (attachedCamera) {
-			attachedCamera = false;
-			shouldReinit = true;
-		}
-		// 区块中心：Xaero 的相机目标就是方块坐标；先记下，切换落地后才设（见字段注释）
-		msptmapPendingDimension = key;
-		msptmapPendingFocus = new int[]{target.chunkX() * 16 + 8, target.chunkZ() * 16 + 8};
 	}
 
 	/**
@@ -590,43 +547,15 @@ public abstract class GuiMapMixin {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
 	private void msptmap$applyPendingFocus(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick,
 			CallbackInfo ci) {
-		msptmap$pendingFocus();
+		msptmapFocus.tick();
 	}
 	//?} else {
 	/*@Inject(method = "method_25394", at = @At("TAIL"), remap = false)
 	private void msptmap$applyPendingFocus(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
 			CallbackInfo ci) {
-		msptmap$pendingFocus();
+		msptmapFocus.tick();
 	}
 	*///?}
-
-	/** 应用待执行的定位：维度已切到目标、地图可用且不再等待世界更新时，把区块中心设为相机目标。 */
-	@Unique
-	private void msptmap$pendingFocus() {
-		if (mapProcessor == null) {
-			return;
-		}
-		// 外部请求的定位（聊天告警里点击区块行）：无在途定位时取出，交给与点击总览同一套逻辑。
-		// 地图世界还没就绪就先留着，下一帧再取
-		if (msptmapPendingFocus == null && MapFocus.awaiting() && mapProcessor.isMapWorldUsable()) {
-			msptmap$focusChunk(MapFocus.consume());
-		}
-		if (msptmapPendingFocus == null) {
-			return;
-		}
-		// 切换中或地图世界重建中：此时设了也会被 Xaero 清掉，继续等
-		if (mapProcessor.isWaitingForWorldUpdate() || !mapProcessor.isMapWorldUsable()) {
-			return;
-		}
-		ResourceKey<Level> expected = msptmapPendingDimension != null ? msptmapPendingDimension
-				: Minecraft.getInstance().level.dimension();
-		// 当前显示维度尚未切到目标：地图空间不同，坐标不可用，继续等
-		if (!expected.equals(mapProcessor.getMapWorld().getCurrentDimensionId())) {
-			return;
-		}
-		cameraDestination = msptmapPendingFocus;
-		msptmapPendingFocus = null;
-	}
 
 	/**
 	 * 右侧完整列表的滚轮翻动：同样挂在 mouseScrolled 最前，鼠标在面板上即消费（否则被当作地图
@@ -666,16 +595,5 @@ public abstract class GuiMapMixin {
 		}
 		return SourceListPanel.scroll((int) mouseX, (int) mouseY, msptmap$sourcesPanelX(), SUMMARY_Y,
 				(int) Math.signum(amount));
-	}
-
-	/** 从地图已加载的维度里按 ID 找目标；没有则 null。按 ID 字符串反查，避开各版本构造维度键的差异。 */
-	@Unique
-	private static MapDimension msptmap$findDimension(MapWorld mapWorld, String dimId) {
-		for (MapDimension dimension : mapWorld.getDimensionsList()) {
-			if (dimId.equals(msptmapDimensionId(dimension))) {
-				return dimension;
-			}
-		}
-		return null;
 	}
 }

@@ -1,7 +1,7 @@
 package msptmap.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import msptmap.sampler.TicketSources;
+import msptmap.sampler.TicketCode;
 import org.joml.Matrix4f;
 import xaero.map.graphics.MapRenderHelper;
 
@@ -74,7 +74,7 @@ public final class MapOverlay {
 		// 同一区块同时命中两条链时也只画一次。单独一趟、画在填色之后：框沿区块内沿一圈，压在
 		// 热力色上不被盖住。
 		for (ClientSnapshot.Chunk chunk : chunks) {
-			if (!TicketSources.isCenter(chunk.loadTicket()) && !TicketSources.isCenter(chunk.simTicket())) {
+			if (!TicketCode.isCenter(chunk.loadTicket()) && !TicketCode.isCenter(chunk.simTicket())) {
 				continue;
 			}
 			int x1 = chunk.x1() - flooredCameraX;

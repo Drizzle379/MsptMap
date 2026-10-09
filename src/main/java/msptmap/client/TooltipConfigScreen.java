@@ -65,11 +65,11 @@ class TooltipConfigScreen extends ConfigScreenBase {
 						value -> ClientConfig.summaryColored = value));
 	}
 
-	/** 列3：七类明细的开关；类别与标签都随 {@link ChunkTooltip#ORDER} 走。 */
+	/** 列3：七类明细的开关；类别与标签都随 {@link TickText#ORDER} 走。 */
 	private List<Entry> categoryEntries() {
 		List<Entry> entries = new ArrayList<>();
-		for (TickCategory category : ChunkTooltip.ORDER) {
-			entries.add(new Entry(ChunkTooltip.label(category), ClientConfig.tooltipCategory(category),
+		for (TickCategory category : TickText.ORDER) {
+			entries.add(new Entry(TickText.label(category), ClientConfig.tooltipCategory(category),
 					value -> ClientConfig.tooltipCategories[category.ordinal()] = value));
 		}
 		return entries;

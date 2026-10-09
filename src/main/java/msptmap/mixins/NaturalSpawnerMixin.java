@@ -1,6 +1,6 @@
 package msptmap.mixins;
 
-import msptmap.ChunkKeys;
+import msptmap.util.ChunkKeys;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.server.level.ServerLevel;

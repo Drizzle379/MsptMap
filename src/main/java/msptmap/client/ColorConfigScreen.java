@@ -1,7 +1,7 @@
 package msptmap.client;
 
-import msptmap.Clamp;
-import msptmap.Decimals;
+import msptmap.util.Clamp;
+import msptmap.util.Decimals;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;

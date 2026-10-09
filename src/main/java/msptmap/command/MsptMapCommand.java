@@ -4,7 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import msptmap.Decimals;
+import msptmap.util.Decimals;
 import msptmap.MsptMapMod;
 import msptmap.Permissions;
 import msptmap.ServerConfig;

@@ -1,7 +1,7 @@
 package msptmap.monitor;
 
-import msptmap.Decimals;
-import msptmap.Dimensions;
+import msptmap.util.Decimals;
+import msptmap.util.Dimensions;
 import msptmap.Permissions;
 import msptmap.ServerConfig;
 import msptmap.sampler.MsptSampler;

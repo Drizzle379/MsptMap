@@ -1,4 +1,4 @@
-package msptmap;
+package msptmap.util;
 
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;

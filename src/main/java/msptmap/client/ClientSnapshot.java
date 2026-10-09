@@ -2,7 +2,7 @@ package msptmap.client;
 
 import msptmap.net.SnapshotCodec;
 import msptmap.sampler.TickCategory;
-import msptmap.sampler.TicketSources;
+import msptmap.sampler.TicketCode;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,7 +28,7 @@ public final class ClientSnapshot {
 	 * <p>{@code entities} 是服务端出快照那一刻该区块的实体数（含乘客），不是窗口内的平均值。
 	 *
 	 * <p>{@code loadTicket}/{@code simTicket} 是两条链各自的加载来源（编码见
-	 * {@link msptmap.sampler.TicketSources}），供悬停详情写出「 · 玩家加载中心」一类的后缀。
+	 * {@link msptmap.sampler.TicketCode}），供悬停详情写出「 · 玩家加载中心」一类的后缀。
 	 */
 	public record Chunk(int x1, int z1, int x2, int z2, float mspt, int loadLevel, int computeLevel, int entities,
 		int loadTicket, int simTicket, boolean timed, long[] nanos) {
@@ -47,7 +47,7 @@ public final class ClientSnapshot {
 
 	/**
 	 * 一个加载源：票种序号 + 中心区块坐标 + 所属维度；与蓝框、「加载源」计数同源（见 {@link #accept}），
-	 * 每区块至多一个（两条链都命中时取加载链），坐标即中心区块自身（{@link TicketSources#isCenter}）。
+	 * 每区块至多一个（两条链都命中时取加载链），坐标即中心区块自身（{@link TicketCode#isCenter}）。
 	 */
 	public record Source(int type, int chunkX, int chunkZ, String dimension) {
 	}
@@ -56,7 +56,7 @@ public final class ClientSnapshot {
 	 * 扫描总览用的合计：三个维度一并累加。
 	 *
 	 * <p>{@code sourceList} 是全部加载源（票种 + 维度 + 坐标），与蓝框同源（见
-	 * {@link TicketSources#isCenter}），已按显示顺序排好（见 {@link #SOURCE_ORDER}）；
+	 * {@link TicketCode#isCenter}），已按显示顺序排好（见 {@link #SOURCE_ORDER}）；
 	 * {@code heaviest} 按总耗时降序，至多 {@link #TOP_COUNT} 个。
 	 *
 	 * <p>{@code categoryNanos} 与 {@code totalNanos} 的口径同
@@ -68,11 +68,11 @@ public final class ClientSnapshot {
 	}
 
 	/**
-	 * 加载源的显示顺序：票种按 {@link TicketSources#priority}（越具体越前），同票种按维度
+	 * 加载源的显示顺序：票种按 {@link TicketCode#priority}（越具体越前），同票种按维度
 	 * （主世界 / 下界 / 末地在前，其余按 ID）、区块 x、z；收快照时一次排定（遍历顺序不稳定）。
 	 */
 	private static final Comparator<Source> SOURCE_ORDER =
-			Comparator.comparingInt((Source source) -> TicketSources.priority(source.type()))
+			Comparator.comparingInt((Source source) -> TicketCode.priority(source.type()))
 					.thenComparingInt(Source::type)
 					.thenComparingInt(source -> dimensionRank(source.dimension()))
 					.thenComparing(Source::dimension)
@@ -162,12 +162,12 @@ public final class ClientSnapshot {
 				for (int c = 0; c < TickCategory.COUNT; c++) {
 					categoryNanos[c] += nanos[c];
 				}
-				// 加载源与蓝框同源（见 TicketSources.isCenter）：每区块最多记一个，两条链都
+				// 加载源与蓝框同源（见 TicketCode.isCenter）：每区块最多记一个，两条链都
 				// 命中时加载链优先
-				boolean loadCenter = TicketSources.isCenter(chunk.loadTicket());
-				if (loadCenter || TicketSources.isCenter(chunk.simTicket())) {
+				boolean loadCenter = TicketCode.isCenter(chunk.loadTicket());
+				if (loadCenter || TicketCode.isCenter(chunk.simTicket())) {
 					int code = loadCenter ? chunk.loadTicket() : chunk.simTicket();
-					sourceList.add(new Source(TicketSources.type(code), chunk.x(), chunk.z(), dimensionId));
+					sourceList.add(new Source(TicketCode.type(code), chunk.x(), chunk.z(), dimensionId));
 				}
 				insertHeaviest(heaviest, total, chunk.x(), chunk.z(), dimensionId);
 			}

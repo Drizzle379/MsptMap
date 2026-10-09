@@ -5,7 +5,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import msptmap.MsptMapMod;
 import msptmap.net.ScanRequestPayload;
 import msptmap.net.ScanResultPayload;
-import msptmap.net.SnapshotCodec;
 import msptmap.sampler.MsptSampler;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -24,14 +23,13 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * 客户端入口：结果包接收器、掉线清理、本地命令（scan / config / status / top / locate）与地图按钮回调。
+ * 客户端入口：结果包转发、掉线清理、本地命令（scan / config / status / top / locate）与地图按钮回调。
  *
- * <p>聊天栏只输出状态提示（{@link #say}：参数为语言键，按客户端语言解析；走客户端本地消息，
+ * <p>聊天栏只输出状态提示（见 {@link Chat}：参数为语言键，按客户端语言解析；走客户端本地消息，
  * 不发往服务端），其余只写日志。
  *
  * <p>命令为本地执行：Fabric 在 ClientPacketListener.sendCommand 处拦截，命令能在客户端命令树上
@@ -42,14 +40,8 @@ public class MsptMapClient implements ClientModInitializer {
 	static final String STARTING_KEY = "msptmap.message.starting";
 	/** 包发不出去：服务端未装本模组，或装的是协议不同的另一版本（Fabric 只告诉「对面不认识这个包 ID」）。 */
 	static final String NO_MOD_KEY = "msptmap.message.no_mod";
-	/** 结果包读不出内容：对面格式与本端不兼容，本次作废。 */
-	static final String MISMATCH_KEY = "msptmap.message.mismatch";
-	/** 冷却中：距上次扫描结束不足 {@link MsptSampler#COOLDOWN_SECONDS} 秒，服务端的冷却闸拒绝。 */
-	static final String COOLDOWN_KEY = "msptmap.message.cooldown";
 	/** 上一次还没出结果（进度圈还在转）时又发起：命令用它报错，按钮路径直接忽略。 */
 	static final String WAITING_KEY = "msptmap.message.waiting";
-	/** 版本不同但包读得动：照常出结果，只附一句提醒。 */
-	static final String VERSION_MISMATCH_KEY = "msptmap.message.version_mismatch";
 	/** 告警里的区块行点了要开地图，但客户端没装 Xaero 世界地图：无从定位。 */
 	static final String NO_XAERO_KEY = "msptmap.message.no_xaero";
 
@@ -71,11 +63,11 @@ public class MsptMapClient implements ClientModInitializer {
 
 		//? if >=1.20.5 {
 		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE,
-				(payload, context) -> handleScanResult(payload));
+				(payload, context) -> ScanResultHandler.handle(payload));
 		//?} else {
 		/*// 1.20.4 及以前：handler 为三参数（包、客户端、回包器）
 		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE,
-				(payload, client, sender) -> handleScanResult(payload));
+				(payload, client, sender) -> ScanResultHandler.handle(payload));
 		*///?}
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
@@ -101,95 +93,6 @@ public class MsptMapClient implements ClientModInitializer {
 																IntegerArgumentType.getInteger(context, "chunkZ")))))))));
 	}
 
-	/** 收结果包：按状态更新进度圈、快照与聊天栏。 */
-	private static void handleScanResult(ScanResultPayload payload) {
-		if (payload.protocol() == ScanResultPayload.MISMATCH) {
-			// 包体读不出来：对面格式与本端差得太多，本次作废
-			MsptMapMod.LOGGER.warn("服务端 MsptMap 的结果包解析不了（本端 {}），已丢弃", MsptMapMod.PROTOCOL);
-			say(MISMATCH_KEY);
-			return;
-		}
-		// 自己发起的扫描才会转进度圈：进度包从不发给自动广播的接收方（见 MsptSampler.broadcastToOperators）
-		boolean selfInitiated = ScanProgress.active();
-		switch (payload.status()) {
-			case START -> {
-				MsptMapMod.LOGGER.info("收到 开始：服务端要扫 {} 秒", payload.seconds());
-				// 圈的总刻数用服务端报的秒数（请求里的可能被夹取），进度取决于后续推送的包
-				ScanProgress.start(payload.seconds());
-			}
-			// 每 0.1 秒一个，仅用于画圈，不写日志
-			case PROGRESS -> ScanProgress.update(payload.windowTicks());
-			case DONE -> {
-				ScanProgress.stop();
-				ClientSnapshot.accept(payload.windowTicks(), payload.tickNanos(), payload.dimensions());
-				MsptMapMod.LOGGER.info("收到 完成：窗口 {} tick、{} 个维度",
-						payload.windowTicks(), payload.dimensions().size());
-				for (SnapshotCodec.DimensionData dimension : payload.dimensions()) {
-					MsptMapMod.LOGGER.info("收到 {} 个区块、维度 {}",
-							dimension.chunks().size(), dimension.dimension());
-				}
-			}
-			case DENIED -> {
-				ScanProgress.stop();
-				MsptMapMod.LOGGER.info("收到 拒绝：服务端没给权限");
-			}
-			case BUSY -> {
-				ScanProgress.stop();
-				MsptMapMod.LOGGER.info("收到 忙碌：服务端正在扫另一次");
-			}
-			case COOLDOWN -> {
-				ScanProgress.stop();
-				MsptMapMod.LOGGER.info("收到 冷却：距上次扫描结束不足 {} 秒", MsptSampler.COOLDOWN_SECONDS);
-			}
-		}
-		// 收尾的几种状态（完成 / 被拒 / 忙碌 / 冷却）在聊天栏提示；START 与 PROGRESS 不提示。
-		// 自动广播的完成不提示：告警本身就是提示，再说一句「分析成功」只会干扰
-		if (selfInitiated || payload.status() != ScanResultPayload.Status.DONE) {
-			say(statusMessage(payload.status()));
-		}
-		// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
-		// START 时还不知道跑不跑得完，都不提示
-		if (payload.status() == ScanResultPayload.Status.DONE && payload.protocol() != MsptMapMod.PROTOCOL) {
-			say(VERSION_MISMATCH_KEY);
-		}
-	}
-
-	/** 聊天组件：26.2 起挪进了新引入的 Gui.hud，26.1 及以前 Gui 自己就有 getChat()。 */
-	private static ChatComponent chat() {
-		//? if >=26.2 {
-		return Minecraft.getInstance().gui.hud.getChat();
-		//?} else {
-		/*return Minecraft.getInstance().gui.getChat();
-		*///?}
-	}
-
-	/** 在聊天栏显示一条消息（key 为语言键）。仅自己可见，不发往服务端；key 为 null 时不显示。 */
-	private static void say(String key) {
-		if (key != null) {
-			// 1.21.11 及以前名为 addMessage，26.1 起更名为 addClientSystemMessage
-			//? if >=26.1 {
-			chat().addClientSystemMessage(Component.translatable(key));
-			//?} else {
-			/*chat().addMessage(Component.translatable(key));
-			*///?}
-		}
-	}
-
-	/**
-	 * 某种状态对应的聊天文案语言键；START / PROGRESS 为 null（「分析中…」已在点按钮时显示）。
-	 *
-	 * 纯函数，便于离线断言。
-	 */
-	static String statusMessage(ScanResultPayload.Status status) {
-		return switch (status) {
-			case DONE -> "msptmap.message.done";
-			case DENIED -> "msptmap.message.denied";
-			case BUSY -> "msptmap.message.busy";
-			case COOLDOWN -> COOLDOWN_KEY;
-			case START, PROGRESS -> null;
-		};
-	}
-
 	/** 地图上扫描按钮的入口。包发不出去（服务端未装本模组）时在聊天栏说明原因。 */
 	public static void onButtonPress() {
 		if (ScanProgress.active()) {
@@ -200,11 +103,11 @@ public class MsptMapClient implements ClientModInitializer {
 		}
 		if (!send(ClientConfig.scanSeconds)) {
 			MsptMapMod.LOGGER.warn("服务端没有装 MsptMap，扫不了。");
-			say(NO_MOD_KEY);
+			Chat.say(NO_MOD_KEY);
 			return;
 		}
 		// 包已发出，先说「分析中…」；服务端是否答应（拒绝 / 被占用）随后另说
-		say(STARTING_KEY);
+		Chat.say(STARTING_KEY);
 		if (worldPausesWithMapOpen()) {
 			// 请求已发出，但世界正处于暂停（见 worldPausesWithMapOpen）：玩家观感是「点了没反应」，
 			// 日志留一句以便排查
@@ -264,7 +167,7 @@ public class MsptMapClient implements ClientModInitializer {
 	 * 只开界面：不在聊天栏发消息。
 	 */
 	public static void onConfigPress(Screen parent) {
-		ConfigScreenBase.showScreen(Minecraft.getInstance(), new MsptMapConfigScreen(parent));
+		Screens.show(Minecraft.getInstance(), new MsptMapConfigScreen(parent));
 	}
 
 	/**
@@ -294,7 +197,7 @@ public class MsptMapClient implements ClientModInitializer {
 			source.sendError(Component.translatable(NO_MOD_KEY));
 			return 0;
 		}
-		say(STARTING_KEY);
+		Chat.say(STARTING_KEY);
 		return 1;
 	}
 

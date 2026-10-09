@@ -121,7 +121,7 @@ public final class SnapshotCodec {
 		return new DimensionData(buf.readUtf(), readChunks(buf));
 	}
 
-	/** 一次扫描的全部维度。字节上限由采样器控制（见 MsptSampler.MAX_SNAPSHOT_BYTES）。 */
+	/** 一次扫描的全部维度。字节上限由快照构建控制（见 SnapshotBuilder.MAX_SNAPSHOT_BYTES）。 */
 	public static void writeDimensions(FriendlyByteBuf buf, List<DimensionData> dimensions) {
 		buf.writeVarInt(dimensions.size());
 		for (DimensionData dimension : dimensions) {

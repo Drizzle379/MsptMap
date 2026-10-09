@@ -1,6 +1,6 @@
 package msptmap.client;
 
-import msptmap.Clamp;
+import msptmap.util.Clamp;
 import msptmap.sampler.MsptSampler;
 
 /**

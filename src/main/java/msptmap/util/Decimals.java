@@ -1,4 +1,4 @@
-package msptmap;
+package msptmap.util;
 
 import java.util.Locale;
 

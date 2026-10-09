@@ -7,15 +7,15 @@ package msptmap.client;
  * <p>之所以要中转：写入方是命令（地图可能尚未打开），取用方是地图界面的帧循环，两条路径不共享实例。
  */
 public final class MapFocus {
-	/** 目标形状与总览的可定位行共用（维度 ID + 区块坐标）。 */
-	private static ScanSummary.Target pending;
+	/** 待定位目标，形状与总览的可定位行共用（{@link ChunkRef}）。 */
+	private static ChunkRef pending;
 
 	private MapFocus() {
 	}
 
 	/** 记下一个待定位目标，覆盖上一个（后点的为准）。 */
 	public static void request(String dimension, int chunkX, int chunkZ) {
-		pending = new ScanSummary.Target(dimension, chunkX, chunkZ);
+		pending = new ChunkRef(dimension, chunkX, chunkZ);
 	}
 
 	/** 是否有待定位目标（只看不动）。 */
@@ -24,8 +24,8 @@ public final class MapFocus {
 	}
 
 	/** 取出待定位目标并清除；没有则为 null。 */
-	public static ScanSummary.Target consume() {
-		ScanSummary.Target target = pending;
+	public static ChunkRef consume() {
+		ChunkRef target = pending;
 		pending = null;
 		return target;
 	}

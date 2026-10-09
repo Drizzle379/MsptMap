@@ -1,6 +1,6 @@
 package msptmap.client;
 
-import msptmap.Clamp;
+import msptmap.util.Clamp;
 
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;

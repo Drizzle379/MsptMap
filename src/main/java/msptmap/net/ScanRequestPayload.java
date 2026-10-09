@@ -1,6 +1,6 @@
 package msptmap.net;
 
-import msptmap.Ids;
+import msptmap.util.Ids;
 import msptmap.MsptMapMod;
 import net.minecraft.network.FriendlyByteBuf;
 //? if >=1.20.5 {

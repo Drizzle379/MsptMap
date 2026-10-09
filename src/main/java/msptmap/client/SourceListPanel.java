@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * 右侧完整加载源列表：总览里折起的那部分在此全列。行格式与可点击定位（{@link ScanSummary.Target}）
+ * 右侧完整加载源列表：总览里折起的那部分在此全列。行格式与可点击定位（{@link ChunkRef}）
  * 都与总览内的源行相同，开合由总览的折叠行决定（状态在 {@link ScanSummary}）。
  *
  * <p>面板紧贴总览右缘并与之顶对齐（位置由调用处算出）。行数超过 {@link #MAX_ROWS} 或屏幕容不下时
@@ -117,7 +117,7 @@ public final class SourceListPanel {
 	/**
 	 * 鼠标下的源行指向的区块；不在面板上时返回 null。按当前滚动位置取行，点击的必是眼下可见的那条。
 	 */
-	public static ScanSummary.Target hitTarget(int mouseX, int mouseY, int panelX, int panelY) {
+	public static ChunkRef hitTarget(int mouseX, int mouseY, int panelX, int panelY) {
 		if (!ScanSummary.sourcesPanelOpen()) {
 			return null;
 		}
@@ -131,7 +131,7 @@ public final class SourceListPanel {
 			return null;
 		}
 		ClientSnapshot.Source source = sources.get(clampScroll(sources.size(), shown, scroll) + row);
-		return ScanSummary.Target.of(source);
+		return new ChunkRef(source.dimension(), source.chunkX(), source.chunkZ());
 	}
 
 	/**

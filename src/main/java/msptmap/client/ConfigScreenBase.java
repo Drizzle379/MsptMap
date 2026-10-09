@@ -5,7 +5,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.Tooltip;
@@ -20,7 +19,7 @@ import java.util.function.Consumer;
  * 设置界面的公共骨架：主界面（{@link MsptMapConfigScreen}）与三个子页
  * （{@link ScanConfigScreen} / {@link ColorConfigScreen} / {@link TooltipConfigScreen}）共用。
  *
- * <p>三块职责：①版本适配集中一处（背景绘制、文字绘制、切屏 API 在版本间的差异）；
+ * <p>三块职责：①版本适配集中一处（背景绘制、文字绘制的版本差异）；
  * ②「先量后摆」的列布局——子类给出各列的宽度与行计划，本类求和、居中、逐行摆放；
  * ③通用构件（整行勾选框）。
  *
@@ -175,25 +174,9 @@ abstract class ConfigScreenBase extends Screen {
 	}
 	*///?}
 
-	/**
-	 * 切到目标界面。26.2 起为 {@code Gui.setScreen}，此前为 {@code Minecraft.setScreen}——
-	 * 各版本的原版界面均走这条路径。
-	 *
-	 * <p>不用 {@code Minecraft.setScreenAndShow}：它在设屏后额外强制渲染一帧（本意是退出世界后
-	 * 立即重画避免残影，仅 {@code clearClientLevel} 等场景调用），常规按钮切屏用它会在正常帧之间
-	 * 插入一帧非周期渲染，画面概率性闪一帧。
-	 */
-	static void showScreen(Minecraft minecraft, Screen target) {
-		//? if >=26.2 {
-		minecraft.gui.setScreen(target);
-		//?} else {
-		/*minecraft.setScreen(target);
-		*///?}
-	}
-
 	/** 切到目标界面（本屏的 {@code minecraft} 实例）。 */
 	protected void showScreen(Screen target) {
-		showScreen(minecraft, target);
+		Screens.show(minecraft, target);
 	}
 
 	/** 返回上一级。 */

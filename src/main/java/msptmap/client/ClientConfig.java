@@ -1,18 +1,22 @@
 package msptmap.client;
 
-import msptmap.Clamp;
-import msptmap.MsptMapMod;
+import msptmap.util.Clamp;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
+import msptmap.util.PropertiesFile;
 import net.fabricmc.loader.api.FabricLoader;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.DoubleConsumer;
+import java.util.function.DoubleSupplier;
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 
 /**
  * 客户端的可调值：扫描秒数、颜色阈值、悬停详情显示内容。
@@ -93,6 +97,42 @@ public final class ClientConfig {
 	private ClientConfig() {
 	}
 
+	/**
+	 * 全部配置项。读盘、写盘、夹取与聊天命令的键表都遍历这一份清单，加一项只改 {@link #options()}。
+	 *
+	 * <p>lambda 只捕获字段引用、不读值，故静态初始化的先后无碍。
+	 */
+	static final List<Option> OPTIONS = options();
+
+	/** 配置项清单：键名与配置文件里的一一对应，顺序即写盘顺序。 */
+	private static List<Option> options() {
+		List<Option> options = new ArrayList<>();
+		options.add(new IntValue("scan.seconds", MIN_SECONDS, MAX_SECONDS,
+				() -> scanSeconds, value -> scanSeconds = value));
+		options.add(new DecimalValue("color.redAt", MIN_RED_AT, MAX_RED_AT,
+				() -> redAt, value -> redAt = value));
+		options.add(new Flag("color.relative", () -> relativeColor, value -> relativeColor = value));
+		options.add(new DecimalValue("color.fillAlpha", MIN_FILL_ALPHA, 1.0,
+				() -> fillAlpha, value -> fillAlpha = value));
+		options.add(new Flag("color.showWeakGray", () -> showWeakGray, value -> showWeakGray = value));
+		options.add(new Flag("summary.expanded", () -> summaryExpanded, value -> summaryExpanded = value));
+		options.add(new Flag("summary.colored", () -> summaryColored, value -> summaryColored = value));
+		options.add(new Flag("tooltip.coords", () -> tooltipCoords, value -> tooltipCoords = value));
+		options.add(new Flag("tooltip.levels", () -> tooltipLevels, value -> tooltipLevels = value));
+		options.add(new Flag("tooltip.total", () -> tooltipTotal, value -> tooltipTotal = value));
+		options.add(new Flag("tooltip.entities", () -> tooltipEntities, value -> tooltipEntities = value));
+		options.add(new Flag("tooltip.ticketLoad", () -> tooltipTicketLoad, value -> tooltipTicketLoad = value));
+		options.add(new Flag("tooltip.ticketSim", () -> tooltipTicketSim, value -> tooltipTicketSim = value));
+		options.add(new Flag("tooltip.abbreviate", () -> tooltipAbbreviate, value -> tooltipAbbreviate = value));
+		options.add(new Flag("tooltip.unit", () -> tooltipMsptUnit, value -> tooltipMsptUnit = value));
+		for (TickCategory category : TickCategory.values()) {
+			options.add(new Flag("tooltip.category." + category.name(),
+					() -> tooltipCategories[category.ordinal()],
+					value -> tooltipCategories[category.ordinal()] = value));
+		}
+		return options;
+	}
+
 	/** 恢复全部出厂默认（设置界面的「恢复默认」按钮同样走这里）。 */
 	public static void resetToDefaults() {
 		scanSeconds = 2;
@@ -127,34 +167,12 @@ public final class ClientConfig {
 	static void load(Path file) {
 		// 先回默认值再覆盖：缺失的键用默认值，坏值也不会残留部分旧状态
 		resetToDefaults();
-		if (!Files.exists(file)) {
+		Properties properties = PropertiesFile.read(file, "设置");
+		if (properties == null) {
 			return;
 		}
-		Properties properties = new Properties();
-		try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-			properties.load(reader);
-		} catch (IOException e) {
-			MsptMapMod.LOGGER.warn("设置读不出来，先用默认值：{}", file, e);
-			return;
-		}
-		scanSeconds = readInt(properties, "scan.seconds", scanSeconds);
-		redAt = readDouble(properties, "color.redAt", redAt);
-		relativeColor = readBoolean(properties, "color.relative", relativeColor);
-		fillAlpha = readDouble(properties, "color.fillAlpha", fillAlpha);
-		showWeakGray = readBoolean(properties, "color.showWeakGray", showWeakGray);
-		summaryExpanded = readBoolean(properties, "summary.expanded", summaryExpanded);
-		summaryColored = readBoolean(properties, "summary.colored", summaryColored);
-		tooltipCoords = readBoolean(properties, "tooltip.coords", tooltipCoords);
-		tooltipLevels = readBoolean(properties, "tooltip.levels", tooltipLevels);
-		tooltipTotal = readBoolean(properties, "tooltip.total", tooltipTotal);
-		tooltipEntities = readBoolean(properties, "tooltip.entities", tooltipEntities);
-		tooltipTicketLoad = readBoolean(properties, "tooltip.ticketLoad", tooltipTicketLoad);
-		tooltipTicketSim = readBoolean(properties, "tooltip.ticketSim", tooltipTicketSim);
-		tooltipAbbreviate = readBoolean(properties, "tooltip.abbreviate", tooltipAbbreviate);
-		tooltipMsptUnit = readBoolean(properties, "tooltip.unit", tooltipMsptUnit);
-		for (TickCategory category : TickCategory.values()) {
-			tooltipCategories[category.ordinal()] =
-					readBoolean(properties, "tooltip.category." + category.name(), tooltipCategories[category.ordinal()]);
+		for (Option option : OPTIONS) {
+			option.read(properties);
 		}
 		clamp();
 	}
@@ -168,31 +186,10 @@ public final class ClientConfig {
 		text.append("# This file stores client-side preferences only; the server decides its own default "
 				+ "seconds (a scan without seconds runs 2 seconds).\n");
 		text.append("# Values out of range are clamped automatically; malformed values do not crash the game.\n\n");
-		text.append("scan.seconds=").append(scanSeconds).append('\n');
-		text.append("color.redAt=").append(redAt).append('\n');
-		text.append("color.relative=").append(relativeColor).append('\n');
-		text.append("color.fillAlpha=").append(fillAlpha).append('\n');
-		text.append("color.showWeakGray=").append(showWeakGray).append('\n');
-		text.append("summary.expanded=").append(summaryExpanded).append('\n');
-		text.append("summary.colored=").append(summaryColored).append('\n');
-		text.append("tooltip.coords=").append(tooltipCoords).append('\n');
-		text.append("tooltip.levels=").append(tooltipLevels).append('\n');
-		text.append("tooltip.total=").append(tooltipTotal).append('\n');
-		text.append("tooltip.entities=").append(tooltipEntities).append('\n');
-		text.append("tooltip.ticketLoad=").append(tooltipTicketLoad).append('\n');
-		text.append("tooltip.ticketSim=").append(tooltipTicketSim).append('\n');
-		text.append("tooltip.abbreviate=").append(tooltipAbbreviate).append('\n');
-		text.append("tooltip.unit=").append(tooltipMsptUnit).append('\n');
-		for (TickCategory category : TickCategory.values()) {
-			text.append("tooltip.category.").append(category.name()).append('=')
-					.append(tooltipCategories[category.ordinal()]).append('\n');
+		for (Option option : OPTIONS) {
+			option.write(text);
 		}
-		try {
-			Files.createDirectories(file.getParent());
-			Files.writeString(file, text.toString(), StandardCharsets.UTF_8);
-		} catch (IOException e) {
-			MsptMapMod.LOGGER.warn("设置写不进去：{}", file, e);
-		}
+		PropertiesFile.write(file, text.toString(), "设置");
 	}
 
 	/** 悬停详情中该类的明细是否显示。 */
@@ -250,42 +247,120 @@ public final class ClientConfig {
 
 	/** 各值夹回合法区间。 */
 	private static void clamp() {
-		scanSeconds = Clamp.of(scanSeconds, MIN_SECONDS, MAX_SECONDS);
-		redAt = clampRange(redAt, MIN_RED_AT, MAX_RED_AT);
-		fillAlpha = clampRange(fillAlpha, MIN_FILL_ALPHA, 1.0);
-	}
-
-	private static double clampRange(double value, double min, double max) {
-		return round2(Clamp.of(value, min, max));
-	}
-
-	private static boolean readBoolean(Properties properties, String key, boolean fallback) {
-		String value = properties.getProperty(key);
-		// 只认这两个词：Boolean.parseBoolean 会把任意文本当作 false，相当于静默改写设置
-		if ("true".equalsIgnoreCase(value)) {
-			return true;
-		}
-		if ("false".equalsIgnoreCase(value)) {
-			return false;
-		}
-		return fallback;
-	}
-
-	private static int readInt(Properties properties, String key, int fallback) {
-		try {
-			return Integer.parseInt(properties.getProperty(key, Integer.toString(fallback)).trim());
-		} catch (NumberFormatException e) {
-			return fallback;
+		for (Option option : OPTIONS) {
+			option.clamp();
 		}
 	}
 
-	private static double readDouble(Properties properties, String key, double fallback) {
-		try {
-			double value = Double.parseDouble(properties.getProperty(key, Double.toString(fallback)).trim());
-			// NaN 与 Infinity 能被 parse 出来，但夹取对其无效（NaN 夹取后仍为 NaN），用于算颜色会出问题
-			return Double.isFinite(value) ? value : fallback;
-		} catch (NumberFormatException e) {
-			return fallback;
+	/** 一项配置的描述符：键名、类型与区间，以及对该静态字段的读写。 */
+	abstract static class Option {
+		private final String key;
+
+		Option(String key) {
+			this.key = key;
+		}
+
+		/** 配置文件里的键，也是聊天命令里那一级的名字。 */
+		String key() {
+			return key;
+		}
+
+		/** 从文件覆盖该字段；缺失或坏值保持现值。 */
+		abstract void read(Properties properties);
+
+		/** 追加 {@code key=value} 一行。 */
+		abstract void write(StringBuilder text);
+
+		/** 夹回合法区间。 */
+		abstract void clamp();
+	}
+
+	/** 布尔项：只认 true / false 两个词。 */
+	static final class Flag extends Option {
+		final BooleanSupplier reader;
+		final Consumer<Boolean> writer;
+
+		Flag(String key, BooleanSupplier reader, Consumer<Boolean> writer) {
+			super(key);
+			this.reader = reader;
+			this.writer = writer;
+		}
+
+		@Override
+		void read(Properties properties) {
+			writer.accept(PropertiesFile.readBoolean(properties, key(), reader.getAsBoolean()));
+		}
+
+		@Override
+		void write(StringBuilder text) {
+			text.append(key()).append('=').append(reader.getAsBoolean()).append('\n');
+		}
+
+		@Override
+		void clamp() {
+			// 布尔值没有越界一说
+		}
+	}
+
+	/** 整数项：区间由命令的参数类型与 {@link Clamp} 共用。 */
+	static final class IntValue extends Option {
+		final int min;
+		final int max;
+		final IntSupplier reader;
+		final IntConsumer writer;
+
+		IntValue(String key, int min, int max, IntSupplier reader, IntConsumer writer) {
+			super(key);
+			this.min = min;
+			this.max = max;
+			this.reader = reader;
+			this.writer = writer;
+		}
+
+		@Override
+		void read(Properties properties) {
+			writer.accept(PropertiesFile.readInt(properties, key(), reader.getAsInt()));
+		}
+
+		@Override
+		void write(StringBuilder text) {
+			text.append(key()).append('=').append(reader.getAsInt()).append('\n');
+		}
+
+		@Override
+		void clamp() {
+			writer.accept(Clamp.of(reader.getAsInt(), min, max));
+		}
+	}
+
+	/** 小数项：区间由命令的参数类型与 {@link Clamp} 共用，值一律两位小数。 */
+	static final class DecimalValue extends Option {
+		final double min;
+		final double max;
+		final DoubleSupplier reader;
+		final DoubleConsumer writer;
+
+		DecimalValue(String key, double min, double max, DoubleSupplier reader, DoubleConsumer writer) {
+			super(key);
+			this.min = min;
+			this.max = max;
+			this.reader = reader;
+			this.writer = writer;
+		}
+
+		@Override
+		void read(Properties properties) {
+			writer.accept(PropertiesFile.readDouble(properties, key(), reader.getAsDouble()));
+		}
+
+		@Override
+		void write(StringBuilder text) {
+			text.append(key()).append('=').append(reader.getAsDouble()).append('\n');
+		}
+
+		@Override
+		void clamp() {
+			writer.accept(PropertiesFile.clamp(reader.getAsDouble(), min, max, 2));
 		}
 	}
 }

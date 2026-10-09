@@ -1,4 +1,4 @@
-package msptmap;
+package msptmap.util;
 
 /**
  * 数值夹取。{@code Math.clamp} 仅 Java 21 起可用，而本模组的 1.20–1.20.4 以 Java 17 为目标，

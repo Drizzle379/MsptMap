@@ -1,8 +1,7 @@
 package msptmap.client;
 
-import msptmap.Decimals;
+import msptmap.util.Decimals;
 import msptmap.sampler.TickCategory;
-import msptmap.sampler.TicketSources;
 import net.minecraft.client.Minecraft;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -12,8 +11,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.TextColor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,43 +23,14 @@ import java.util.List;
  * {@link msptmap.client.mixins.GuiMapMixin}），与地图显示的必然是同一个区块。
  *
  * <p>文本一律经 {@link Component#translatable} 引用语言文件里的键；翻译在绘制时才按当前语言解析，
- * 故切换语言无需作废 {@link #lines} 的缓存。
+ * 故切换语言无需作废 {@link #lines} 的缓存。行构件（类别顺序与名称、各类耗时行、票名、附注样式）
+ * 见 {@link TickText}。
  */
 public final class ChunkTooltip {
 	/** 面板与鼠标的距离。 */
 	private static final int OFFSET = 8;
 	/** 面板与屏幕边缘的最小距离。 */
 	private static final int MARGIN = 2;
-	/** 附注文字色（RGB）：正文为纯白，附注色暗一档。 */
-	private static final int NOTE_COLOR = 0xB0B0B0;
-	/** 二级条目（明细、加载源、TOP5 数据行）的缩进。 */
-	private static final String INDENT = "  ";
-
-	/**
-	 * 存疑说明行。{@link #lines} 只在确有区块对不上时把它追加在末尾；斜体与附注色内嵌在样式里，
-	 * {@link #draw} 统一绘制。
-	 */
-	private static final Component NOTE_DOUBTFUL = Component.translatable("msptmap.tooltip.doubtful")
-			.withStyle(style -> style.withItalic(true).withColor(TextColor.fromRgb(NOTE_COLOR)));
-
-	/**
-	 * 各类耗时在详情与设置界面里的显示顺序。
-	 *
-	 * <p>与枚举顺序不同：枚举只许在末尾追加（协议按 ordinal 上线），这里按原版 tick 的实际先后排
-	 * （{@code ServerLevel.tick}：计划刻 → 随机刻、刷怪 → 方块事件 → 实体 → 方块实体）。方块更新例外，
-	 * 排在最后：其耗时已含在触发它的类别里（合计不计它），单列末尾并以附注样式（灰、斜体、带星）区别于
-	 * 计入合计的正式行。
-	 *
-	 * <p>新增类别时此处也要加一项，否则设置界面与详情都不会显示它（顺序自定）。
-	 */
-	static final List<TickCategory> ORDER = List.of(
-			TickCategory.SCHEDULED,
-			TickCategory.RANDOM_TICK,
-			TickCategory.SPAWN,
-			TickCategory.BLOCK_EVENT,
-			TickCategory.ENTITY,
-			TickCategory.BLOCK_ENTITY,
-			TickCategory.NEIGHBOR_UPDATE);
 
 	/**
 	 * 上次拼行结果与其输入：区块（引用即快照代次——每收一包快照都会重建全部区块对象）、坐标、
@@ -123,142 +91,29 @@ public final class ChunkTooltip {
 		if (ClientConfig.tooltipLevels) {
 			// 两条链各配自己的票：加载票与模拟票在同一区块上可能不是同一张
 			lines.add(Component.translatable("msptmap.tooltip.load_level", chunk.loadLevel())
-					.append(note(ticket(chunk.loadTicket(), ClientConfig.tooltipTicketLoad, chunkX, chunkZ))));
+					.append(TickText.ticket(chunk.loadTicket(), ClientConfig.tooltipTicketLoad, chunkX, chunkZ)));
 			lines.add(Component.translatable("msptmap.tooltip.compute_level", chunk.computeLevel())
-					.append(note(ticket(chunk.simTicket(), ClientConfig.tooltipTicketSim, chunkX, chunkZ))));
-			doubtful = ticketDoubtful(chunk.loadTicket(), ClientConfig.tooltipTicketLoad)
-					|| ticketDoubtful(chunk.simTicket(), ClientConfig.tooltipTicketSim);
+					.append(TickText.ticket(chunk.simTicket(), ClientConfig.tooltipTicketSim, chunkX, chunkZ)));
+			doubtful = TickText.ticketDoubtful(chunk.loadTicket(), ClientConfig.tooltipTicketLoad)
+					|| TickText.ticketDoubtful(chunk.simTicket(), ClientConfig.tooltipTicketSim);
 		}
 		if (ClientConfig.tooltipEntities) {
 			// 与耗时无关的瞬时值：方块实体 / 实体 / 刷怪那几类耗时的成因多半在这里
 			lines.add(Component.translatable("msptmap.tooltip.entities", chunk.entities()));
 		}
 		if (ClientConfig.tooltipTotal) {
-			lines.add(msptLine(Component.translatable("msptmap.label.total"), Decimals.format3(chunk.mspt())));
+			lines.add(TickText.msptLine(Component.translatable("msptmap.label.total"), Decimals.format3(chunk.mspt())));
 		}
-		for (TickCategory category : ORDER) {
+		for (TickCategory category : TickText.ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {
-				lines.add(secondary(categoryLine(
+				lines.add(TickText.secondary(TickText.categoryLine(
 						chunk.nanos()[category.ordinal()], windowTicks, category)));
 			}
 		}
 		if (doubtful) {
-			lines.add(NOTE_DOUBTFUL);
+			lines.add(TickText.DOUBTFUL_NOTE);
 		}
 		return lines;
-	}
-
-	/** 「合计」行：单位固定显示，不受「显示单位」开关影响。 */
-	static Component msptLine(Component label, String mspt) {
-		return Component.translatable("msptmap.tooltip.mspt_line", label, mspt);
-	}
-
-	/**
-	 * 各类明细行：单位是否显示由「显示单位」开关决定；数值可传 String（无色）或带样式的组件。返回
-	 * 可变类型：方块更新行的斜体要补在返回值上（1.20.1 的 Component 接口没有 withStyle 变体）。
-	 */
-	private static MutableComponent valueLine(Component label, Object mspt) {
-		return Component.translatable(ClientConfig.tooltipMsptUnit
-				? "msptmap.tooltip.mspt_line" : "msptmap.tooltip.plain_line", label, mspt);
-	}
-
-	/** 数值组件的着色包装：扫描总览把梯度色只挂在数值上，名称、单位等其余部分不受影响。 */
-	static Component colored(String value, int rgb) {
-		return Component.literal(value).withStyle(style -> style.withColor(TextColor.fromRgb(rgb)));
-	}
-
-	/**
-	 * 某类的明细行。方块更新行以斜体与行尾星号标示合计不计它；行色由调用方给——悬停详情经
-	 * {@link #secondary} 得附注灰，扫描总览的着色版只给数值上梯度色。
-	 *
-	 * <p>包内可见，吃纳秒而非区块：扫描总览的明细行取自跨维度合计的同类数组。
-	 */
-	static Component categoryLine(long nanos, int windowTicks, TickCategory category) {
-		return categoryLine(category, ms(nanos, windowTicks));
-	}
-
-	/** 数值着色版（扫描总览）：梯度色只挂在数值上，名称、星号等保持外层样式。 */
-	static Component categoryLine(long nanos, int windowTicks, TickCategory category, int msptRgb) {
-		return categoryLine(category, colored(ms(nanos, windowTicks), msptRgb));
-	}
-
-	/** 拼行本体：value 为 String（无色）或带样式的组件。 */
-	private static Component categoryLine(TickCategory category, Object value) {
-		if (category != TickCategory.NEIGHBOR_UPDATE) {
-			return valueLine(label(category), value);
-		}
-		return valueLine(label(category).copy().append("*"), value)
-				.withStyle(style -> style.withItalic(true));
-	}
-
-	/**
-	 * 二级条目：缩进两格、附注灰。悬停详情的七类明细与扫描总览的明细、加载源、TOP5 行共用
-	 * （包内可见）。
-	 */
-	static Component secondary(Component content) {
-		return Component.literal(INDENT).append(content)
-				.withStyle(style -> style.withColor(TextColor.fromRgb(NOTE_COLOR)));
-	}
-
-	/** 等级行后半段（票名…）：附注灰，与前半段的白色正文相区分。 */
-	private static Component note(Component content) {
-		return content.copy().withStyle(style -> style.withColor(TextColor.fromRgb(NOTE_COLOR)));
-	}
-
-	/**
-	 * 等级行后半段：票名——「玩家加载」「强制加载 @x,z」「玩家模拟中心」；存疑时是「未知 *」。
-	 * 未勾选该开关、或该链没有来源（如无模拟票的弱加载区块）时返回空组件。
-	 */
-	private static Component ticket(int code, boolean enabled, int chunkX, int chunkZ) {
-		if (!enabled) {
-			return Component.empty();
-		}
-		if (TicketSources.doubtful(code)) {
-			return Component.translatable("msptmap.tooltip.ticket_doubtful");
-		}
-		int type = TicketSources.type(code);
-		if (type == TicketSources.NONE) {
-			return Component.empty();
-		}
-		Component name = Component.translatable(ticketName(type));
-		if (type == TicketSources.PLAYER_LOADING) {
-			// player_loading 是逐区块铺的：视距内每格一张、等级相同，故此链上不存在「中心」
-			// 与距离（每格算出来都是自己）。只写票名，不编造一个恒为 0 的距离。其余票种（forced /
-			// portal / ender_pearl 等）是稀疏的，中心与距离才有意义。
-			return Component.translatable("msptmap.tooltip.ticket_name", name);
-		}
-		// 中心判据与蓝框同源（TicketSources.isCenter），两处显示不会不一致
-		if (TicketSources.isCenter(code)) {
-			// 票就在本区块上：源头坐标即本区块坐标，不必重复写
-			return Component.translatable("msptmap.tooltip.ticket_center", name);
-		}
-		return Component.translatable("msptmap.tooltip.ticket_at", name,
-				chunkX + TicketSources.offsetX(code), chunkZ + TicketSources.offsetZ(code));
-	}
-
-	/** 该链存疑、且这一栏确实要显示。 */
-	private static boolean ticketDoubtful(int code, boolean enabled) {
-		return enabled && TicketSources.doubtful(code);
-	}
-
-	/** 加载票名称的语言键，与类型一一对应；新增票种时此处与语言文件需同步更新。包内可见：扫描总览的加载源行也用它。 */
-	static String ticketName(int type) {
-		return switch (type) {
-			case TicketSources.PLAYER_LOADING -> "msptmap.ticket.player_loading";
-			case TicketSources.PLAYER_SIMULATION -> "msptmap.ticket.player_simulation";
-			case TicketSources.FORCED -> "msptmap.ticket.forced";
-			case TicketSources.PORTAL -> "msptmap.ticket.portal";
-			case TicketSources.ENDER_PEARL -> "msptmap.ticket.ender_pearl";
-			// 出生点票：1.21.10 及以前名为 start，1.21.11 起拆分为 player_spawn 与 spawn_search
-			//? if >=1.21.11 {
-			case TicketSources.PLAYER_SPAWN -> "msptmap.ticket.player_spawn";
-			//?} else {
-			/*case TicketSources.PLAYER_SPAWN -> "msptmap.ticket.start";
-			*///?}
-			case TicketSources.SPAWN_SEARCH -> "msptmap.ticket.spawn_search";
-			case TicketSources.DRAGON -> "msptmap.ticket.dragon";
-			default -> "msptmap.ticket.unknown";
-		};
 	}
 
 	/**
@@ -316,47 +171,6 @@ public final class ChunkTooltip {
 	}
 
 	/**
-	 * 各类的名称；「显示为缩写」开启时为其二字母缩写。两个键表都用 switch 而非数组：枚举新增类别时
-	 * 会在编译期报错，不会静默错位。
-	 *
-	 * <p>包内可见：设置界面的勾选框也使用它，使详情与设置中的名称一致。
-	 */
-	static Component label(TickCategory category) {
-		return Component.translatable(ClientConfig.tooltipAbbreviate ? abbrKey(category) : nameKey(category));
-	}
-
-	/** 类别名称的语言键。 */
-	private static String nameKey(TickCategory category) {
-		return switch (category) {
-			case RANDOM_TICK -> "msptmap.category.random_tick";
-			case SCHEDULED -> "msptmap.category.scheduled";
-			case NEIGHBOR_UPDATE -> "msptmap.category.neighbor_update";
-			case BLOCK_EVENT -> "msptmap.category.block_event";
-			case BLOCK_ENTITY -> "msptmap.category.block_entity";
-			case ENTITY -> "msptmap.category.entity";
-			case SPAWN -> "msptmap.category.spawn";
-		};
-	}
-
-	/** 类别二字母缩写的语言键；缩写为英文，两语言同值。 */
-	private static String abbrKey(TickCategory category) {
-		return switch (category) {
-			case RANDOM_TICK -> "msptmap.category.abbr.random_tick";
-			case SCHEDULED -> "msptmap.category.abbr.scheduled";
-			case NEIGHBOR_UPDATE -> "msptmap.category.abbr.neighbor_update";
-			case BLOCK_EVENT -> "msptmap.category.abbr.block_event";
-			case BLOCK_ENTITY -> "msptmap.category.abbr.block_entity";
-			case ENTITY -> "msptmap.category.abbr.entity";
-			case SPAWN -> "msptmap.category.abbr.spawn";
-		};
-	}
-
-	/** 纳秒 → 毫秒/tick 文本，与 MsptSampler 打印共用 {@link Decimals} 的口径。 */
-	static String ms(long nanos, int windowTicks) {
-		return Decimals.format3(nanos / 1_000_000.0 / Math.max(1, windowTicks));
-	}
-
-	/**
 	 * 参与拼行的全部配置项压成一个位掩码：任一开关变动则签名改变，缓存随之作废。
 	 *
 	 * <p>逐项列出（不依赖任何通用机制），配置项增删时此处会跟着改，不会静默漏进签名。
@@ -382,7 +196,7 @@ public final class ChunkTooltip {
 			bits |= 1 << 5;
 		}
 		// 各类明细各占一位，位序按 ordinal（签名只需唯一，与显示顺序无关）
-		for (TickCategory category : ORDER) {
+		for (TickCategory category : TickText.ORDER) {
 			if (ClientConfig.tooltipCategory(category)) {
 				bits |= 1 << (6 + category.ordinal());
 			}

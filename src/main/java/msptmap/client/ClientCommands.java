@@ -3,10 +3,9 @@ package msptmap.client;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import msptmap.Decimals;
-import msptmap.Dimensions;
+import msptmap.util.Decimals;
+import msptmap.util.Dimensions;
 import msptmap.sampler.MsptSampler;
-import msptmap.sampler.TickCategory;
 // 1.21.11 及以前叫 ClientCommandManager，26.1 起更名为 ClientCommands（同 MsptMapClient）
 //? if >=26.1 {
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
@@ -92,45 +91,25 @@ final class ClientCommands {
 								IntegerArgumentType.getInteger(context, "count"))));
 	}
 
-	/** 设置项分支：名字与配置文件里的键一一对应，读到哪一项都按同一套 helper 生成。 */
+	/** 设置项分支：由 {@link ClientConfig} 的配置项清单生成，名字与配置文件里的键一一对应。 */
 	private static List<LiteralArgumentBuilder<FabricClientCommandSource>> keys() {
 		List<LiteralArgumentBuilder<FabricClientCommandSource>> keys = new ArrayList<>();
-		keys.add(intKey("scan.seconds", ClientConfig.MIN_SECONDS, ClientConfig.MAX_SECONDS,
-				() -> ClientConfig.scanSeconds, value -> ClientConfig.scanSeconds = value));
-		keys.add(doubleKey("color.redAt", ClientConfig.MIN_RED_AT, ClientConfig.MAX_RED_AT,
-				() -> ClientConfig.redAt, value -> ClientConfig.redAt = value));
-		keys.add(doubleKey("color.fillAlpha", ClientConfig.MIN_FILL_ALPHA, 1.0,
-				() -> ClientConfig.fillAlpha, value -> ClientConfig.fillAlpha = value));
-		keys.add(flag("color.relative",
-				() -> ClientConfig.relativeColor, value -> ClientConfig.relativeColor = value));
-		keys.add(flag("color.showWeakGray",
-				() -> ClientConfig.showWeakGray, value -> ClientConfig.showWeakGray = value));
-		keys.add(flag("summary.expanded",
-				() -> ClientConfig.summaryExpanded, value -> ClientConfig.summaryExpanded = value));
-		keys.add(flag("summary.colored",
-				() -> ClientConfig.summaryColored, value -> ClientConfig.summaryColored = value));
-		keys.add(flag("tooltip.coords",
-				() -> ClientConfig.tooltipCoords, value -> ClientConfig.tooltipCoords = value));
-		keys.add(flag("tooltip.levels",
-				() -> ClientConfig.tooltipLevels, value -> ClientConfig.tooltipLevels = value));
-		keys.add(flag("tooltip.total",
-				() -> ClientConfig.tooltipTotal, value -> ClientConfig.tooltipTotal = value));
-		keys.add(flag("tooltip.entities",
-				() -> ClientConfig.tooltipEntities, value -> ClientConfig.tooltipEntities = value));
-		keys.add(flag("tooltip.ticketLoad",
-				() -> ClientConfig.tooltipTicketLoad, value -> ClientConfig.tooltipTicketLoad = value));
-		keys.add(flag("tooltip.ticketSim",
-				() -> ClientConfig.tooltipTicketSim, value -> ClientConfig.tooltipTicketSim = value));
-		keys.add(flag("tooltip.abbreviate",
-				() -> ClientConfig.tooltipAbbreviate, value -> ClientConfig.tooltipAbbreviate = value));
-		keys.add(flag("tooltip.unit",
-				() -> ClientConfig.tooltipMsptUnit, value -> ClientConfig.tooltipMsptUnit = value));
-		for (TickCategory category : TickCategory.values()) {
-			keys.add(flag("tooltip.category." + category.name(),
-					() -> ClientConfig.tooltipCategory(category),
-					value -> ClientConfig.tooltipCategories[category.ordinal()] = value));
+		for (ClientConfig.Option option : ClientConfig.OPTIONS) {
+			keys.add(key(option));
 		}
 		return keys;
+	}
+
+	/** 按描述符的类型生成对应分支：区间写进参数类型，越界输入在解析期就被拒。 */
+	private static LiteralArgumentBuilder<FabricClientCommandSource> key(ClientConfig.Option option) {
+		if (option instanceof ClientConfig.Flag flag) {
+			return flag(flag.key(), flag.reader, flag.writer);
+		}
+		if (option instanceof ClientConfig.IntValue integer) {
+			return intKey(integer.key(), integer.min, integer.max, integer.reader, integer.writer);
+		}
+		ClientConfig.DecimalValue decimal = (ClientConfig.DecimalValue) option;
+		return doubleKey(decimal.key(), decimal.min, decimal.max, decimal.reader, decimal.writer);
 	}
 
 	/** 布尔设置项：不带参数显示现值，{@code on} / {@code off} 设置。 */
@@ -202,7 +181,7 @@ final class ClientCommands {
 
 	/** 设置界面的备用入口：未装 Mod Menu 时使用。parent 为 null：关闭后直接回游戏。 */
 	private static int openConfig() {
-		ConfigScreenBase.showScreen(Minecraft.getInstance(), new MsptMapConfigScreen(null));
+		Screens.show(Minecraft.getInstance(), new MsptMapConfigScreen(null));
 		return 1;
 	}
 

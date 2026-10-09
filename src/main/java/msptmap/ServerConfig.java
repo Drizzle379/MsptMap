@@ -1,11 +1,9 @@
 package msptmap;
 
+import msptmap.util.Clamp;
+import msptmap.util.PropertiesFile;
 import net.fabricmc.loader.api.FabricLoader;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Properties;
@@ -92,20 +90,14 @@ public final class ServerConfig {
 	static void load(Path file) {
 		// 先回默认值再覆盖：缺失的键用默认值，坏值也不会残留部分旧状态
 		resetToDefaults();
-		if (!Files.exists(file)) {
-			return;
-		}
-		Properties properties = new Properties();
-		try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-			properties.load(reader);
-		} catch (IOException e) {
-			MsptMapMod.LOGGER.warn("服务端设置读不出来，先用默认值：{}", file, e);
+		Properties properties = PropertiesFile.read(file, "服务端设置");
+		if (properties == null) {
 			return;
 		}
 		access = readAccess(properties, "access", access);
-		monitorEnabled = readBoolean(properties, "monitor.enabled", monitorEnabled);
-		threshold = readDouble(properties, "monitor.threshold", threshold);
-		cooldownMinutes = readInt(properties, "monitor.cooldownMinutes", cooldownMinutes);
+		monitorEnabled = PropertiesFile.readBoolean(properties, "monitor.enabled", monitorEnabled);
+		threshold = PropertiesFile.readDouble(properties, "monitor.threshold", threshold);
+		cooldownMinutes = PropertiesFile.readInt(properties, "monitor.cooldownMinutes", cooldownMinutes);
 		audience = readAudience(properties, "monitor.audience", audience);
 		clamp();
 	}
@@ -125,53 +117,13 @@ public final class ServerConfig {
 		text.append("monitor.threshold=").append(threshold).append('\n');
 		text.append("monitor.cooldownMinutes=").append(cooldownMinutes).append('\n');
 		text.append("monitor.audience=").append(audience.name().toLowerCase(Locale.ROOT)).append('\n');
-		try {
-			Files.createDirectories(file.getParent());
-			Files.writeString(file, text.toString(), StandardCharsets.UTF_8);
-		} catch (IOException e) {
-			MsptMapMod.LOGGER.warn("服务端设置写不进去：{}", file, e);
-		}
+		PropertiesFile.write(file, text.toString(), "服务端设置");
 	}
 
 	/** 各值夹回合法区间。 */
 	private static void clamp() {
-		threshold = clampRange(threshold, MIN_THRESHOLD, MAX_THRESHOLD);
+		threshold = PropertiesFile.clamp(threshold, MIN_THRESHOLD, MAX_THRESHOLD, 1);
 		cooldownMinutes = Clamp.of(cooldownMinutes, MIN_COOLDOWN_MINUTES, MAX_COOLDOWN_MINUTES);
-	}
-
-	/** 夹取并保留一位小数：阈值存进文件后要能一眼看懂。 */
-	private static double clampRange(double value, double min, double max) {
-		return Math.round(Clamp.of(value, min, max) * 10.0) / 10.0;
-	}
-
-	private static boolean readBoolean(Properties properties, String key, boolean fallback) {
-		String value = properties.getProperty(key);
-		// 只认这两个词：Boolean.parseBoolean 会把任意文本当作 false，相当于静默改写设置
-		if ("true".equalsIgnoreCase(value)) {
-			return true;
-		}
-		if ("false".equalsIgnoreCase(value)) {
-			return false;
-		}
-		return fallback;
-	}
-
-	private static int readInt(Properties properties, String key, int fallback) {
-		try {
-			return Integer.parseInt(properties.getProperty(key, Integer.toString(fallback)).trim());
-		} catch (NumberFormatException e) {
-			return fallback;
-		}
-	}
-
-	private static double readDouble(Properties properties, String key, double fallback) {
-		try {
-			double value = Double.parseDouble(properties.getProperty(key, Double.toString(fallback)).trim());
-			// NaN 与 Infinity 能被 parse 出来，但夹取对其无效（NaN 夹取后仍为 NaN），比较会永远为假
-			return Double.isFinite(value) ? value : fallback;
-		} catch (NumberFormatException e) {
-			return fallback;
-		}
 	}
 
 	private static Access readAccess(Properties properties, String key, Access fallback) {

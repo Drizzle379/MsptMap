@@ -1,7 +1,7 @@
 package msptmap.client;
 
-import msptmap.Decimals;
-import msptmap.Dimensions;
+import msptmap.util.Decimals;
+import msptmap.util.Dimensions;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 //? if >=26.1 {
@@ -56,17 +56,6 @@ public final class ScanSummary {
 	private record Built(List<Component> lines, List<ClientSnapshot.Heavy> heaviest, int topFirstRow,
 			List<ClientSnapshot.Source> sources, List<Component> sourceRows, int sourceFirstRow,
 			int sourceShown, int foldRow) {
-	}
-
-	/** 点击定位的目标：维度 + 区块坐标；TOP 数据行与加载源行共用。 */
-	public record Target(String dimension, int chunkX, int chunkZ) {
-		static Target of(ClientSnapshot.Heavy heavy) {
-			return new Target(heavy.dimension(), heavy.chunkX(), heavy.chunkZ());
-		}
-
-		static Target of(ClientSnapshot.Source source) {
-			return new Target(source.dimension(), source.chunkX(), source.chunkZ());
-		}
 	}
 
 	private ScanSummary() {
@@ -127,22 +116,22 @@ public final class ScanSummary {
 		long tickNanos = totals.tickNanos();
 		Component totalLabel = Component.translatable("msptmap.summary.total");
 		Component totalValue = ClientConfig.summaryColored
-				? ChunkTooltip.colored(ChunkTooltip.ms(totalNanos, windowTicks),
+				? TickText.colored(TickText.ms(totalNanos, windowTicks),
 						rangeColor(mspt(totalNanos, windowTicks), TOTAL_GREEN_MS, TOTAL_RED_MS))
-				: Component.literal(ChunkTooltip.ms(totalNanos, windowTicks));
+				: Component.literal(TickText.ms(totalNanos, windowTicks));
 		lines.add(tickNanos > 0L
 				? Component.translatable("msptmap.summary.total_line", totalLabel, totalValue,
-						ChunkTooltip.ms(tickNanos, windowTicks),
+						TickText.ms(tickNanos, windowTicks),
 						Decimals.format1(Math.min(100.0, totalNanos * 100.0 / tickNanos)))
 				: Component.translatable("msptmap.tooltip.plain_line", totalLabel, totalValue));
 		// 七类明细：整体缩进、类别名附注灰；着色开启时梯度色只给数值（压暗一档），星号与斜体照旧
-		for (TickCategory category : ChunkTooltip.ORDER) {
+		for (TickCategory category : TickText.ORDER) {
 			long nanos = totals.categoryNanos()[category.ordinal()];
 			float categoryMspt = mspt(nanos, windowTicks);
-			lines.add(ChunkTooltip.secondary(ClientConfig.summaryColored
-					? ChunkTooltip.categoryLine(nanos, windowTicks, category,
+			lines.add(TickText.secondary(ClientConfig.summaryColored
+					? TickText.categoryLine(nanos, windowTicks, category,
 							soften(rangeColor(categoryMspt, CATEGORY_GREEN_MS, CATEGORY_RED_MS)))
-					: ChunkTooltip.categoryLine(nanos, windowTicks, category)));
+					: TickText.categoryLine(nanos, windowTicks, category)));
 		}
 		// 卡顿区块 TOP5：分区标题白字不加粗；一个都没有时连分区标题都不出现。着色时数值色与地图同源
 		// （红点：固定模式读红色阈值、相对模式读该维度最重的区块），再压暗一档
@@ -152,12 +141,12 @@ public final class ScanSummary {
 			lines.add(Component.translatable("msptmap.summary.top_title"));
 			topFirstRow = lines.size();
 			for (ClientSnapshot.Heavy heavy : heaviest) {
-				String value = ChunkTooltip.ms(heavy.totalNanos(), windowTicks);
+				String value = TickText.ms(heavy.totalNanos(), windowTicks);
 				Component shown = ClientConfig.summaryColored
-						? ChunkTooltip.colored(value, soften(heatColor(mspt(heavy.totalNanos(), windowTicks),
+						? TickText.colored(value, soften(heatColor(mspt(heavy.totalNanos(), windowTicks),
 								MapOverlay.redPoint(ClientSnapshot.heaviestMspt(heavy.dimension())))))
 						: Component.literal(value);
-				lines.add(ChunkTooltip.secondary(Component.translatable("msptmap.summary.line", shown,
+				lines.add(TickText.secondary(Component.translatable("msptmap.summary.line", shown,
 						Component.translatable(Dimensions.key(heavy.dimension())),
 						heavy.chunkX(), heavy.chunkZ())));
 			}
@@ -189,7 +178,7 @@ public final class ScanSummary {
 		return ((rgb >> 16 & 0xFF) * 0xD0 / 0xFF) << 16 | ((rgb >> 8 & 0xFF) * 0xD0 / 0xFF) << 8;
 	}
 
-	/** 纳秒 → ms/tick，与 {@link ChunkTooltip#ms} 的字符串同口径。 */
+	/** 纳秒 → ms/tick，与 {@link TickText#ms} 的字符串同口径。 */
 	private static float mspt(long nanos, int windowTicks) {
 		return (float) (nanos / 1_000_000.0 / Math.max(1, windowTicks));
 	}
@@ -201,15 +190,15 @@ public final class ScanSummary {
 
 	/** 一条加载源行：票名 + 维度 + 中心区块坐标，与 TOP 数据行同构（同为二级条目）。 */
 	private static Component sourceLine(ClientSnapshot.Source source) {
-		return ChunkTooltip.secondary(Component.translatable("msptmap.summary.line",
-				Component.translatable(ChunkTooltip.ticketName(source.type())),
+		return TickText.secondary(Component.translatable("msptmap.summary.line",
+				Component.translatable(TickText.ticketName(source.type())),
 				Component.translatable(Dimensions.key(source.dimension())),
 				source.chunkX(), source.chunkZ()));
 	}
 
 	/** 折叠行：右侧完整列表展开与否两态；收起时带被折起的源数。 */
 	private static Component foldLine(int hidden) {
-		return ChunkTooltip.secondary(sourcesExpanded
+		return TickText.secondary(sourcesExpanded
 				? Component.translatable("msptmap.summary.sources_less")
 				: Component.translatable("msptmap.summary.sources_more", hidden));
 	}
@@ -286,7 +275,7 @@ public final class ScanSummary {
 	 * 鼠标下可定位行指向的区块；未指向任何可定位行（含没有数据的空面板、折叠行）时返回 null。
 	 * {@code panelX}/{@code panelY} 是总览左上角，与 {@link #draw} 的调用处同一组坐标。
 	 */
-	public static Target hitTarget(int mouseX, int mouseY, int panelX, int panelY) {
+	public static ChunkRef hitTarget(int mouseX, int mouseY, int panelX, int panelY) {
 		if (ClientSnapshot.totals() == null) {
 			return null;
 		}
@@ -296,13 +285,15 @@ public final class ScanSummary {
 	}
 
 	/** 该行指向的区块：TOP 数据行与加载源行；其余行（标题、明细、折叠行等）返回 null。 */
-	private static Target targetAt(int row) {
+	private static ChunkRef targetAt(int row) {
 		if (cached.topFirstRow() >= 0 && row >= cached.topFirstRow()
 				&& row < cached.topFirstRow() + cached.heaviest().size()) {
-			return Target.of(cached.heaviest().get(row - cached.topFirstRow()));
+			ClientSnapshot.Heavy heavy = cached.heaviest().get(row - cached.topFirstRow());
+			return new ChunkRef(heavy.dimension(), heavy.chunkX(), heavy.chunkZ());
 		}
 		if (row >= cached.sourceFirstRow() && row < cached.sourceFirstRow() + cached.sourceShown()) {
-			return Target.of(cached.sources().get(row - cached.sourceFirstRow()));
+			ClientSnapshot.Source source = cached.sources().get(row - cached.sourceFirstRow());
+			return new ChunkRef(source.dimension(), source.chunkX(), source.chunkZ());
 		}
 		return null;
 	}

@@ -28,7 +28,7 @@ public final class XaeroMapOpen {
 			return;
 		}
 		// 两个 null 是上一级界面（Xaero 自己的按键处理同样传 null）：关闭地图后直接回游戏
-		ConfigScreenBase.showScreen(minecraft,
+		Screens.show(minecraft,
 				new GuiMap(null, null, session.getMapProcessor(), minecraft.getCameraEntity()));
 	}
 }

@@ -1,4 +1,4 @@
-package msptmap;
+package msptmap.util;
 
 /**
  * 维度名的语言键：客户端的悬停详情、总览与服务端的自动扫描告警共用。
