@@ -114,22 +114,22 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 | Command | Side | Effect |
 | :--- | :--- | :--- |
 | `/msptmap scan [seconds]` | Both | Starts a scan and paints the result on the map. Omit `seconds` to use the configured value; range 1 – 60. At the console the result is logged instead. |
-| `/msptmap access <ops\|all>` | Server | Who may start a scan: operators only (default) or every player. |
+| `/msptmap access <ops\|all>` | Both | Who may start a scan: operators only (default) or every player. |
 | `/msptmap config` | Client | Opens the settings screen, for when Mod Menu is not installed. |
-| `/msptmap monitor` | Server | Prints the monitoring state and its settings. |
-| `/msptmap monitor <on\|off>` | Server | Master switch, off by default; turning it off also discards the current window and the cooldown. |
-| `/msptmap monitor threshold <mspt>` | Server | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
-| `/msptmap monitor consecutive <times>` | Server | Consecutive above-threshold checks required to trigger, 1 – 60 (default `3`). |
-| `/msptmap monitor cooldown <minutes>` | Server | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
-| `/msptmap monitor audience <op\|all>` | Server | Who is alerted: online operators only (default `op`), or every online player. |
+| `/msptmap monitor` | Both | Prints the monitoring state and its settings. |
+| `/msptmap monitor <on\|off>` | Both | Master switch, off by default; turning it off also discards the current window and the cooldown. |
+| `/msptmap monitor threshold <mspt>` | Both | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
+| `/msptmap monitor consecutive <times>` | Both | Consecutive above-threshold checks required to trigger, 1 – 60 (default `3`). |
+| `/msptmap monitor cooldown <minutes>` | Both | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
+| `/msptmap monitor audience <op\|all>` | Both | Who is alerted: online operators only (default `op`), or every online player. |
 
-Scanning is limited to vanilla permission level 2 (operators) by default; `/msptmap access all` opens it to every player and `/msptmap access ops` restores the default. The `access` and `monitor` subcommands are always restricted to operators.
+Scanning is limited to vanilla permission level 2 (operators) by default; `/msptmap access <ops\|all>` opens it to every player or restores the default. The `access` and `monitor` subcommands are always restricted to operators.
 
 ## 📡 Monitoring
 
 Off by default. When enabled, the server times every tick and, once the smoothed average stays above a threshold, starts a scan of its own: the five most costly chunks are sent to the online operators as a chat alert, and selecting a row opens the world map at that chunk. The scan chain is the same one described below — only the result goes to the operators instead of the requester.
 
-Monitoring is an operator command; it is enabled with `/msptmap monitor on`, and its settings are stored in `config/msptmap-server.properties` — see [Commands](#-commands).
+Monitoring is an operator command, switched with `/msptmap monitor <on\|off>`; its settings are stored in `config/msptmap-server.properties` — see [Commands](#-commands).
 
 ## 🔧 Configuration
 

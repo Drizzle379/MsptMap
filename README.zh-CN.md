@@ -114,22 +114,22 @@
 | 指令 | 端 | 作用 |
 | :--- | :--- | :--- |
 | `/msptmap scan [秒数]` | 两端 | 发起扫描并在地图上着色；省略秒数则用当前设置的秒数，范围 1 ~ 60。在控制台执行时结果只写入服务端日志。 |
-| `/msptmap access <ops\|all>` | 服务端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
+| `/msptmap access <ops\|all>` | 两端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
 | `/msptmap config` | 客户端 | 打开设置界面（未装 Mod Menu 时的备用入口）。 |
-| `/msptmap monitor` | 服务端 | 打印监控状态与各项设置。 |
-| `/msptmap monitor <on\|off>` | 服务端 | 总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
-| `/msptmap monitor threshold <mspt>` | 服务端 | 触发阈值，1.0 ~ 1000.0（默认 `40.0`）。 |
-| `/msptmap monitor consecutive <次>` | 服务端 | 连续超标多少次才触发，1 ~ 60（默认 `3`）。 |
-| `/msptmap monitor cooldown <分钟>` | 服务端 | 触发后多长时间内不再扫描，1 ~ 1440（默认 `5`）。 |
-| `/msptmap monitor audience <op\|all>` | 服务端 | 告警发给谁：仅在线 OP（默认 `op`），或所有在线玩家。 |
+| `/msptmap monitor` | 两端 | 打印监控状态与各项设置。 |
+| `/msptmap monitor <on\|off>` | 两端 | 总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
+| `/msptmap monitor threshold <mspt>` | 两端 | 触发阈值，1.0 ~ 1000.0（默认 `40.0`）。 |
+| `/msptmap monitor consecutive <次>` | 两端 | 连续超标多少次才触发，1 ~ 60（默认 `3`）。 |
+| `/msptmap monitor cooldown <分钟>` | 两端 | 触发后多长时间内不再扫描，1 ~ 1440（默认 `5`）。 |
+| `/msptmap monitor audience <op\|all>` | 两端 | 告警发给谁：仅在线 OP（默认 `op`），或所有在线玩家。 |
 
-扫描默认限原版权限等级 2（OP）；`/msptmap access all` 可放开给所有玩家，`/msptmap access ops` 恢复默认。`access` 与 `monitor` 两条子命令本身始终限 OP。
+扫描默认限原版权限等级 2（OP）；`/msptmap access <ops\|all>` 可放开给所有玩家，或恢复默认。`access` 与 `monitor` 两条子命令本身始终限 OP。
 
 ## 📡 监控
 
 默认关闭。开启后，服务端计量每一游戏刻的实际耗时，平滑均值持续超阈值即自行发起一次扫描，把卡顿最重的五个区块作为聊天告警发给在线管理员；点击其中一行可将世界地图打开并定位到该区块。扫描链路与下文相同，区别只在结果发往管理员而非发起者。
 
-监控是管理员命令，用 `/msptmap monitor on` 开启，其设置保存在 `config/msptmap-server.properties`（各项见[指令](#-指令)）。
+监控是管理员命令，用 `/msptmap monitor <on\|off>` 开关，其设置保存在 `config/msptmap-server.properties`（各项见[指令](#-指令)）。
 
 ## 🔧 设置
 
