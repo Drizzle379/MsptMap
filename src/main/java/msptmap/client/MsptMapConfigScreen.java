@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * 设置主界面。两个入口：模组菜单（{@link ModMenuIntegration}）与命令 {@code /msptmap config}。
+ * 设置主界面。两个入口：模组菜单（{@link ModMenuIntegration}）与地图上的设置按钮。
  *
  * <p>照 Xaero 世界地图的分层做法：本界面只放三个板块的入口按钮（如设置条目般整行），点击进入各自
  * 子页（{@link ScanConfigScreen} / {@link ColorConfigScreen} / {@link TooltipConfigScreen}），
@@ -61,7 +61,7 @@ public class MsptMapConfigScreen extends ConfigScreenBase {
 				.build());
 	}
 
-	/** 「完成」与 Esc 均为保存退出；无上一级（{@code /msptmap config}）时直接回游戏。 */
+	/** 「完成」与 Esc 均为保存退出，随后回到上一级界面（parent 为 null 时直接回游戏）。 */
 	@Override
 	public void onClose() {
 		ClientConfig.save();

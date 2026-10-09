@@ -98,7 +98,7 @@ public final class ClientConfig {
 	}
 
 	/**
-	 * 全部配置项。读盘、写盘、夹取与聊天命令的键表都遍历这一份清单，加一项只改 {@link #options()}。
+	 * 全部配置项。读盘、写盘与夹取都遍历这一份清单，加一项只改 {@link #options()}。
 	 *
 	 * <p>lambda 只捕获字段引用、不读值，故静态初始化的先后无碍。
 	 */
@@ -181,8 +181,8 @@ public final class ClientConfig {
 	static void save(Path file) {
 		clamp();
 		StringBuilder text = new StringBuilder();
-		text.append("# MsptMap client settings. Edit in game: Mod Menu -> MsptMap -> Settings "
-				+ "(fallback: /msptmap config).\n");
+		text.append("# MsptMap client settings. Edit in game: Mod Menu -> MsptMap -> Settings, "
+				+ "or the settings button on the world map.\n");
 		text.append("# This file stores client-side preferences only; the server decides its own default "
 				+ "seconds (a scan without seconds runs 2 seconds).\n");
 		text.append("# Values out of range are clamped automatically; malformed values do not crash the game.\n\n");
@@ -260,7 +260,7 @@ public final class ClientConfig {
 			this.key = key;
 		}
 
-		/** 配置文件里的键，也是聊天命令里那一级的名字。 */
+		/** 配置文件里的键。 */
 		String key() {
 			return key;
 		}
@@ -302,7 +302,7 @@ public final class ClientConfig {
 		}
 	}
 
-	/** 整数项：区间由命令的参数类型与 {@link Clamp} 共用。 */
+	/** 整数项：区间供 {@link Clamp} 夹取读盘值。 */
 	static final class IntValue extends Option {
 		final int min;
 		final int max;
@@ -333,7 +333,7 @@ public final class ClientConfig {
 		}
 	}
 
-	/** 小数项：区间由命令的参数类型与 {@link Clamp} 共用，值一律两位小数。 */
+	/** 小数项：区间供 {@link Clamp} 夹取读盘值，值一律两位小数。 */
 	static final class DecimalValue extends Option {
 		final double min;
 		final double max;

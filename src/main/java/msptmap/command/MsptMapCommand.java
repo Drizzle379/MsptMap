@@ -20,8 +20,8 @@ import java.util.Locale;
  * 服务端的 {@code /msptmap} 命令：scan、access 与 monitor 三条子命令。
  *
  * <p>{@code scan} 不向来源回话，结果打到服务端控制台；{@code access} 与 {@code monitor} 改完
- * 立即生效并落盘，回执报给来源。玩家看地图热力图用的是客户端那条同名的 {@code /msptmap scan}
- * （本地执行，走不到这里）。
+ * 立即生效并落盘，回执报给来源。玩家在地图上取热力图走的是地图按钮（客户端直接发包），与这条
+ * {@code scan} 无关。
  *
  * <p>权限经 Brigadier 的 requires 判定，见 {@link Permissions}：根节点按扫描权限（默认仅 OP）；
  * access 与 monitor 两条子命令限原版 OP 等级 2，不受当前扫描权限影响。

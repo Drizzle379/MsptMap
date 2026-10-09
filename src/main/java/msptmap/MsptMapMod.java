@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * 模组主入口，服务端与客户端都会执行。
  *
  * <p>注册：服务端 tick 的起止（采样器与常态监控）、服务器起止时的读存与复位、{@code /msptmap}
- * 命令、网络包与扫描请求接收器。
+ * 命令、网络包、扫描请求接收器与命令转发接收器。
  */
 public class MsptMapMod implements ModInitializer {
 	public static final String MOD_ID = "msptmap";
