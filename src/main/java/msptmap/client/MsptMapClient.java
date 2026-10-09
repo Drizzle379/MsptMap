@@ -29,7 +29,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * 客户端入口：结果包接收器、掉线清理、两条本地命令（scan / config）与地图按钮回调。
+ * 客户端入口：结果包接收器、掉线清理、本地命令（scan / config / status / top / locate）与地图按钮回调。
  *
  * <p>聊天栏只输出状态提示（{@link #say}：参数为语言键，按客户端语言解析；走客户端本地消息，
  * 不发往服务端），其余只写日志。
@@ -85,8 +85,11 @@ public class MsptMapClient implements ClientModInitializer {
 								.then(argument("seconds", IntegerArgumentType.integer(1, MsptSampler.MAX_SECONDS))
 										.executes(context -> requestScan(context.getSource(),
 												IntegerArgumentType.getInteger(context, "seconds")))))
-						// 设置界面的备用入口：未装 Mod Menu 时使用
-						.then(literal("config").executes(context -> openConfig()))
+						// 设置：无参打开设置界面，键名读写单项，reset 恢复默认
+						.then(ClientCommands.config())
+						// 本次扫描的运行状态与最重区块
+						.then(ClientCommands.status())
+						.then(ClientCommands.top())
 						// 聊天告警里点击区块行走这里（命令由服务端的组件携带，本地执行）
 						.then(literal("locate")
 								.then(argument("dimension", StringArgumentType.string())
@@ -262,12 +265,6 @@ public class MsptMapClient implements ClientModInitializer {
 	 */
 	public static void onConfigPress(Screen parent) {
 		ConfigScreenBase.showScreen(Minecraft.getInstance(), new MsptMapConfigScreen(parent));
-	}
-
-	/** 未装 Mod Menu 时打开设置界面的命令。parent 为 null：关闭后直接回游戏。只开界面，不发送消息。 */
-	private static int openConfig() {
-		ConfigScreenBase.showScreen(Minecraft.getInstance(), new MsptMapConfigScreen(null));
-		return 1;
 	}
 
 	/**

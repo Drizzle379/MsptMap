@@ -41,6 +41,10 @@ public final class ClientSnapshot {
 	public record Heavy(long totalNanos, int chunkX, int chunkZ, String dimension) {
 	}
 
+	/** 命令列出最重区块用的一格：耗时已换算成 ms/tick（见 {@link #heaviest(int)}）。 */
+	public record Top(int chunkX, int chunkZ, String dimension, float mspt) {
+	}
+
 	/**
 	 * 一个加载源：票种序号 + 中心区块坐标 + 所属维度；与蓝框、「加载源」计数同源（见 {@link #accept}），
 	 * 每区块至多一个（两条链都命中时取加载链），坐标即中心区块自身（{@link TicketSources#isCenter}）。
@@ -235,6 +239,42 @@ public final class ClientSnapshot {
 	public static float heaviestMspt(String dimension) {
 		Float heaviest = heaviestByDimension.get(dimension);
 		return heaviest == null ? 0.0f : heaviest;
+	}
+
+	/**
+	 * 本次快照里最重的若干区块（按 mspt 降序，至多 limit 个）：{@code /msptmap top} 的数据源。
+	 *
+	 * <p>只收本段窗口内测到过耗时的区块（同 {@link #insertHeaviest}）；未扫描、已清屏或没有达标区块时为空。
+	 */
+	public static List<Top> heaviest(int limit) {
+		List<Top> top = new ArrayList<>();
+		if (limit <= 0) {
+			return top;
+		}
+		for (Map.Entry<String, Chunk[]> entry : byDimension.entrySet()) {
+			String dimension = entry.getKey();
+			for (Chunk chunk : entry.getValue()) {
+				if (chunk.timed() && chunk.mspt() > 0f) {
+					insertTop(top, limit, new Top(chunk.x1() >> 4, chunk.z1() >> 4, dimension, chunk.mspt()));
+				}
+			}
+		}
+		return top;
+	}
+
+	/** 插入最重榜（按 mspt 降序，至多 limit 个）：多出的从尾部裁掉。 */
+	private static void insertTop(List<Top> top, int limit, Top candidate) {
+		int at = top.size();
+		while (at > 0 && top.get(at - 1).mspt() < candidate.mspt()) {
+			at--;
+		}
+		if (at >= limit) {
+			return;
+		}
+		top.add(at, candidate);
+		if (top.size() > limit) {
+			top.remove(top.size() - 1);
+		}
 	}
 
 	/**

@@ -17,9 +17,16 @@
   "msptmap.access.status": "MsptMap scan access: %1$s (ops = operators only, all = everyone)",
 
   "msptmap.monitor.status": "MsptMap monitor: %1$s (average %2$s mspt)",
-  "msptmap.monitor.settings": "threshold %1$s mspt; consecutive %2$s; cooldown %3$s min; audience %4$s",
+  "msptmap.monitor.settings": "threshold %1$s mspt; cooldown %2$s min; audience %3$s",
   "msptmap.monitor.cooldown_left": "cooldown: %1$s s left",
   "msptmap.set": "MsptMap: %1$s = %2$s",
+
+  "msptmap.status.scanning": "MsptMap: scanning the server...",
+  "msptmap.status.result": "MsptMap: %1$s s window, %2$s chunks, %3$s entities, total %4$s mspt",
+  "msptmap.no_result": "MsptMap: no scan result yet",
+  "msptmap.top.title": "MsptMap: heaviest chunks (top %1$s)",
+  "msptmap.top.row": "%1$d) %2$s - chunk (%3$d, %4$d) - %5$s mspt",
+  "msptmap.config.reset_done": "MsptMap: settings restored to defaults",
   "msptmap.monitor.state.off": "off",
   "msptmap.monitor.state.ok": "normal",
   "msptmap.monitor.state.watching": "watching",

@@ -116,10 +116,14 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 | `/msptmap scan [seconds]` | Both | Starts a scan and paints the result on the map. Omit `seconds` to use the configured value; range 1 – 60. At the console the result is logged instead. |
 | `/msptmap access <ops\|all>` | Both | Who may start a scan: operators only (default) or every player. |
 | `/msptmap config` | Client | Opens the settings screen, for when Mod Menu is not installed. |
+| `/msptmap config <key>` | Client | Prints one setting; the key names are the same as in `config/msptmap-client.properties`. |
+| `/msptmap config <key> <value>` | Client | Sets one setting and saves it. Booleans take `on` / `off`. |
+| `/msptmap config reset` | Client | Restores every setting to its default. |
+| `/msptmap status` | Client | Prints the state of the current scan and the last result. |
+| `/msptmap top [count]` | Client | Lists the most costly chunks of the last scan; 5 by default, up to 50. |
 | `/msptmap monitor` | Both | Prints the monitoring state and its settings. |
 | `/msptmap monitor <on\|off>` | Both | Master switch, off by default; turning it off also discards the current window and the cooldown. |
 | `/msptmap monitor threshold <mspt>` | Both | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
-| `/msptmap monitor consecutive <times>` | Both | Consecutive above-threshold checks required to trigger, 1 – 60 (default `3`). |
 | `/msptmap monitor cooldown <minutes>` | Both | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
 | `/msptmap monitor audience <op\|all>` | Both | Who is alerted: online operators only (default `op`), or every online player. |
 
@@ -133,7 +137,7 @@ Monitoring is an operator command, switched with `/msptmap monitor <on\|off>`; i
 
 ## 🔧 Configuration
 
-Open **Mod Menu → Settings**, or run `/msptmap config`. Settings are stored in `config/msptmap-client.properties`.
+Open **Mod Menu → Settings**, or run `/msptmap config`. Settings are stored in `config/msptmap-client.properties`; each one can also be read and written in game with `/msptmap config <key> [value]`, under the same key names as the file.
 
 <details>
 <summary>All settings</summary>

@@ -116,10 +116,14 @@
 | `/msptmap scan [秒数]` | 两端 | 发起扫描并在地图上着色；省略秒数则用当前设置的秒数，范围 1 ~ 60。在控制台执行时结果只写入服务端日志。 |
 | `/msptmap access <ops\|all>` | 两端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
 | `/msptmap config` | 客户端 | 打开设置界面（未装 Mod Menu 时的备用入口）。 |
+| `/msptmap config <键>` | 客户端 | 打印一项设置；键名与 `config/msptmap-client.properties` 中一致。 |
+| `/msptmap config <键> <值>` | 客户端 | 设置一项并保存；布尔值取 `on` / `off`。 |
+| `/msptmap config reset` | 客户端 | 将全部设置恢复为默认值。 |
+| `/msptmap status` | 客户端 | 打印本次扫描的状态与最近一次结果。 |
+| `/msptmap top [个数]` | 客户端 | 列出最近一次扫描最重的区块；默认 5 个，最多 50 个。 |
 | `/msptmap monitor` | 两端 | 打印监控状态与各项设置。 |
 | `/msptmap monitor <on\|off>` | 两端 | 总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
 | `/msptmap monitor threshold <mspt>` | 两端 | 触发阈值，1.0 ~ 1000.0（默认 `40.0`）。 |
-| `/msptmap monitor consecutive <次>` | 两端 | 连续超标多少次才触发，1 ~ 60（默认 `3`）。 |
 | `/msptmap monitor cooldown <分钟>` | 两端 | 触发后多长时间内不再扫描，1 ~ 1440（默认 `5`）。 |
 | `/msptmap monitor audience <op\|all>` | 两端 | 告警发给谁：仅在线 OP（默认 `op`），或所有在线玩家。 |
 
@@ -133,7 +137,7 @@
 
 ## 🔧 设置
 
-打开 **Mod Menu → 设置**，或输入 `/msptmap config`。设置保存在 `config/msptmap-client.properties`。
+打开 **Mod Menu → 设置**，或输入 `/msptmap config`。设置保存在 `config/msptmap-client.properties`，每一项也可用 `/msptmap config <键> [值]` 在游戏内读写，键名与文件中一致。
 
 <details>
 <summary>全部设置项</summary>
