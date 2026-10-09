@@ -18,7 +18,7 @@ Identifies the specific chunks responsible for server-side lag.
 
 **English** · [简体中文](README.zh-CN.md)
 
-[Features](#-features) · [Requirements](#-requirements) · [Installation](#-installation) · [Usage](#-usage) · [Configuration](#-configuration) · [How it works](#-how-it-works) · [Building](#-building)
+[Features](#-features) · [Requirements](#-requirements) · [Installation](#-installation) · [Usage](#-usage) · [Monitoring](#-monitoring) · [Configuration](#-configuration) · [How it works](#-how-it-works) · [Building](#-building)
 
 </div>
 
@@ -33,6 +33,7 @@ Identifies the specific chunks responsible for server-side lag.
 | 🏷️ **Load source lookup** | The load ticket behind each chunk is resolved: `player_loading`, `forced`, `portal`, `ender_pearl`, `dragon`, and others. Chunks that hold a ticket are outlined in blue, and the tooltip reports the ticket name together with the `@x,z` coordinates of the chunk on which the ticket resides. |
 | 📊 **Scan overview** | A single panel reports total mspt, entity count, load sources and the five most costly chunks, aggregated across **all three dimensions**, whereas the map itself displays one dimension at a time. |
 | 🖱️ **Click to locate** | Selecting an entry in the overview moves the map to the corresponding chunk. A fold row expands the complete source list, which supports scrolling. |
+| 📡 **Optional monitoring** | Off by default. When enabled, the server watches MSPT and, on sustained overload, scans on its own and alerts the online operators with a clickable list of the five most costly chunks. |
 | 🔁 **Version tolerance** | The client and the server are not required to run the same version. A version mismatch still produces a result, accompanied by a chat notice; a packet that cannot be interpreted is reported as a failure in chat and does not disconnect the client. |
 
 ## 📦 Requirements
@@ -110,6 +111,32 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 > **Single-player:** the world is paused while the map is open; after selecting scan, close the map and wait.
 
 The same command is available to operators and on the server console; there its output is written to the server console only.
+
+## 📡 Monitoring
+
+Off by default. When enabled, the server times every tick and, once the smoothed average stays above a threshold, starts a scan of its own: the five most costly chunks are sent to the online operators as a chat alert, and selecting a row opens the world map at that chunk. The scan chain is the same one described below — only the result goes to the operators instead of the requester.
+
+```shell
+/msptmap monitor on
+```
+
+Monitoring is an operator command (permission level 2); its settings are stored in `config/msptmap-server.properties`.
+
+<details>
+<summary>All monitor settings</summary>
+
+| Setting | Default | Effect |
+| :--- | :--- | :--- |
+| `on` / `off` | off | Master switch; a disabled monitor measures nothing. |
+| `threshold <mspt>` | `50.0` | Threshold to trigger on, 1.0 – 1000.0. |
+| `window <seconds>` | `5` | Smoothing window, 1 – 60. |
+| `consecutive <times>` | `3` | Consecutive above-threshold checks required to trigger, 1 – 60. |
+| `cooldown <minutes>` | `5` | Span after a trigger in which no further scan starts, 1 – 1440. |
+| `scan <seconds>` | `2` | Length of the automatic scan. |
+| `audience <modded\|all>` | `modded` | Who is alerted: operators running MsptMap, or all online operators. |
+
+**`/msptmap monitor`** on its own prints the current settings and state.
+</details>
 
 ## 🔧 Configuration
 
