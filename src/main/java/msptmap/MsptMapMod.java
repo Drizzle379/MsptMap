@@ -2,6 +2,7 @@ package msptmap;
 
 import msptmap.carpet.CarpetCompat;
 import msptmap.command.MsptMapCommand;
+import msptmap.monitor.MsptMonitor;
 import msptmap.net.ScanRequestPayload;
 import msptmap.net.ScanResultPayload;
 import msptmap.sampler.MsptSampler;
@@ -22,8 +23,8 @@ import org.slf4j.LoggerFactory;
 /**
  * 模组主入口，服务端与客户端都会执行。
  *
- * <p>注册五项：服务端 tick 结束时调用采样器、服务器停止时复位采样状态、{@code /msptmap} 命令、
- * 网络包与扫描请求接收器，以及装了地毯时把权限交给地毯规则。
+ * <p>注册：服务端 tick 的起止（采样器与常态监控）、服务器起止时的读存与复位、{@code /msptmap}
+ * 命令、网络包与扫描请求接收器，以及装了地毯时把权限交给地毯规则。
  */
 public class MsptMapMod implements ModInitializer {
 	public static final String MOD_ID = "msptmap";
@@ -39,9 +40,21 @@ public class MsptMapMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		ServerTickEvents.END_SERVER_TICK.register(server -> MsptSampler.onServerTick());
-		// 服务器停止：丢弃采样状态。静态字段跨世界存活，不复位则重进后旧窗口继续数刻、新请求被误判为「忙」
-		ServerLifecycleEvents.SERVER_STOPPED.register(server -> MsptSampler.reset());
+		// 监控要量整 tick 的耗时，故自己配一对 START / END 钩子：END 那头同时挂着采样器（保持无参签名，
+		// 离线测试直接调它），这里才拿得到 MinecraftServer
+		ServerTickEvents.START_SERVER_TICK.register(server -> MsptMonitor.onTickStart());
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			MsptSampler.onServerTick();
+			MsptMonitor.onTickEnd(server);
+		});
+		// 服务端配置在服务器起来后读一次（命令改完即存，见 MsptMapCommand 的 monitor 子树）
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> ServerConfig.load());
+		// 服务器停止：丢弃采样与监控状态。静态字段跨世界存活，不复位则重进后旧窗口继续数刻、新请求
+		// 被误判为「忙」，监控也会带着上一个世界的冷却与均值
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+			MsptSampler.reset();
+			MsptMonitor.reset();
+		});
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registryAccess, environment) -> MsptMapCommand.register(dispatcher));
 

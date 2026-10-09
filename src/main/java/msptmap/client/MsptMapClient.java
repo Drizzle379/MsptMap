@@ -1,6 +1,7 @@
 package msptmap.client;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import msptmap.MsptMapMod;
 import msptmap.net.ScanRequestPayload;
 import msptmap.net.ScanResultPayload;
@@ -21,6 +22,7 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.gui.screens.Screen;
@@ -48,6 +50,8 @@ public class MsptMapClient implements ClientModInitializer {
 	static final String WAITING_KEY = "msptmap.message.waiting";
 	/** 版本不同但包读得动：照常出结果，只附一句提醒。 */
 	static final String VERSION_MISMATCH_KEY = "msptmap.message.version_mismatch";
+	/** 告警里的区块行点了要开地图，但客户端没装 Xaero 世界地图：无从定位。 */
+	static final String NO_XAERO_KEY = "msptmap.message.no_xaero";
 
 	@Override
 	public void onInitializeClient() {
@@ -62,6 +66,7 @@ public class MsptMapClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			ClientSnapshot.clear();
 			ScanProgress.stop();
+			MapFocus.clear();
 		});
 
 		//? if >=1.20.5 {
@@ -81,7 +86,16 @@ public class MsptMapClient implements ClientModInitializer {
 										.executes(context -> requestScan(context.getSource(),
 												IntegerArgumentType.getInteger(context, "seconds")))))
 						// 设置界面的备用入口：未装 Mod Menu 时使用
-						.then(literal("config").executes(context -> openConfig()))));
+						.then(literal("config").executes(context -> openConfig()))
+						// 聊天告警里点击区块行走这里（命令由服务端的组件携带，本地执行）
+						.then(literal("locate")
+								.then(argument("dimension", StringArgumentType.string())
+										.then(argument("chunkX", IntegerArgumentType.integer())
+												.then(argument("chunkZ", IntegerArgumentType.integer())
+														.executes(context -> locate(context.getSource(),
+																StringArgumentType.getString(context, "dimension"),
+																IntegerArgumentType.getInteger(context, "chunkX"),
+																IntegerArgumentType.getInteger(context, "chunkZ")))))))));
 	}
 
 	/** 收结果包：按状态更新进度圈、快照与聊天栏。 */
@@ -92,6 +106,8 @@ public class MsptMapClient implements ClientModInitializer {
 			say(MISMATCH_KEY);
 			return;
 		}
+		// 自己发起的扫描才会转进度圈：进度包从不发给自动广播的接收方（见 MsptSampler.broadcastToOperators）
+		boolean selfInitiated = ScanProgress.active();
 		switch (payload.status()) {
 			case START -> {
 				MsptMapMod.LOGGER.info("收到 开始：服务端要扫 {} 秒", payload.seconds());
@@ -123,8 +139,11 @@ public class MsptMapClient implements ClientModInitializer {
 				MsptMapMod.LOGGER.info("收到 冷却：距上次扫描结束不足 {} 秒", MsptSampler.COOLDOWN_SECONDS);
 			}
 		}
-		// 收尾的几种状态（完成 / 被拒 / 忙碌 / 冷却）在聊天栏提示；START 与 PROGRESS 不提示
-		say(statusMessage(payload.status()));
+		// 收尾的几种状态（完成 / 被拒 / 忙碌 / 冷却）在聊天栏提示；START 与 PROGRESS 不提示。
+		// 自动广播的完成不提示：告警本身就是提示，再说一句「分析成功」只会干扰
+		if (selfInitiated || payload.status() != ScanResultPayload.Status.DONE) {
+			say(statusMessage(payload.status()));
+		}
 		// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
 		// START 时还不知道跑不跑得完，都不提示
 		if (payload.status() == ScanResultPayload.Status.DONE && payload.protocol() != MsptMapMod.PROTOCOL) {
@@ -248,6 +267,22 @@ public class MsptMapClient implements ClientModInitializer {
 	/** 未装 Mod Menu 时打开设置界面的命令。parent 为 null：关闭后直接回游戏。只开界面，不发送消息。 */
 	private static int openConfig() {
 		ConfigScreenBase.showScreen(Minecraft.getInstance(), new MsptMapConfigScreen(null));
+		return 1;
+	}
+
+	/**
+	 * 定位命令：记下目标并确保地图已打开，随后由地图的帧循环完成定位（见 {@link MapFocus}）。
+	 *
+	 * <p>参数由聊天告警的行拼出（维度 ID 为字符串参数，故命令里带引号）；客户端本地执行，不发往服务端。
+	 */
+	private static int locate(FabricClientCommandSource source, String dimension, int chunkX, int chunkZ) {
+		if (!FabricLoader.getInstance().isModLoaded("xaeroworldmap")) {
+			// 未装世界地图：没有可定位的画布。引用的类在此守卫之后才加载
+			source.sendError(Component.translatable(NO_XAERO_KEY));
+			return 0;
+		}
+		MapFocus.request(dimension, chunkX, chunkZ);
+		XaeroMapOpen.openIfClosed();
 		return 1;
 	}
 

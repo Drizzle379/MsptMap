@@ -8,6 +8,20 @@
   "msptmap.message.mismatch": "分析失败，MsptMap 客户端与服务端版本不一致",
   "msptmap.message.version_mismatch": "MsptMap 客户端与服务端版本不一致，结果可能不准",
   "msptmap.message.waiting": "上一次分析还没结束，请等待结果",
+  "msptmap.message.no_xaero": "无法定位：未安装 Xaero 的世界地图",
+
+  "msptmap.alert.title": "[MsptMap] 服务器 MSPT 持续高于 %1$s，已自动扫描 %2$s 秒，最重的区块：",
+  "msptmap.alert.row": "%1$d) %2$s · 区块 (%3$d, %4$d) · %5$s mspt",
+  "msptmap.alert.hover": "点击在世界地图上定位该区块",
+
+  "msptmap.monitor.status": "MsptMap 监控：%1$s（均值 %2$s mspt）",
+  "msptmap.monitor.settings": "阈值 %1$s mspt；窗口 %2$s 秒；去抖 %3$s 次；冷却 %4$s 分钟；扫描 %5$s 秒；接收范围 %6$s",
+  "msptmap.monitor.cooldown_left": "冷却中：剩余 %1$s 秒",
+  "msptmap.monitor.set": "MsptMap 监控：%1$s = %2$s",
+  "msptmap.monitor.state.off": "已关闭",
+  "msptmap.monitor.state.ok": "正常",
+  "msptmap.monitor.state.watching": "观察中",
+  "msptmap.monitor.state.cooldown": "冷却中",
 
   "msptmap.hint.server": "绘制 Mspt 地图（向服务端请求）",
   "msptmap.hint.singleplayer": "绘制 Mspt 地图（单人档要关闭地图等待一段时间，否则无法生成）",

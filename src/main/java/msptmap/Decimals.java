@@ -12,6 +12,11 @@ public final class Decimals {
 	private Decimals() {
 	}
 
+	/** 一位小数（服务端监控的 mspt 阈值与均值）。 */
+	public static String format1(double value) {
+		return String.format(Locale.ROOT, "%.1f", value);
+	}
+
 	/** 两位小数（设置界面的滑块读数与阈值）。 */
 	public static String format2(double value) {
 		return String.format(Locale.ROOT, "%.2f", value);

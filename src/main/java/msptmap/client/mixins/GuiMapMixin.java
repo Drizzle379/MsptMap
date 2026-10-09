@@ -8,6 +8,7 @@ import msptmap.MsptMapMod;
 import msptmap.client.ChunkTooltip;
 import msptmap.client.ClientConfig;
 import msptmap.client.ClientSnapshot;
+import msptmap.client.MapFocus;
 import msptmap.client.MapOverlay;
 import msptmap.client.MsptMapClient;
 import msptmap.client.ScanProgress;
@@ -602,7 +603,15 @@ public abstract class GuiMapMixin {
 	/** 应用待执行的定位：维度已切到目标、地图可用且不再等待世界更新时，把区块中心设为相机目标。 */
 	@Unique
 	private void msptmap$pendingFocus() {
-		if (msptmapPendingFocus == null || mapProcessor == null) {
+		if (mapProcessor == null) {
+			return;
+		}
+		// 外部请求的定位（聊天告警里点击区块行）：无在途定位时取出，交给与点击总览同一套逻辑。
+		// 地图世界还没就绪就先留着，下一帧再取
+		if (msptmapPendingFocus == null && MapFocus.awaiting() && mapProcessor.isMapWorldUsable()) {
+			msptmap$focusChunk(MapFocus.consume());
+		}
+		if (msptmapPendingFocus == null) {
 			return;
 		}
 		// 切换中或地图世界重建中：此时设了也会被 Xaero 清掉，继续等

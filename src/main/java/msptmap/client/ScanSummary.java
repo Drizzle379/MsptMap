@@ -1,5 +1,6 @@
 package msptmap.client;
 
+import msptmap.Dimensions;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 //? if >=26.1 {
@@ -149,7 +150,7 @@ public final class ScanSummary {
 								MapOverlay.redPoint(ClientSnapshot.heaviestMspt(heavy.dimension())))))
 						: Component.literal(value);
 				lines.add(ChunkTooltip.secondary(Component.translatable("msptmap.summary.line", shown,
-						Component.translatable(dimensionKey(heavy.dimension())),
+						Component.translatable(Dimensions.key(heavy.dimension())),
 						heavy.chunkX(), heavy.chunkZ())));
 			}
 		}
@@ -194,7 +195,7 @@ public final class ScanSummary {
 	private static Component sourceLine(ClientSnapshot.Source source) {
 		return ChunkTooltip.secondary(Component.translatable("msptmap.summary.line",
 				Component.translatable(ChunkTooltip.ticketName(source.type())),
-				Component.translatable(dimensionKey(source.dimension())),
+				Component.translatable(Dimensions.key(source.dimension())),
 				source.chunkX(), source.chunkZ()));
 	}
 
@@ -203,20 +204,6 @@ public final class ScanSummary {
 		return ChunkTooltip.secondary(sourcesExpanded
 				? Component.translatable("msptmap.summary.sources_less")
 				: Component.translatable("msptmap.summary.sources_more", hidden));
-	}
-
-	/**
-	 * 维度名的语言键：三个原版维度用本模组的短名（中文「主世界 / 下界 / 末地」；原版英文
-	 * 「The Nether / The End」是两个词，这里改用一词的 Nether / End）；其余维度回退原版键
-	 * {@code dimension.<命名空间>.<路径>}（点号形式，同 Util.makeDescriptionId）。
-	 */
-	private static String dimensionKey(String dimId) {
-		return switch (dimId) {
-			case "minecraft:overworld" -> "msptmap.dimension.overworld";
-			case "minecraft:the_nether" -> "msptmap.dimension.nether";
-			case "minecraft:the_end" -> "msptmap.dimension.end";
-			default -> "dimension." + dimId.replace(':', '.');
-		};
 	}
 
 	/**

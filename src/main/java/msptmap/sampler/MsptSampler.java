@@ -11,9 +11,11 @@ import msptmap.Decimals;
 import msptmap.Ids;
 import msptmap.MsptMapMod;
 import msptmap.mixins.ChunkMapAccessor;
+import msptmap.monitor.MsptAlert;
 import msptmap.net.ScanResultPayload;
 import msptmap.net.SnapshotCodec;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.ChunkMap;
@@ -65,6 +67,12 @@ public final class MsptSampler {
 
 	/** 本次扫描的发起人：客户端请求为玩家，服务端命令 / 控制台为 null。 */
 	private static ServerPlayer requester;
+
+	/** 本次结果是否广播给在线 OP（由 {@link msptmap.monitor.MsptMonitor} 触发的自动扫描）。 */
+	private static boolean broadcast;
+
+	/** 广播时的服务端句柄：出结果时从这里取在线玩家列表；非广播时为 null。 */
+	private static MinecraftServer broadcastServer;
 
 	/** 每个维度一张表：区块坐标 → 账本。外层按对象身份比，内层用 fastutil 的 long 键表（免装箱）。 */
 	private static final Map<ServerLevel, Long2ObjectOpenHashMap<ChunkTiming>> timings = new IdentityHashMap<>();
@@ -137,6 +145,20 @@ public final class MsptSampler {
 	 * @param requester 本次扫描的发起人：客户端请求为玩家（结果回给他），服务端命令 / 控制台为 null（结果打控制台）
 	 */
 	public static StartResult start(int seconds, ServerPlayer requester) {
+		return startInternal(seconds, requester, false, null);
+	}
+
+	/**
+	 * 开一个 N 秒的窗口，结果广播给在线 OP：由 {@link msptmap.monitor.MsptMonitor} 在 MSPT 持续
+	 * 超标时发起。没有发起人，也没有进度包（无人在等，逐个 OP 推包纯属浪费）。
+	 */
+	public static StartResult startAuto(int seconds, MinecraftServer server) {
+		return startInternal(seconds, null, true, server);
+	}
+
+	/** 开窗本体。发起人、广播标记与服务端句柄三选一（发起人与广播互斥）。 */
+	private static StartResult startInternal(int seconds, ServerPlayer requester, boolean broadcast,
+			MinecraftServer server) {
 		long now = System.nanoTime();
 		boolean stalled = stalled(now);
 		if (sampling) {
@@ -159,6 +181,8 @@ public final class MsptSampler {
 			return StartResult.STALLED;
 		}
 		MsptSampler.requester = requester;
+		MsptSampler.broadcast = broadcast;
+		MsptSampler.broadcastServer = server;
 		MsptSampler.seconds = clampSeconds(seconds);
 		clearTimings();
 		windowTicks = 0;
@@ -175,6 +199,8 @@ public final class MsptSampler {
 	public static void reset() {
 		sampling = false;
 		requester = null;
+		broadcast = false;
+		broadcastServer = null;
 		windowTicks = 0;
 		pendingPlayer = null;
 		pendingDone = null;
@@ -274,7 +300,10 @@ public final class MsptSampler {
 		lastTiming = null;
 	}
 
-	/** 收尾：结果打包给发起人；发不回去（控制台发起 / 中途掉线）则打到服务端控制台。 */
+	/**
+	 * 收尾：结果打包给发起人；自动扫描的结果广播给在线 OP；发不回去（控制台发起 / 中途掉线）则打到
+	 * 服务端控制台。
+	 */
 	private static void finish() {
 		sampling = false;
 		long finishStartNanos = System.nanoTime();
@@ -282,12 +311,18 @@ public final class MsptSampler {
 		lastEndNanos = finishStartNanos;
 		ServerPlayer player = requester;
 		requester = null;
+		MinecraftServer server = broadcastServer;
+		boolean toOperators = broadcast;
+		broadcastServer = null;
+		broadcast = false;
 		try {
 			if (player != null && ServerPlayNetworking.canSend(player, ScanResultPayload.TYPE)) {
 				// 先补一格满格进度，完成包压到下一 tick（见 pendingDone）：圈画满整整一 tick 再消失
 				ServerPlayNetworking.send(player, ScanResultPayload.progress(seconds, windowTicks));
 				pendingDone = ScanResultPayload.done(seconds, windowTicks, snapshot());
 				pendingPlayer = player;
+			} else if (toOperators && server != null) {
+				broadcastToOperators(server);
 			} else {
 				logTopChunks();
 			}
@@ -299,6 +334,66 @@ public final class MsptSampler {
 		// 收尾（实体遍历、两条链 BFS、排序、逐块编码）全部同步在本 tick 上，此处计量其成本；
 		// 编码与实际的发送在网络线程，不在计量范围内
 		MsptMapMod.LOGGER.info("收尾耗时 {} ms", (System.nanoTime() - finishStartNanos) / 1_000_000L);
+	}
+
+	/**
+	 * 自动扫描收尾：TOP 区块走聊天告警发给受众，热力数据同步给其中能收包的 OP。
+	 *
+	 * <p>须在 {@link #clearTimings()} 之前执行（快照与排行都读采样表）。
+	 */
+	private static void broadcastToOperators(MinecraftServer server) {
+		List<ServerPlayer> targets = MsptAlert.targets(server);
+		if (targets.isEmpty()) {
+			// 扫描期间受众全部下线了：结果别彻底消失，留一份到控制台
+			logTopChunks();
+			return;
+		}
+		List<ServerPlayer> receivers = new ArrayList<>(targets.size());
+		for (ServerPlayer target : targets) {
+			if (ServerPlayNetworking.canSend(target, ScanResultPayload.TYPE)) {
+				receivers.add(target);
+			}
+		}
+		// 一个能收包的都没有就不构建快照（实体遍历 + 逐块编码，成本不低），只发聊天告警
+		if (!receivers.isEmpty()) {
+			ScanResultPayload done = ScanResultPayload.done(seconds, windowTicks, snapshot());
+			for (ServerPlayer receiver : receivers) {
+				ServerPlayNetworking.send(receiver, done);
+			}
+		}
+		MsptAlert.send(targets, topRows(MsptAlert.TOP_ROWS), windowTicks);
+		MsptMapMod.LOGGER.info("自动扫描结束：告警发给 {} 名 OP，热力数据发给其中 {} 名",
+				targets.size(), receivers.size());
+	}
+
+	/**
+	 * 窗口内最重的 n 个区块，跨维度降序；一个区块都没测到时为空列表。
+	 *
+	 * <p>须在 {@link #clearTimings()} 之前调用。
+	 */
+	public static List<Heavy> topRows(int n) {
+		List<Row> rows = sortedRows();
+		int count = Math.min(n, rows.size());
+		List<Heavy> heaviest = new ArrayList<>(count);
+		for (int i = 0; i < count; i++) {
+			Row row = rows.get(i);
+			heaviest.add(new Heavy(Ids.id(row.level.dimension()), ChunkPos.getX(row.key),
+					ChunkPos.getZ(row.key), row.total));
+		}
+		return heaviest;
+	}
+
+	/** 窗口内全部区块按重量降序；重量一次算好，不在比较器里反复求和。 */
+	private static List<Row> sortedRows() {
+		List<Row> rows = new ArrayList<>();
+		timings.forEach((level, chunks) -> chunks.forEach(
+				(key, timing) -> rows.add(new Row(level, key, timing, timing.totalNanos()))));
+		rows.sort((a, b) -> Long.compare(b.total, a.total));
+		return rows;
+	}
+
+	/** 一个卡顿区块：维度 ID、区块坐标与窗口内总耗时（纳秒）。 */
+	public record Heavy(String dimension, int chunkX, int chunkZ, long totalNanos) {
 	}
 
 	/**
@@ -481,12 +576,7 @@ public final class MsptSampler {
 
 	/** 结果发不回客户端时，把最重的 5 个区块打到服务端控制台。 */
 	private static void logTopChunks() {
-		// 重量同 snapshotDimension：排序前一次算好，不在比较器里反复求和
-		List<Row> rows = new ArrayList<>();
-		timings.forEach((level, chunks) -> chunks.forEach(
-				(key, timing) -> rows.add(new Row(level, key, timing, timing.totalNanos()))));
-		rows.sort((a, b) -> Long.compare(b.total, a.total));
-
+		List<Row> rows = sortedRows();
 		MsptMapMod.LOGGER.info("扫描结束：{} 个维度 / {} 个区块，窗口 {} 秒 / {} tick",
 				timings.size(), rows.size(), seconds, windowTicks);
 
