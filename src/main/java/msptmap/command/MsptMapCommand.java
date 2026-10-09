@@ -6,7 +6,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import msptmap.Decimals;
 import msptmap.MsptMapMod;
-import msptmap.MsptMapSettings;
+import msptmap.Permissions;
 import msptmap.ServerConfig;
 import msptmap.monitor.MsptMonitor;
 import msptmap.sampler.MsptSampler;
@@ -17,14 +17,14 @@ import net.minecraft.network.chat.Component;
 import java.util.Locale;
 
 /**
- * 服务端的 {@code /msptmap} 命令：scan 与 monitor 两条子命令。
+ * 服务端的 {@code /msptmap} 命令：scan、access 与 monitor 三条子命令。
  *
- * <p>{@code scan} 不向来源回话，结果打到服务端控制台；{@code monitor} 设置常态 MSPT 监控，改完
+ * <p>{@code scan} 不向来源回话，结果打到服务端控制台；{@code access} 与 {@code monitor} 改完
  * 立即生效并落盘，回执报给来源。玩家看地图热力图用的是客户端那条同名的 {@code /msptmap scan}
  * （本地执行，走不到这里）。
  *
- * <p>权限经 Brigadier 的 requires 判定：装了地毯按 commandMsptMap 规则，未装则所有人可用；
- * monitor 子树另加一层原版 OP 等级判定。
+ * <p>权限经 Brigadier 的 requires 判定，见 {@link Permissions}：根节点按扫描权限（默认仅 OP）；
+ * access 与 monitor 两条子命令限原版 OP 等级 2，不受当前扫描权限影响。
  */
 public final class MsptMapCommand {
 	/** 状态行 / 参数行 / 冷却行 / 设置回执的语言键与英文回退（未装本模组的 OP 靠回退文案）。 */
@@ -35,8 +35,10 @@ public final class MsptMapCommand {
 			"threshold %1$s mspt; window %2$s s; consecutive %3$s; cooldown %4$s min; scan %5$s s; audience %6$s";
 	private static final String COOLDOWN_KEY = "msptmap.monitor.cooldown_left";
 	private static final String COOLDOWN_FALLBACK = "cooldown: %1$s s left";
-	private static final String SET_KEY = "msptmap.monitor.set";
-	private static final String SET_FALLBACK = "MsptMap monitor: %1$s = %2$s";
+	private static final String SET_KEY = "msptmap.set";
+	private static final String SET_FALLBACK = "MsptMap: %1$s = %2$s";
+	private static final String ACCESS_KEY = "msptmap.access.status";
+	private static final String ACCESS_FALLBACK = "MsptMap scan access: %1$s (ops = operators only, all = everyone)";
 
 	private MsptMapCommand() {
 	}
@@ -45,13 +47,14 @@ public final class MsptMapCommand {
 	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
 		dispatcher.register(Commands.literal("msptmap")
 				// 无权限者看不到这条命令
-				.requires(source -> MsptMapSettings.canUse.test(source))
+				.requires(Permissions::canUse)
 				.then(Commands.literal("scan")
 						// 不带秒数则用服务端默认值（与网络包的 seconds == 0 同源）
-						.executes(context -> scan(context.getSource(), MsptMapSettings.seconds.getAsInt()))
+						.executes(context -> scan(context.getSource(), MsptSampler.DEFAULT_SECONDS))
 						.then(Commands.argument("seconds", IntegerArgumentType.integer(1, MsptSampler.MAX_SECONDS))
 								.executes(context -> scan(context.getSource(),
 										IntegerArgumentType.getInteger(context, "seconds")))))
+				.then(access())
 				.then(monitor()));
 	}
 
@@ -69,14 +72,36 @@ public final class MsptMapCommand {
 	}
 
 	/**
+	 * 扫描权限的子树：{@code ops}（默认）仅 OP 可用，{@code all} 放开给所有玩家。
+	 */
+	private static LiteralArgumentBuilder<CommandSourceStack> access() {
+		return Commands.literal("access")
+				.executes(context -> accessStatus(context.getSource()))
+				.then(Commands.literal("ops").executes(context -> setAccess(context.getSource(), ServerConfig.Access.OPS)))
+				.then(Commands.literal("all").executes(context -> setAccess(context.getSource(), ServerConfig.Access.ALL)));
+	}
+
+	/** 打印当前扫描权限。 */
+	private static int accessStatus(CommandSourceStack source) {
+		source.sendSuccess(() -> Component.translatableWithFallback(ACCESS_KEY, ACCESS_FALLBACK,
+				ServerConfig.access.name().toLowerCase(Locale.ROOT)), false);
+		return 1;
+	}
+
+	private static int setAccess(CommandSourceStack source, ServerConfig.Access access) {
+		ServerConfig.access = access;
+		return saved(source, "access", access.name().toLowerCase(Locale.ROOT));
+	}
+
+	/**
 	 * 常态 MSPT 监控的子树：开关、阈值、去抖、冷却、扫描时长、接收范围。
 	 *
 	 * <p>数值区间写进参数类型：越界的输入在解析期就被拒，不必在回执里解释。
 	 */
 	private static LiteralArgumentBuilder<CommandSourceStack> monitor() {
 		return Commands.literal("monitor")
-				// 服主的管理项：判原版 OP 等级（见 MsptMapSettings.isOperator），不随地毯规则放宽
-				.requires(source -> MsptMapSettings.isOperator.test(source))
+				// 服主的管理项：判原版 OP 等级（见 Permissions.isOperator）
+				.requires(Permissions::isOperator)
 				.executes(context -> monitorStatus(context.getSource()))
 				.then(Commands.literal("on").executes(context -> setEnabled(context.getSource(), true)))
 				.then(Commands.literal("off").executes(context -> setEnabled(context.getSource(), false)))

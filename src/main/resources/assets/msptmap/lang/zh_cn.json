@@ -14,10 +14,12 @@
   "msptmap.alert.row": "%1$d) %2$s · 区块 (%3$d, %4$d) · %5$s mspt",
   "msptmap.alert.hover": "点击在世界地图上定位该区块",
 
+  "msptmap.access.status": "MsptMap 扫描权限：%1$s（ops = 仅 OP，all = 所有玩家）",
+
   "msptmap.monitor.status": "MsptMap 监控：%1$s（均值 %2$s mspt）",
   "msptmap.monitor.settings": "阈值 %1$s mspt；窗口 %2$s 秒；去抖 %3$s 次；冷却 %4$s 分钟；扫描 %5$s 秒；接收范围 %6$s",
   "msptmap.monitor.cooldown_left": "冷却中：剩余 %1$s 秒",
-  "msptmap.monitor.set": "MsptMap 监控：%1$s = %2$s",
+  "msptmap.set": "MsptMap：%1$s = %2$s",
   "msptmap.monitor.state.off": "已关闭",
   "msptmap.monitor.state.ok": "正常",
   "msptmap.monitor.state.watching": "观察中",
@@ -114,9 +116,6 @@
   "msptmap.ticket.spawn_search": "出生点搜索",
   "msptmap.ticket.dragon": "末影龙",
   "msptmap.ticket.unknown": "未知",
-
-  "carpet.rule.commandMsptMap.name": "MsptMap 权限",
-  "carpet.rule.commandMsptMap.desc": "谁能用 MsptMap 的扫描（地图按钮和 /msptmap 命令）",
 
   "modmenu.descriptionTranslation.msptmap": "在 Xaero 的世界地图上，绘制区块 mspt 热力图。"
 }

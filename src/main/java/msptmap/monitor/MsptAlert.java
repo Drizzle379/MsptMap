@@ -2,7 +2,7 @@ package msptmap.monitor;
 
 import msptmap.Decimals;
 import msptmap.Dimensions;
-import msptmap.MsptMapSettings;
+import msptmap.Permissions;
 import msptmap.ServerConfig;
 import msptmap.net.ScanResultPayload;
 import msptmap.sampler.MsptSampler;
@@ -50,7 +50,7 @@ public final class MsptAlert {
 	public static List<ServerPlayer> targets(MinecraftServer server) {
 		List<ServerPlayer> targets = new ArrayList<>();
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			if (!MsptMapSettings.isOperator.test(player.createCommandSourceStack())) {
+			if (!Permissions.isOperator(player.createCommandSourceStack())) {
 				continue;
 			}
 			if (ServerConfig.audience == ServerConfig.Audience.MODDED

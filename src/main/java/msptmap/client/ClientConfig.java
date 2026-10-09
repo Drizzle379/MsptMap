@@ -17,7 +17,7 @@ import java.util.Properties;
 /**
  * 客户端的可调值：扫描秒数、颜色阈值、悬停详情显示内容。
  *
- * <p>不并入 {@link msptmap.MsptMapSettings}：后者是服务端门面（地毯规则改写它），这里全是客户端
+ * <p>不并入 {@code msptmap.ServerConfig}：后者是本机作服务端时的运维设置，这里全是客户端
  * 偏好，存 config/msptmap-client.properties，两个文件互不覆盖。
  *
  * <p>值直接存静态字段：绘制与拼接悬停文字的热路径直接读取；设置界面改完立即生效，落盘交给

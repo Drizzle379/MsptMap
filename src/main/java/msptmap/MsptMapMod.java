@@ -1,6 +1,5 @@
 package msptmap;
 
-import msptmap.carpet.CarpetCompat;
 import msptmap.command.MsptMapCommand;
 import msptmap.monitor.MsptMonitor;
 import msptmap.net.ScanRequestPayload;
@@ -15,7 +14,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 //?}
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * 模组主入口，服务端与客户端都会执行。
  *
  * <p>注册：服务端 tick 的起止（采样器与常态监控）、服务器起止时的读存与复位、{@code /msptmap}
- * 命令、网络包与扫描请求接收器，以及装了地毯时把权限交给地毯规则。
+ * 命令、网络包与扫描请求接收器。
  */
 public class MsptMapMod implements ModInitializer {
 	public static final String MOD_ID = "msptmap";
@@ -57,16 +55,6 @@ public class MsptMapMod implements ModInitializer {
 		});
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registryAccess, environment) -> MsptMapCommand.register(dispatcher));
-
-		// 仅装了地毯才加载 CarpetCompat：守卫不通过时 JVM 不解析其引用的地毯类。捕捉 LinkageError
-		// 以便地毯移除相关类时降级，避免整个服务端起不来。
-		if (FabricLoader.getInstance().isModLoaded("carpet")) {
-			try {
-				CarpetCompat.register();
-			} catch (LinkageError e) {
-				LOGGER.warn("地毯版本与本模组的地毯兼容层不匹配，权限规则未注册，MsptMap 对所有人开放", e);
-			}
-		}
 
 		// 请求包 客户端 → 服务端，结果包 服务端 → 客户端。包类型注册：1.20.5 起走
 		// PayloadTypeRegistry（1.21.11 及以前为 playC2S/playS2C，26.1 起更名为
@@ -104,12 +92,12 @@ public class MsptMapMod implements ModInitializer {
 					playerName(player), payload.protocol(), PROTOCOL);
 		}
 		// 权限闸门，同 MsptMapCommand
-		if (!MsptMapSettings.canUse.test(player.createCommandSourceStack())) {
+		if (!Permissions.canUse(player.createCommandSourceStack())) {
 			ServerPlayNetworking.send(player, ScanResultPayload.denied());
 			return;
 		}
 		// 非 0 为客户端指定的秒数，0 表示用服务端默认值
-		int requested = payload.seconds() > 0 ? payload.seconds() : MsptMapSettings.seconds.getAsInt();
+		int requested = payload.seconds() > 0 ? payload.seconds() : MsptSampler.DEFAULT_SECONDS;
 		int seconds = MsptSampler.clampSeconds(requested);
 
 		switch (MsptSampler.start(seconds, player)) {

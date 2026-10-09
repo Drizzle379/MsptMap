@@ -44,7 +44,6 @@
 | **Fabric Loader** | 必需 | ≥ 0.19.3 |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | 必需 | |
 | [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 仅客户端 | 注入锚点已在 Xaero 1.44.2 / 1.46.0 / 1.46.4 上验证（多数版本使用 1.46.0）。若 Xaero 后续更新导致锚点失配，按钮与热力图将被停用，游戏仍可正常启动。 |
-| [Carpet](https://modrinth.com/mod/carpet) | 可选 | 用于管理指令的使用权限 |
 | [Mod Menu](https://modrinth.com/mod/modmenu) | 建议安装 | 提供设置界面的快捷入口 |
 
 ### 支持版本
@@ -115,6 +114,7 @@
 | 指令 | 端 | 作用 |
 | :--- | :--- | :--- |
 | `/msptmap scan [秒数]` | 两端 | 发起扫描并在地图上着色；省略秒数则用当前设置的秒数，范围 1 ~ 60。在控制台执行时结果只写入服务端日志。 |
+| `/msptmap access <ops\|all>` | 服务端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
 | `/msptmap config` | 客户端 | 打开设置界面（未装 Mod Menu 时的备用入口）。 |
 | `/msptmap locate <维度ID> <区块X> <区块Z>` | 客户端 | 打开世界地图并定位至该区块，必要时切换维度。监控告警中的行会自动执行此指令；手动输入时维度 ID 需加引号，如 `/msptmap locate "minecraft:the_nether" 12 34`。 |
 | `/msptmap monitor` | 服务端 | 打印监控状态与各项设置。 |
@@ -126,7 +126,7 @@
 | `/msptmap monitor scan <秒>` | 服务端 | 自动扫描的时长，1 ~ 60（默认 `2`）。 |
 | `/msptmap monitor audience <modded\|all>` | 服务端 | 告警发给谁：装了 MsptMap 的管理员，或全部在线管理员（默认 `modded`）。 |
 
-扫描命令的权限由地毯规则 `commandMsptMap` 决定（装了地毯时，默认 `ops`），未装地毯则所有人可用。`monitor` 子命令限原版权限等级 2，不受该规则影响。
+扫描默认限原版权限等级 2（OP）；`/msptmap access all` 可放开给所有玩家，`/msptmap access ops` 恢复默认。`access` 与 `monitor` 两条子命令本身始终限 OP。
 
 ## 📡 监控
 

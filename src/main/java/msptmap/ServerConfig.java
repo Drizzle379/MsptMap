@@ -12,11 +12,9 @@ import java.util.Locale;
 import java.util.Properties;
 
 /**
- * 服务端的可调值：常态 MSPT 监控的开关、阈值与去抖 / 冷却参数。
+ * 服务端的可调值：扫描权限，以及常态 MSPT 监控的开关、阈值与去抖 / 冷却参数。
  *
- * <p>不并入 {@link MsptMapSettings}：后者是别的模组（地毯）改写本模组行为的门面，这里是服主用
- * {@code /msptmap monitor} 设置的运维参数，存 config/msptmap-server.properties，与客户端那份
- * （msptmap-client.properties）互不覆盖。
+ * <p>存 config/msptmap-server.properties，与客户端那份（msptmap-client.properties）互不覆盖。
  *
  * <p>值直接存静态字段：监控热路径每 tick 读取；命令改完立即生效，落盘交给 {@link #save()}。
  * 读盘与存盘共用 {@link #clamp()} 夹取区间：文件可手改，外部输入一律不信任。
@@ -45,6 +43,14 @@ public final class ServerConfig {
 	/** 文件名。与客户端那份区分。 */
 	private static final String FILE_NAME = "msptmap-server.properties";
 
+	/** 谁能发起扫描。 */
+	public enum Access {
+		/** 仅原版 OP（管理等级 2）。默认。 */
+		OPS,
+		/** 所有玩家，由服主用 {@code /msptmap access all} 放开。 */
+		ALL
+	}
+
 	/** 自动扫描结果的接收范围。 */
 	public enum Audience {
 		/** 只发给装了本模组的 OP：他们能收到热力数据，可点告警行跳到地图。 */
@@ -52,6 +58,9 @@ public final class ServerConfig {
 		/** 所有在线 OP：未装模组的也收到告警（显示英文回退文案，点行无效）。 */
 		ALL
 	}
+
+	/** 扫描权限。 */
+	public static Access access;
 
 	/** 总开关。默认关：装上后需服主显式 {@code /msptmap monitor on}。 */
 	public static boolean monitorEnabled;
@@ -84,6 +93,7 @@ public final class ServerConfig {
 
 	/** 恢复全部出厂默认。 */
 	public static void resetToDefaults() {
+		access = Access.OPS;
 		monitorEnabled = false;
 		threshold = 50.0;
 		windowSeconds = 5;
@@ -117,6 +127,7 @@ public final class ServerConfig {
 			MsptMapMod.LOGGER.warn("服务端设置读不出来，先用默认值：{}", file, e);
 			return;
 		}
+		access = readAccess(properties, "access", access);
 		monitorEnabled = readBoolean(properties, "monitor.enabled", monitorEnabled);
 		threshold = readDouble(properties, "monitor.threshold", threshold);
 		windowSeconds = readInt(properties, "monitor.windowSeconds", windowSeconds);
@@ -131,10 +142,12 @@ public final class ServerConfig {
 	static void save(Path file) {
 		clamp();
 		StringBuilder text = new StringBuilder();
-		text.append("# MsptMap server settings. Edit in game: /msptmap monitor <name> <value>.\n");
-		text.append("# Monitors server tick time and, when it stays above the threshold, runs one scan\n");
-		text.append("# and alerts online operators with the heaviest chunks.\n");
+		text.append("# MsptMap server settings. Edit in game: /msptmap <access|monitor> <name> <value>.\n");
+		text.append("# access: who may start a scan, ops (default) or all.\n");
+		text.append("# monitor.*: monitors server tick time and, when it stays above the threshold,\n");
+		text.append("# runs one scan and alerts online operators with the heaviest chunks.\n");
 		text.append("# Values out of range are clamped automatically; malformed values do not crash the server.\n\n");
+		text.append("access=").append(access.name().toLowerCase(Locale.ROOT)).append('\n');
 		text.append("monitor.enabled=").append(monitorEnabled).append('\n');
 		text.append("monitor.threshold=").append(threshold).append('\n');
 		text.append("monitor.windowSeconds=").append(windowSeconds).append('\n');
@@ -192,6 +205,17 @@ public final class ServerConfig {
 		} catch (NumberFormatException e) {
 			return fallback;
 		}
+	}
+
+	private static Access readAccess(Properties properties, String key, Access fallback) {
+		String value = properties.getProperty(key);
+		if ("ops".equalsIgnoreCase(value)) {
+			return Access.OPS;
+		}
+		if ("all".equalsIgnoreCase(value)) {
+			return Access.ALL;
+		}
+		return fallback;
 	}
 
 	private static Audience readAudience(Properties properties, String key, Audience fallback) {

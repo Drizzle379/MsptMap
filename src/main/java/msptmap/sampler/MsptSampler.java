@@ -44,6 +44,9 @@ public final class MsptSampler {
 	/** 采样秒数上限。 */
 	public static final int MAX_SECONDS = 60;
 
+	/** 未指定秒数时的默认值。 */
+	public static final int DEFAULT_SECONDS = 2;
+
 	/**
 	 * 一次扫描所有维度合计的字节预算：原版自定义包上限 1MB，此处留约三成余量（单区块编码后约
 	 * 14~28 字节）。

@@ -44,7 +44,6 @@ Identifies the specific chunks responsible for server-side lag.
 | **Fabric Loader** | Yes | ≥ 0.19.3 |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | Yes | |
 | [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map) | Client only | Injection anchors verified on Xaero 1.44.2 / 1.46.0 / 1.46.4 (most versions use 1.46.0). Should a future Xaero update invalidate an anchor, the button and heatmap are disabled and the game starts normally. |
-| [Carpet](https://modrinth.com/mod/carpet) | Optional | Enables permission control for the command |
 | [Mod Menu](https://modrinth.com/mod/modmenu) | Recommended | Provides a shortcut to the settings screen |
 
 ### Supported versions
@@ -115,6 +114,7 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 | Command | Side | Effect |
 | :--- | :--- | :--- |
 | `/msptmap scan [seconds]` | Both | Starts a scan and paints the result on the map. Omit `seconds` to use the configured value; range 1 – 60. At the console the result is logged instead. |
+| `/msptmap access <ops\|all>` | Server | Who may start a scan: operators only (default) or every player. |
 | `/msptmap config` | Client | Opens the settings screen, for when Mod Menu is not installed. |
 | `/msptmap locate <dimension> <chunkX> <chunkZ>` | Client | Opens the world map at that chunk, switching dimension if needed. Rows of the monitoring alert run this for you; typed by hand the dimension ID needs quotes, as in `/msptmap locate "minecraft:the_nether" 12 34`. |
 | `/msptmap monitor` | Server | Prints the monitoring state and its settings. |
@@ -126,7 +126,7 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 | `/msptmap monitor scan <seconds>` | Server | Length of the automatic scan, 1 – 60 (default `2`). |
 | `/msptmap monitor audience <modded\|all>` | Server | Who is alerted: operators running MsptMap, or all online operators (default `modded`). |
 
-Scanning follows the Carpet rule `commandMsptMap` when Carpet is installed (default `ops`) and is open to everyone otherwise. The `monitor` subcommand is restricted to vanilla permission level 2 and is not affected by that rule.
+Scanning is limited to vanilla permission level 2 (operators) by default; `/msptmap access all` opens it to every player and `/msptmap access ops` restores the default. The `access` and `monitor` subcommands are always restricted to operators.
 
 ## 📡 Monitoring
 

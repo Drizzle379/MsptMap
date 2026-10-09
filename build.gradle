@@ -12,8 +12,6 @@ def obfuscated = !project.minecraft_version.startsWith('26.')
 pluginManager.apply(obfuscated ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom')
 
 repositories {
-	// 地毯（可选依赖：编译时需要，运行时不打包）
-	maven { url = 'https://masa.dy.fi/maven' }
 	// Xaero 世界地图及其前置库（作者官方 maven；编译时需要，运行时不打包，玩家自己装）
 	maven {
 		name = "Xaero's Maven"
@@ -41,7 +39,6 @@ dependencies {
 	// 可选依赖：不写 depends，运行时不打包。混淆版本须用 modCompileOnly —— Loom 会先把 mod 依赖从
 	// intermediary 重映射到官方映射，源码才能按官方名引用它们。
 	def optional = obfuscated ? 'modCompileOnly' : 'compileOnly'
-	dependencies.add(optional, "carpet:fabric-carpet:${project.carpet_core_version}")
 	// 只需其 API 的两个类（ModMenuApi / ConfigScreenFactory），不引入它依赖的 fabric-api（transitive = false）
 	dependencies.add(optional, "com.terraformersmc:modmenu:${project.modmenu_version}") {
 		transitive = false
@@ -79,21 +76,18 @@ processResources {
 	def mixinCompatLevel = "JAVA_" + javaRelease
 	def fabricApiVersion = project.fabric_api_version
 	def minecraftRange = project.minecraft_range
-	def carpetRange = project.carpet_range
 	inputs.property "version", modVersion
 	inputs.property "loader_version", loaderVersion
 	inputs.property "java_release", javaRelease
 	inputs.property "mixin_compat_level", mixinCompatLevel
 	inputs.property "fabric_api_version", fabricApiVersion
 	inputs.property "minecraft_range", minecraftRange
-	inputs.property "carpet_range", carpetRange
 	filesMatching("fabric.mod.json") {
 		expand "version": modVersion,
 				"loader_version": loaderVersion,
 				"java_release": javaRelease,
 				"fabric_api_version": fabricApiVersion,
-				"minecraft_range": minecraftRange,
-				"carpet_range": carpetRange
+				"minecraft_range": minecraftRange
 	}
 	// 两个 mixins.json 的 ${mixin_compat_level} 占位符（分开填，语义与 fabric.mod.json 的元数据不同）
 	filesMatching(["msptmap.mixins.json", "msptmap.client.mixins.json"]) {

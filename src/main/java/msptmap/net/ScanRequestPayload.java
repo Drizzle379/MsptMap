@@ -15,7 +15,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketType;
  * 客户端 → 服务端：请求开一次扫描。
  *
  * <p>只带一个秒数，由客户端决定（设置界面，范围 1~60）。0 表示用服务端默认值
- * （{@code MsptMapSettings.seconds}）；服务端实际采用的秒数由结果包的 START 状态带回。
+ * （{@code MsptSampler.DEFAULT_SECONDS}）；服务端实际采用的秒数由结果包的 START 状态带回。
  *
  * <p>版本不同的两端也允许互发：包 ID 不带版本号，包体开头的魔数是标记而非闸门——收到别的值照读，
  * 能读出来即照常处理，由接收方自行决定如何提示。

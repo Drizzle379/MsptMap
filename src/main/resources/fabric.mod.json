@@ -37,7 +37,6 @@
 		"fabric-api": ">=${fabric_api_version}"
 	},
 	"suggests": {
-		"carpet": "${carpet_range}",
 		"xaeroworldmap": "*",
 		"modmenu": "*"
 	}

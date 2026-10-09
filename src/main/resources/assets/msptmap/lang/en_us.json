@@ -14,10 +14,12 @@
   "msptmap.alert.row": "%1$d) %2$s - chunk (%3$d, %4$d) - %5$s mspt",
   "msptmap.alert.hover": "Click to locate this chunk on the world map",
 
+  "msptmap.access.status": "MsptMap scan access: %1$s (ops = operators only, all = everyone)",
+
   "msptmap.monitor.status": "MsptMap monitor: %1$s (average %2$s mspt)",
   "msptmap.monitor.settings": "threshold %1$s mspt; window %2$s s; consecutive %3$s; cooldown %4$s min; scan %5$s s; audience %6$s",
   "msptmap.monitor.cooldown_left": "cooldown: %1$s s left",
-  "msptmap.monitor.set": "MsptMap monitor: %1$s = %2$s",
+  "msptmap.set": "MsptMap: %1$s = %2$s",
   "msptmap.monitor.state.off": "off",
   "msptmap.monitor.state.ok": "normal",
   "msptmap.monitor.state.watching": "watching",
@@ -113,8 +115,5 @@
   "msptmap.ticket.player_spawn": "player_spawn",
   "msptmap.ticket.spawn_search": "spawn_search",
   "msptmap.ticket.dragon": "dragon",
-  "msptmap.ticket.unknown": "unknown",
-
-  "carpet.rule.commandMsptMap.name": "MsptMap permission",
-  "carpet.rule.commandMsptMap.desc": "Who may use MsptMap scans (the map button and the /msptmap command)"
+  "msptmap.ticket.unknown": "unknown"
 }
