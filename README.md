@@ -116,15 +116,12 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 | `/msptmap scan [seconds]` | Both | Starts a scan and paints the result on the map. Omit `seconds` to use the configured value; range 1 – 60. At the console the result is logged instead. |
 | `/msptmap access <ops\|all>` | Server | Who may start a scan: operators only (default) or every player. |
 | `/msptmap config` | Client | Opens the settings screen, for when Mod Menu is not installed. |
-| `/msptmap locate <dimension> <chunkX> <chunkZ>` | Client | Opens the world map at that chunk, switching dimension if needed. Rows of the monitoring alert run this for you; typed by hand the dimension ID needs quotes, as in `/msptmap locate "minecraft:the_nether" 12 34`. |
 | `/msptmap monitor` | Server | Prints the monitoring state and its settings. |
 | `/msptmap monitor on` / `off` | Server | Master switch, off by default; turning it off also discards the current window and the cooldown. |
-| `/msptmap monitor threshold <mspt>` | Server | Threshold to trigger on, 1.0 – 1000.0 (default `50.0`). |
-| `/msptmap monitor window <seconds>` | Server | Smoothing window, 1 – 60 (default `5`). |
+| `/msptmap monitor threshold <mspt>` | Server | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
 | `/msptmap monitor consecutive <times>` | Server | Consecutive above-threshold checks required to trigger, 1 – 60 (default `3`). |
 | `/msptmap monitor cooldown <minutes>` | Server | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
-| `/msptmap monitor scan <seconds>` | Server | Length of the automatic scan, 1 – 60 (default `2`). |
-| `/msptmap monitor audience <modded\|all>` | Server | Who is alerted: operators running MsptMap, or all online operators (default `modded`). |
+| `/msptmap monitor audience <op\|all>` | Server | Who is alerted: online operators only (default `op`), or every online player. |
 
 Scanning is limited to vanilla permission level 2 (operators) by default; `/msptmap access all` opens it to every player and `/msptmap access ops` restores the default. The `access` and `monitor` subcommands are always restricted to operators.
 

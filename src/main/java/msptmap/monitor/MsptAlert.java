@@ -4,9 +4,7 @@ import msptmap.Decimals;
 import msptmap.Dimensions;
 import msptmap.Permissions;
 import msptmap.ServerConfig;
-import msptmap.net.ScanResultPayload;
 import msptmap.sampler.MsptSampler;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -20,7 +18,7 @@ import java.util.List;
 /**
  * 自动扫描的聊天告警：一条标题加若干可点击的区块行。
  *
- * <p>文案一律 {@code translatableWithFallback}：接收范围设为「所有在线 OP」时，未装本模组的 OP 没有
+ * <p>文案一律 {@code translatableWithFallback}：接收范围设为「所有玩家」时，未装本模组的玩家没有
  * msptmap.* 的翻译，回退文案（英文）兜底，否则他们只会看到裸键名。行里嵌的维度名同理走
  * {@link Dimensions#vanillaKey}（原版键人人都有），而不是本模组的短名键。
  *
@@ -42,19 +40,14 @@ public final class MsptAlert {
 	}
 
 	/**
-	 * 本次自动扫描该把告警发给谁：在线玩家中先按 OP 筛，再按 {@link ServerConfig#audience} 决定
-	 * 是否要求对方装了本模组。
-	 *
-	 * <p>{@link ServerPlayNetworking#canSend} 为假即对方不认识本模组的结果包，也就是没装。
+	 * 本次自动扫描该把告警发给谁：默认只发在线 OP；接收范围设为 {@link ServerConfig.Audience#ALL}
+	 * 时发给所有在线玩家（不限管理员）。
 	 */
 	public static List<ServerPlayer> targets(MinecraftServer server) {
 		List<ServerPlayer> targets = new ArrayList<>();
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			if (!Permissions.isOperator(player.createCommandSourceStack())) {
-				continue;
-			}
-			if (ServerConfig.audience == ServerConfig.Audience.MODDED
-					&& !ServerPlayNetworking.canSend(player, ScanResultPayload.TYPE)) {
+			if (ServerConfig.audience == ServerConfig.Audience.OP
+					&& !Permissions.isOperator(player.createCommandSourceStack())) {
 				continue;
 			}
 			targets.add(player);

@@ -17,7 +17,7 @@
   "msptmap.access.status": "MsptMap 扫描权限：%1$s（ops = 仅 OP，all = 所有玩家）",
 
   "msptmap.monitor.status": "MsptMap 监控：%1$s（均值 %2$s mspt）",
-  "msptmap.monitor.settings": "阈值 %1$s mspt；窗口 %2$s 秒；去抖 %3$s 次；冷却 %4$s 分钟；扫描 %5$s 秒；接收范围 %6$s",
+  "msptmap.monitor.settings": "阈值 %1$s mspt；去抖 %2$s 次；冷却 %3$s 分钟；接收范围 %4$s",
   "msptmap.monitor.cooldown_left": "冷却中：剩余 %1$s 秒",
   "msptmap.set": "MsptMap：%1$s = %2$s",
   "msptmap.monitor.state.off": "已关闭",

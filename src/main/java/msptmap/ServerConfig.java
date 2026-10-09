@@ -1,6 +1,5 @@
 package msptmap;
 
-import msptmap.sampler.MsptSampler;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -12,7 +11,7 @@ import java.util.Locale;
 import java.util.Properties;
 
 /**
- * 服务端的可调值：扫描权限，以及常态 MSPT 监控的开关、阈值与去抖 / 冷却参数。
+ * 服务端的可调值：扫描权限，以及常态 MSPT 监控的开关、阈值、去抖、冷却与接收范围。
  *
  * <p>存 config/msptmap-server.properties，与客户端那份（msptmap-client.properties）互不覆盖。
  *
@@ -24,10 +23,6 @@ public final class ServerConfig {
 	public static final double MIN_THRESHOLD = 1.0;
 	public static final double MAX_THRESHOLD = 1000.0;
 
-	/** 平滑窗口（秒）：窗口越长，短促的波动越不容易触发。 */
-	public static final int MIN_WINDOW_SECONDS = 1;
-	public static final int MAX_WINDOW_SECONDS = 60;
-
 	/** 去抖次数：连续这么多次评估超标才算数，避免一两秒的抖动就告警。 */
 	public static final int MIN_CONSECUTIVE = 1;
 	public static final int MAX_CONSECUTIVE = 60;
@@ -35,10 +30,6 @@ public final class ServerConfig {
 	/** 一次告警后的冷却时长（分钟）。 */
 	public static final int MIN_COOLDOWN_MINUTES = 1;
 	public static final int MAX_COOLDOWN_MINUTES = 1440;
-
-	/** 每次自动扫描的秒数。 */
-	public static final int MIN_SCAN_SECONDS = 1;
-	public static final int MAX_SCAN_SECONDS = MsptSampler.MAX_SECONDS;
 
 	/** 文件名。与客户端那份区分。 */
 	private static final String FILE_NAME = "msptmap-server.properties";
@@ -53,9 +44,9 @@ public final class ServerConfig {
 
 	/** 自动扫描结果的接收范围。 */
 	public enum Audience {
-		/** 只发给装了本模组的 OP：他们能收到热力数据，可点告警行跳到地图。 */
-		MODDED,
-		/** 所有在线 OP：未装模组的也收到告警（显示英文回退文案，点行无效）。 */
+		/** 只发给在线 OP：默认。 */
+		OP,
+		/** 所有在线玩家（不限管理员）——未装本模组的只能收到英文回退文案。 */
 		ALL
 	}
 
@@ -68,17 +59,11 @@ public final class ServerConfig {
 	/** 触发阈值（mspt）：平滑均值高于它即计一次超标。 */
 	public static double threshold;
 
-	/** 平滑窗口（秒）。 */
-	public static int windowSeconds;
-
 	/** 去抖次数。 */
 	public static int consecutive;
 
 	/** 触发后的冷却（分钟）。 */
 	public static int cooldownMinutes;
-
-	/** 每次自动扫描的秒数。 */
-	public static int scanSeconds;
 
 	/** 接收范围。 */
 	public static Audience audience;
@@ -95,12 +80,10 @@ public final class ServerConfig {
 	public static void resetToDefaults() {
 		access = Access.OPS;
 		monitorEnabled = false;
-		threshold = 50.0;
-		windowSeconds = 5;
+		threshold = 40.0;
 		consecutive = 3;
 		cooldownMinutes = 5;
-		scanSeconds = 2;
-		audience = Audience.MODDED;
+		audience = Audience.OP;
 	}
 
 	/** 从 config/msptmap-server.properties 读取；文件缺失或损坏则用默认值，绝不因设置崩服务器。 */
@@ -130,10 +113,8 @@ public final class ServerConfig {
 		access = readAccess(properties, "access", access);
 		monitorEnabled = readBoolean(properties, "monitor.enabled", monitorEnabled);
 		threshold = readDouble(properties, "monitor.threshold", threshold);
-		windowSeconds = readInt(properties, "monitor.windowSeconds", windowSeconds);
 		consecutive = readInt(properties, "monitor.consecutive", consecutive);
 		cooldownMinutes = readInt(properties, "monitor.cooldownMinutes", cooldownMinutes);
-		scanSeconds = readInt(properties, "monitor.scanSeconds", scanSeconds);
 		audience = readAudience(properties, "monitor.audience", audience);
 		clamp();
 	}
@@ -145,15 +126,14 @@ public final class ServerConfig {
 		text.append("# MsptMap server settings. Edit in game: /msptmap <access|monitor> <name> <value>.\n");
 		text.append("# access: who may start a scan, ops (default) or all.\n");
 		text.append("# monitor.*: monitors server tick time and, when it stays above the threshold,\n");
-		text.append("# runs one scan and alerts online operators with the heaviest chunks.\n");
+		text.append("# runs one scan and alerts the audience with the heaviest chunks.\n");
+		text.append("# monitor.audience: op (online operators only, default) or all (every player).\n");
 		text.append("# Values out of range are clamped automatically; malformed values do not crash the server.\n\n");
 		text.append("access=").append(access.name().toLowerCase(Locale.ROOT)).append('\n');
 		text.append("monitor.enabled=").append(monitorEnabled).append('\n');
 		text.append("monitor.threshold=").append(threshold).append('\n');
-		text.append("monitor.windowSeconds=").append(windowSeconds).append('\n');
 		text.append("monitor.consecutive=").append(consecutive).append('\n');
 		text.append("monitor.cooldownMinutes=").append(cooldownMinutes).append('\n');
-		text.append("monitor.scanSeconds=").append(scanSeconds).append('\n');
 		text.append("monitor.audience=").append(audience.name().toLowerCase(Locale.ROOT)).append('\n');
 		try {
 			Files.createDirectories(file.getParent());
@@ -166,10 +146,8 @@ public final class ServerConfig {
 	/** 各值夹回合法区间。 */
 	private static void clamp() {
 		threshold = clampRange(threshold, MIN_THRESHOLD, MAX_THRESHOLD);
-		windowSeconds = Clamp.of(windowSeconds, MIN_WINDOW_SECONDS, MAX_WINDOW_SECONDS);
 		consecutive = Clamp.of(consecutive, MIN_CONSECUTIVE, MAX_CONSECUTIVE);
 		cooldownMinutes = Clamp.of(cooldownMinutes, MIN_COOLDOWN_MINUTES, MAX_COOLDOWN_MINUTES);
-		scanSeconds = Clamp.of(scanSeconds, MIN_SCAN_SECONDS, MAX_SCAN_SECONDS);
 	}
 
 	/** 夹取并保留一位小数：阈值存进文件后要能一眼看懂。 */
@@ -220,8 +198,8 @@ public final class ServerConfig {
 
 	private static Audience readAudience(Properties properties, String key, Audience fallback) {
 		String value = properties.getProperty(key);
-		if ("modded".equalsIgnoreCase(value)) {
-			return Audience.MODDED;
+		if ("op".equalsIgnoreCase(value)) {
+			return Audience.OP;
 		}
 		if ("all".equalsIgnoreCase(value)) {
 			return Audience.ALL;

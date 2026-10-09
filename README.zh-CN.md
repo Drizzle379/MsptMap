@@ -116,15 +116,12 @@
 | `/msptmap scan [秒数]` | 两端 | 发起扫描并在地图上着色；省略秒数则用当前设置的秒数，范围 1 ~ 60。在控制台执行时结果只写入服务端日志。 |
 | `/msptmap access <ops\|all>` | 服务端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
 | `/msptmap config` | 客户端 | 打开设置界面（未装 Mod Menu 时的备用入口）。 |
-| `/msptmap locate <维度ID> <区块X> <区块Z>` | 客户端 | 打开世界地图并定位至该区块，必要时切换维度。监控告警中的行会自动执行此指令；手动输入时维度 ID 需加引号，如 `/msptmap locate "minecraft:the_nether" 12 34`。 |
 | `/msptmap monitor` | 服务端 | 打印监控状态与各项设置。 |
 | `/msptmap monitor on` / `off` | 服务端 | 总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
-| `/msptmap monitor threshold <mspt>` | 服务端 | 触发阈值，1.0 ~ 1000.0（默认 `50.0`）。 |
-| `/msptmap monitor window <秒>` | 服务端 | 平滑窗口，1 ~ 60（默认 `5`）。 |
+| `/msptmap monitor threshold <mspt>` | 服务端 | 触发阈值，1.0 ~ 1000.0（默认 `40.0`）。 |
 | `/msptmap monitor consecutive <次>` | 服务端 | 连续超标多少次才触发，1 ~ 60（默认 `3`）。 |
 | `/msptmap monitor cooldown <分钟>` | 服务端 | 触发后多长时间内不再扫描，1 ~ 1440（默认 `5`）。 |
-| `/msptmap monitor scan <秒>` | 服务端 | 自动扫描的时长，1 ~ 60（默认 `2`）。 |
-| `/msptmap monitor audience <modded\|all>` | 服务端 | 告警发给谁：装了 MsptMap 的管理员，或全部在线管理员（默认 `modded`）。 |
+| `/msptmap monitor audience <op\|all>` | 服务端 | 告警发给谁：仅在线 OP（默认 `op`），或所有在线玩家。 |
 
 扫描默认限原版权限等级 2（OP）；`/msptmap access all` 可放开给所有玩家，`/msptmap access ops` 恢复默认。`access` 与 `monitor` 两条子命令本身始终限 OP。
 

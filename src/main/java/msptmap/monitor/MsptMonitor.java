@@ -30,17 +30,20 @@ public final class MsptMonitor {
 	/** 评估间隔（刻）：每 1 秒判一次，不必逐 tick 决策。 */
 	private static final int EVALUATE_TICKS = MsptSampler.TICKS_PER_SECOND;
 
-	/** 环形缓冲容量：按最长窗口一次配足，改窗口长度只挪读写位置，不再分配。 */
-	private static final int CAPACITY = ServerConfig.MAX_WINDOW_SECONDS * MsptSampler.TICKS_PER_SECOND;
+	/** 平滑窗口（秒）：固定值，不对外可调。 */
+	static final int WINDOW_SECONDS = 5;
+
+	/** 自动扫描的时长（秒）：固定值，不对外可调。 */
+	static final int AUTO_SCAN_SECONDS = 5;
+
+	/** 环形缓冲容量 = 窗口刻数：窗口固定，一次配足后不再分配。 */
+	private static final int CAPACITY = WINDOW_SECONDS * MsptSampler.TICKS_PER_SECOND;
 
 	/** 最近若干 tick 的耗时（纳秒）。满了覆盖最旧的，{@link #ringSum} 同步加减，均值不必遍历。 */
 	private static final long[] ring = new long[CAPACITY];
 	private static int ringIndex;
 	private static int ringCount;
 	private static long ringSum;
-
-	/** 建环时的窗口长度（刻）。配置一改，索引与求和都要从头来过。 */
-	private static int ringWindow;
 
 	/** 距上次评估过了几刻。 */
 	private static int sinceEvaluate;
@@ -62,7 +65,6 @@ public final class MsptMonitor {
 		ringIndex = 0;
 		ringCount = 0;
 		ringSum = 0L;
-		ringWindow = 0;
 		sinceEvaluate = 0;
 		consecutiveChecks = 0;
 		cooldownUntilNanos = 0L;
@@ -100,7 +102,7 @@ public final class MsptMonitor {
 		if (MsptAlert.targets(server).isEmpty()) {
 			return;
 		}
-		switch (MsptSampler.startAuto(ServerConfig.scanSeconds, server)) {
+		switch (MsptSampler.startAuto(AUTO_SCAN_SECONDS, server)) {
 			case STARTED -> markTriggered(now);
 			// 忙 / 冷却中 / 停滞：留在等待态，下次评估再试。不消耗冷却，也不清零去抖计数
 			default -> {
@@ -120,8 +122,8 @@ public final class MsptMonitor {
 			return false;
 		}
 		sinceEvaluate = 0;
-		// 窗口未填满时不判：样本太少，均值不具代表性（刚开监控、刚改窗口长度时）
-		if (ringCount < windowTicks()) {
+		// 窗口未填满时不判：样本太少，均值不具代表性（刚开监控时）
+		if (ringCount < CAPACITY) {
 			consecutiveChecks = 0;
 			return false;
 		}
@@ -139,28 +141,16 @@ public final class MsptMonitor {
 		consecutiveChecks = 0;
 	}
 
-	/** 把本 tick 的耗时放进环形缓冲。窗口长度变了就整个重来。 */
+	/** 把本 tick 的耗时放进环形缓冲。 */
 	private static void push(long nanos) {
-		int window = windowTicks();
-		if (window != ringWindow) {
-			ringWindow = window;
-			ringIndex = 0;
-			ringCount = 0;
-			ringSum = 0L;
-		}
-		if (ringCount == window) {
+		if (ringCount == CAPACITY) {
 			ringSum -= ring[ringIndex];
 		} else {
 			ringCount++;
 		}
 		ring[ringIndex] = nanos;
 		ringSum += nanos;
-		ringIndex = (ringIndex + 1) % window;
-	}
-
-	/** 当前窗口长度（刻）。 */
-	private static int windowTicks() {
-		return ServerConfig.windowSeconds * MsptSampler.TICKS_PER_SECOND;
+		ringIndex = (ringIndex + 1) % CAPACITY;
 	}
 
 	/** 已收样本的平均 mspt；还没有样本时为 0。 */

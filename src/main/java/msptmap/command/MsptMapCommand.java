@@ -32,7 +32,7 @@ public final class MsptMapCommand {
 	private static final String STATUS_FALLBACK = "MsptMap monitor: %1$s (average %2$s mspt)";
 	private static final String SETTINGS_KEY = "msptmap.monitor.settings";
 	private static final String SETTINGS_FALLBACK =
-			"threshold %1$s mspt; window %2$s s; consecutive %3$s; cooldown %4$s min; scan %5$s s; audience %6$s";
+			"threshold %1$s mspt; consecutive %2$s; cooldown %3$s min; audience %4$s";
 	private static final String COOLDOWN_KEY = "msptmap.monitor.cooldown_left";
 	private static final String COOLDOWN_FALLBACK = "cooldown: %1$s s left";
 	private static final String SET_KEY = "msptmap.set";
@@ -94,7 +94,9 @@ public final class MsptMapCommand {
 	}
 
 	/**
-	 * 常态 MSPT 监控的子树：开关、阈值、去抖、冷却、扫描时长、接收范围。
+	 * 常态 MSPT 监控的子树：开关、阈值、去抖、冷却、接收范围。
+	 *
+	 * <p>平滑窗口与自动扫描时长是固定值（见 {@link MsptMonitor}），不在此列。
 	 *
 	 * <p>数值区间写进参数类型：越界的输入在解析期就被拒，不必在回执里解释。
 	 */
@@ -110,11 +112,6 @@ public final class MsptMapCommand {
 										ServerConfig.MIN_THRESHOLD, ServerConfig.MAX_THRESHOLD))
 								.executes(context -> setThreshold(context.getSource(),
 										DoubleArgumentType.getDouble(context, "mspt")))))
-				.then(Commands.literal("window")
-						.then(Commands.argument("seconds", IntegerArgumentType.integer(
-										ServerConfig.MIN_WINDOW_SECONDS, ServerConfig.MAX_WINDOW_SECONDS))
-								.executes(context -> setWindow(context.getSource(),
-										IntegerArgumentType.getInteger(context, "seconds")))))
 				.then(Commands.literal("consecutive")
 						.then(Commands.argument("times", IntegerArgumentType.integer(
 										ServerConfig.MIN_CONSECUTIVE, ServerConfig.MAX_CONSECUTIVE))
@@ -125,14 +122,9 @@ public final class MsptMapCommand {
 										ServerConfig.MIN_COOLDOWN_MINUTES, ServerConfig.MAX_COOLDOWN_MINUTES))
 								.executes(context -> setCooldown(context.getSource(),
 										IntegerArgumentType.getInteger(context, "minutes")))))
-				.then(Commands.literal("scan")
-						.then(Commands.argument("seconds", IntegerArgumentType.integer(
-										ServerConfig.MIN_SCAN_SECONDS, ServerConfig.MAX_SCAN_SECONDS))
-								.executes(context -> setScanSeconds(context.getSource(),
-										IntegerArgumentType.getInteger(context, "seconds")))))
 				.then(Commands.literal("audience")
-						.then(Commands.literal("modded").executes(context -> setAudience(context.getSource(),
-								ServerConfig.Audience.MODDED)))
+						.then(Commands.literal("op").executes(context -> setAudience(context.getSource(),
+								ServerConfig.Audience.OP)))
 						.then(Commands.literal("all").executes(context -> setAudience(context.getSource(),
 								ServerConfig.Audience.ALL))));
 	}
@@ -142,8 +134,8 @@ public final class MsptMapCommand {
 		source.sendSuccess(() -> Component.translatableWithFallback(STATUS_KEY, STATUS_FALLBACK,
 				stateName(MsptMonitor.state()), Decimals.format1(MsptMonitor.meanMspt())), false);
 		source.sendSuccess(() -> Component.translatableWithFallback(SETTINGS_KEY, SETTINGS_FALLBACK,
-				Decimals.format1(ServerConfig.threshold), ServerConfig.windowSeconds, ServerConfig.consecutive,
-				ServerConfig.cooldownMinutes, ServerConfig.scanSeconds, audienceValue(ServerConfig.audience)), false);
+				Decimals.format1(ServerConfig.threshold), ServerConfig.consecutive,
+				ServerConfig.cooldownMinutes, audienceValue(ServerConfig.audience)), false);
 		long cooldown = MsptMonitor.cooldownRemainingSeconds();
 		if (cooldown > 0) {
 			source.sendSuccess(() -> Component.translatableWithFallback(COOLDOWN_KEY, COOLDOWN_FALLBACK, cooldown),
@@ -166,11 +158,6 @@ public final class MsptMapCommand {
 		return saved(source, "threshold", Decimals.format1(ServerConfig.threshold));
 	}
 
-	private static int setWindow(CommandSourceStack source, int seconds) {
-		ServerConfig.windowSeconds = seconds;
-		return saved(source, "window", Integer.toString(ServerConfig.windowSeconds));
-	}
-
 	private static int setConsecutive(CommandSourceStack source, int times) {
 		ServerConfig.consecutive = times;
 		return saved(source, "consecutive", Integer.toString(ServerConfig.consecutive));
@@ -179,11 +166,6 @@ public final class MsptMapCommand {
 	private static int setCooldown(CommandSourceStack source, int minutes) {
 		ServerConfig.cooldownMinutes = minutes;
 		return saved(source, "cooldown", Integer.toString(ServerConfig.cooldownMinutes));
-	}
-
-	private static int setScanSeconds(CommandSourceStack source, int seconds) {
-		ServerConfig.scanSeconds = seconds;
-		return saved(source, "scan", Integer.toString(ServerConfig.scanSeconds));
 	}
 
 	private static int setAudience(CommandSourceStack source, ServerConfig.Audience audience) {

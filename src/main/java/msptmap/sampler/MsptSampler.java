@@ -340,7 +340,7 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 自动扫描收尾：TOP 区块走聊天告警发给受众，热力数据同步给其中能收包的 OP。
+	 * 自动扫描收尾：TOP 区块走聊天告警发给受众，热力数据同步给其中装了本模组（能收包）的。
 	 *
 	 * <p>须在 {@link #clearTimings()} 之前执行（快照与排行都读采样表）。
 	 */
@@ -365,7 +365,7 @@ public final class MsptSampler {
 			}
 		}
 		MsptAlert.send(targets, topRows(MsptAlert.TOP_ROWS), windowTicks);
-		MsptMapMod.LOGGER.info("自动扫描结束：告警发给 {} 名 OP，热力数据发给其中 {} 名",
+		MsptMapMod.LOGGER.info("自动扫描结束：告警发给 {} 名受众，热力数据发给其中 {} 名",
 				targets.size(), receivers.size());
 	}
 
