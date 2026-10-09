@@ -18,7 +18,7 @@ Identifies the specific chunks responsible for server-side lag.
 
 **English** · [简体中文](README.zh-CN.md)
 
-[Features](#-features) · [Requirements](#-requirements) · [Installation](#-installation) · [Usage](#-usage) · [Monitoring](#-monitoring) · [Configuration](#-configuration) · [How it works](#-how-it-works) · [Building](#-building)
+[Features](#-features) · [Requirements](#-requirements) · [Installation](#-installation) · [Usage](#-usage) · [Commands](#-commands) · [Monitoring](#-monitoring) · [Configuration](#-configuration) · [How it works](#-how-it-works) · [Building](#-building)
 
 </div>
 
@@ -110,33 +110,29 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 > [!TIP]
 > **Single-player:** the world is paused while the map is open; after selecting scan, close the map and wait.
 
-The same command is available to operators and on the server console; there its output is written to the server console only.
+## 🕹️ Commands
+
+| Command | Side | Effect |
+| :--- | :--- | :--- |
+| `/msptmap scan [seconds]` | Both | Starts a scan and paints the result on the map. Omit `seconds` to use the configured value; range 1 – 60. At the console the result is logged instead. |
+| `/msptmap config` | Client | Opens the settings screen, for when Mod Menu is not installed. |
+| `/msptmap locate <dimension> <chunkX> <chunkZ>` | Client | Opens the world map at that chunk, switching dimension if needed. Rows of the monitoring alert run this for you; typed by hand the dimension ID needs quotes, as in `/msptmap locate "minecraft:the_nether" 12 34`. |
+| `/msptmap monitor` | Server | Prints the monitoring state and its settings. |
+| `/msptmap monitor on` / `off` | Server | Master switch, off by default; turning it off also discards the current window and the cooldown. |
+| `/msptmap monitor threshold <mspt>` | Server | Threshold to trigger on, 1.0 – 1000.0 (default `50.0`). |
+| `/msptmap monitor window <seconds>` | Server | Smoothing window, 1 – 60 (default `5`). |
+| `/msptmap monitor consecutive <times>` | Server | Consecutive above-threshold checks required to trigger, 1 – 60 (default `3`). |
+| `/msptmap monitor cooldown <minutes>` | Server | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
+| `/msptmap monitor scan <seconds>` | Server | Length of the automatic scan, 1 – 60 (default `2`). |
+| `/msptmap monitor audience <modded\|all>` | Server | Who is alerted: operators running MsptMap, or all online operators (default `modded`). |
+
+Scanning follows the Carpet rule `commandMsptMap` when Carpet is installed (default `ops`) and is open to everyone otherwise. The `monitor` subcommand is restricted to vanilla permission level 2 and is not affected by that rule.
 
 ## 📡 Monitoring
 
 Off by default. When enabled, the server times every tick and, once the smoothed average stays above a threshold, starts a scan of its own: the five most costly chunks are sent to the online operators as a chat alert, and selecting a row opens the world map at that chunk. The scan chain is the same one described below — only the result goes to the operators instead of the requester.
 
-```shell
-/msptmap monitor on
-```
-
-Monitoring is an operator command (permission level 2); its settings are stored in `config/msptmap-server.properties`.
-
-<details>
-<summary>All monitor settings</summary>
-
-| Setting | Default | Effect |
-| :--- | :--- | :--- |
-| `on` / `off` | off | Master switch; a disabled monitor measures nothing. |
-| `threshold <mspt>` | `50.0` | Threshold to trigger on, 1.0 – 1000.0. |
-| `window <seconds>` | `5` | Smoothing window, 1 – 60. |
-| `consecutive <times>` | `3` | Consecutive above-threshold checks required to trigger, 1 – 60. |
-| `cooldown <minutes>` | `5` | Span after a trigger in which no further scan starts, 1 – 1440. |
-| `scan <seconds>` | `2` | Length of the automatic scan. |
-| `audience <modded\|all>` | `modded` | Who is alerted: operators running MsptMap, or all online operators. |
-
-**`/msptmap monitor`** on its own prints the current settings and state.
-</details>
+Monitoring is an operator command; it is enabled with `/msptmap monitor on`, and its settings are stored in `config/msptmap-server.properties` — see [Commands](#-commands).
 
 ## 🔧 Configuration
 
