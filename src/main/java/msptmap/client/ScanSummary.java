@@ -26,7 +26,7 @@ import java.util.List;
  */
 public final class ScanSummary {
 	/** 总览内逐条列出的加载源行数上限；超出的折到右侧完整列表。 */
-	private static final int SOURCE_ROWS = 8;
+	private static final int SOURCE_ROWS = 5;
 
 	/** 七类明细数值的着色区间（mspt）：绿点 3、红点 20，均匀过渡（黄在 11.5）；低于绿点也取起点绿。 */
 	private static final float CATEGORY_GREEN_MS = 3.0f;
