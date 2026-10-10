@@ -40,7 +40,7 @@ public final class ChunkFocus {
 	 * 之后（见 {@link #tick()}）。{@code pendingDimension} 为 null 表示玩家所在维度（同「跟随」）。
 	 *
 	 * <p>不可在点击当帧就设：Xaero 的维度切换在后台线程落地，而相机坐标空间随显示维度变化，落地
-	 * 那一帧 Xaero 会清空相机目标与动画（见 GuiMap 的维度比例变化分支）——提前设的目标会在旧维度
+	 * 那一帧 Xaero 会清空相机目标与动画（见 GuiMap 的维度比例变化分支）：提前设的目标会在旧维度
 	 * 先滑起来，随后被清掉、停在中途。
 	 */
 	private ResourceKey<Level> pendingDimension;

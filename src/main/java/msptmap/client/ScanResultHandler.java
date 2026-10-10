@@ -13,7 +13,7 @@ import msptmap.sampler.MsptSampler;
 public final class ScanResultHandler {
 	/** 结果包读不出内容：对面格式与本端不兼容，本次作废。 */
 	static final String MISMATCH_KEY = "msptmap.message.mismatch";
-	/** 冷却中：距上次扫描结束不足 {@link MsptSampler#COOLDOWN_SECONDS} 秒，服务端的冷却闸拒绝。 */
+	/** 冷却中：距上次扫描结束不足 {@link MsptSampler#COOLDOWN_SECONDS} 秒，服务端的冷却校验拒绝。 */
 	static final String COOLDOWN_KEY = "msptmap.message.cooldown";
 	/** 版本不同但包读得动：照常出结果，只附一句提醒。 */
 	static final String VERSION_MISMATCH_KEY = "msptmap.message.version_mismatch";
@@ -24,7 +24,7 @@ public final class ScanResultHandler {
 	/** 收结果包：按状态更新进度圈、快照与聊天栏。 */
 	static void handle(ScanResultPayload payload) {
 		if (payload.protocol() == ScanResultPayload.MISMATCH) {
-			// 包体读不出来：对面格式与本端差得太多，本次作废
+			// 包体无法读取：对面格式与本端差异过大，本次作废
 			MsptMapMod.LOGGER.warn("服务端 MsptMap 的结果包解析不了（本端 {}），已丢弃", MsptMapMod.PROTOCOL);
 			Chat.say(MISMATCH_KEY);
 			return;
@@ -63,12 +63,12 @@ public final class ScanResultHandler {
 			}
 		}
 		// 收尾的几种状态（完成 / 被拒 / 忙碌 / 冷却）在聊天栏提示；START 与 PROGRESS 不提示。
-		// 自动广播的完成不提示：告警本身就是提示，再说一句「分析成功」只会干扰
+		// 自动广播的完成不提示：告警本身即为提示，再发一条「分析成功」只会造成干扰
 		if (selfInitiated || payload.status() != ScanResultPayload.Status.DONE) {
 			Chat.say(statusMessage(payload.status()));
 		}
 		// 对面版本不同但包读得动：照常出结果，只在完成时附一句提醒。PROGRESS 每 0.1 秒一个包、
-		// START 时还不知道跑不跑得完，都不提示
+		// START 时还无法确定能否跑完，均不提示
 		if (payload.status() == ScanResultPayload.Status.DONE && payload.protocol() != MsptMapMod.PROTOCOL) {
 			Chat.say(VERSION_MISMATCH_KEY);
 		}

@@ -45,15 +45,15 @@ import xaero.map.world.MapDimension;
  * 扫描进度圈、扫描总览与右侧完整源列表。
  *
  * <p>目标类及其引用的类型全在 Xaero 中，故该 mixin 单独放在客户端配置
- * （msptmap.client.mixins.json，required:false）：未装世界地图时不至于起不来，最多是没有热力图。
+ * （msptmap.client.mixins.json，required:false）：未装世界地图时不影响启动，仅无热力图。
  */
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class GuiMapMixin implements ChunkFocus.Host {
 	/**
-	 * 扫描按钮的框：进度圈贴着它画，故按钮与圈共用这组常量。
+	 * 扫描按钮的框：进度圈贴该框绘制，按钮与进度圈共用这组常量。
 	 *
-	 * <p>与 Xaero 自己的按钮同规格：框 20×20、图标 16×16。{@code GuiTexturedButton} 把图标在框内
-	 * 居中，故四周各留 2 px：恰容下进度圈的 1 px，也使图标墨迹距屏幕左缘 4 px（贴图单元内自 (2,2)
+	 * <p>与 Xaero 自身按钮同规格：框 20×20、图标 16×16。{@code GuiTexturedButton} 将图标在框内
+	 * 居中，四周各留 2 px：恰好容纳进度圈的 1 px，并使图标距屏幕左缘 4 px（贴图单元内自 (2,2)
 	 * 起）。框贴屏幕左缘，列宽即 {@link #SCAN_BUTTON_SIZE}。
 	 */
 	@Unique
@@ -63,13 +63,13 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	@Unique
 	private static final int SCAN_BUTTON_SIZE = 20;
 
-	/** 贴图内自 (0,0) 取的图标边长；小于按钮框，两者之差就是居中留下的空当。 */
+	/** 贴图内自 (0,0) 取的图标边长；小于按钮框，两者之差即居中留白。 */
 	@Unique
 	private static final int BUTTON_ICON_SIZE = 16;
 
 	/**
-	 * 清屏 / 设置按钮的上沿：间隔取按钮边长，框与框严丝合缝——同 Xaero 的按钮列（20×20、相隔 20），
-	 * 两钮之间没有既不算上也不算下的死区。
+	 * 清屏 / 设置按钮的上沿：间隔取按钮边长，框与框紧邻，同 Xaero 的按钮列（20×20、相隔 20），
+	 * 两钮之间没有归属不明的空隙。
 	 */
 	@Unique
 	private static final int CLEAR_BUTTON_Y = SCAN_BUTTON_Y + SCAN_BUTTON_SIZE;
@@ -77,8 +77,8 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	private static final int CONFIG_BUTTON_Y = CLEAR_BUTTON_Y + SCAN_BUTTON_SIZE;
 
 	/**
-	 * 总览折叠钮：面积为扫描按钮的 1/4，贴在列上方空位的右下角，右缘接列右缘。钮底不接扫描
-	 * 按钮上沿，留 4 px（单侧留白的 2 倍），折叠钮图标与扫描图标之间的含投影视觉间距由此同
+	 * 总览折叠钮：面积为扫描按钮的 1/4，位于列上方空位的右下角，右缘与列右缘对齐。钮底与扫描
+	 * 按钮上沿留 4 px（单侧留白的 2 倍），使折叠钮图标与扫描图标之间的视觉间距（含投影）与
 	 * 三个主按钮图标之间的一致（8 px）。
 	 */
 	@Unique
@@ -93,7 +93,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	private static final int SUMMARY_GAP = 2;
 
 	/**
-	 * 扫描总览左上角：右贴按钮列（隔 {@link #SUMMARY_GAP}）；上沿与折叠钮图标齐平——图标悬停时
+	 * 扫描总览左上角：右贴按钮列（隔 {@link #SUMMARY_GAP}）；上沿与折叠钮图标齐平。图标悬停时
 	 * 上浮 1 px（见 GuiTexturedButton），故取钮上沿 -1。绘制与点击命中共用这组坐标。
 	 */
 	@Unique
@@ -102,7 +102,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	private static final int SUMMARY_Y = FOLD_BUTTON_Y - 1;
 
 	/**
-	 * 区块定位的状态机：把点击总览行与外部请求的目标落到相机上，时序与理由见 {@link ChunkFocus}。
+	 * 区块定位的状态机：将点击总览行与外部请求的目标作用于相机，时序与理由见 {@link ChunkFocus}。
 	 * 本类作为宿主，提供地图处理器与相机、跟随状态的读写。
 	 */
 	@Unique
@@ -127,10 +127,10 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	}
 
 	/**
-	 * 折叠钮的两个控件：展开态显示 ▾、收起态显示 ▸，同一位置上只留一个可见。
+	 * 折叠钮的两个控件：展开态显示 ▾、收起态显示 ▸，同一位置只留一个可见。
 	 *
-	 * <p>之所以是两个控件：{@code GuiTexturedButton} 的贴图区域在构造时定死、之后只读，运行中改不了
-	 * （其字段为 protected，本包访问不到），而折叠钮要在界面开着的时候换图标。
+	 * <p>用两个控件的原因：{@code GuiTexturedButton} 的贴图区域构造时确定、之后只读，运行中无法修改
+	 * （其字段为 protected，本包不可访问），而折叠钮需要在界面开启期间更换图标。
 	 */
 	@Unique
 	private GuiTexturedButton msptmapFoldExpanded;
@@ -138,11 +138,11 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	private GuiTexturedButton msptmapFoldCollapsed;
 
 	/**
-	 * 折叠钮的悬停提示：说的是下一次点击会做什么。
+	 * 折叠钮的悬停提示：描述下一次点击的行为。
 	 *
-	 * <p>两个控件共用同一个 Supplier：Xaero 扫描提示时只比坐标矩形、不看 {@code visible}（见
-	 * {@code xaero.lib.client.gui.ScreenBase#renderTooltips}），隐藏的那个照样会被命中，故文案必须
-	 * 与命中的是哪一个无关。
+	 * <p>两个控件共用同一个 Supplier：Xaero 扫描提示时只比对坐标矩形、不看 {@code visible}（见
+	 * {@code xaero.lib.client.gui.ScreenBase#renderTooltips}），隐藏的控件同样会被命中，故文案须与
+	 * 命中的是哪一个无关。
 	 */
 	@Unique
 	private static Tooltip msptmapFoldTooltip() {
@@ -154,7 +154,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	@Shadow
 	private MapProcessor mapProcessor;
 
-	/** 相机的动画目标（方块坐标）：非 null 时自下一帧起向它滑动，到达后置 null。定位区块即设它。 */
+	/** 相机的动画目标（方块坐标）：非 null 时自下一帧起向它滑动，到达后置 null。定位区块即设置它。 */
 	@Shadow
 	private int[] cameraDestination;
 
@@ -166,7 +166,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	@Shadow
 	public boolean shouldReinit;
 
-	/** Xaero 算好的鼠标所在方块坐标：悬停详情指向哪一块由它俩决定。 */
+	/** Xaero 计算好的鼠标所在方块坐标：悬停详情指向哪一区块由这两个字段决定。 */
 	@Shadow
 	private int mouseBlockPosX;
 
@@ -180,27 +180,27 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	/*@Inject(method = "method_25426", at = @At("TAIL"), remap = false)
 	*///?}
 	private void msptmap$addButton(CallbackInfo ci) {
-		// 左侧空置的一列：齿轮在 (0,0) 的 30×30，Xaero 自己的按钮都在右边一列和底边。
-		// 用 Xaero 的 GuiTexturedButton：无底框、只有图标，悬停时图标上浮 1 px 并在其区域盖一层
-		// 半透明白，无需自行绘制。按「隐藏界面」键时 Xaero 会跳过整个控件绘制，按钮随之隐藏；提示由其
+		// 左侧空置的一列：齿轮位于 (0,0)、30×30，Xaero 自身的按钮都在右边一列与底边。
+		// 使用 Xaero 的 GuiTexturedButton：无底框、仅图标，悬停时图标上浮 1 px 并在其区域覆盖一层
+		// 半透明白，无需自行绘制。按「隐藏界面」键时 Xaero 跳过整个控件绘制，按钮随之隐藏；提示由其
 		// ScreenBase 扫描控件绘制，为 Supplier，悬停时每帧调用一次，故用 lambda。
-		// GuiTexturedButton 构造器两代不同：1.21.1 及以前为 11 参，贴图边长由 Xaero 写死为 256
-		// （内部经 GuiGraphics.blit 的 7 参重载绘制，该重载固定按 256×256 采样，给 16×16 的贴图
+		// GuiTexturedButton 构造器两代不同：1.21.1 及以前为 11 参，贴图边长由 Xaero 固定为 256
+		// （内部经 GuiGraphics.blit 的 7 参重载绘制，该重载固定按 256×256 采样，传入 16×16 的贴图
 		// 只会采到左上 1/16 区域、图标不可见）；1.21.3 起尾部多两个参数，边长由调用方给出。故贴图
-		// 统一为 256×256（图标画在左上角：三个主按钮取 16×16，折叠钮取 10×10），两代采样同一区域。
+		// 统一为 256×256（图标绘制在左上角：三个主按钮取 16×16，折叠钮取 10×10），两代采样同一区域。
 		//? if >=1.21.3 {
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
 				button -> MsptMapClient.onButtonPress(),
 				() -> new Tooltip(Component.translatable(MsptMapClient.scanButtonHint())), 256, 256));
-		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
+		// 清屏：位于扫描按钮下一格，同宽同高。仅清除客户端持有的结果，服务端不知情。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, CLEAR_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
 				new Tooltip(Component.translatable("msptmap.button.clear")), 256, 256));
-		// 设置：位于清屏按钮下一格。parent 传地图屏幕，关闭设置后回地图。
+		// 设置：位于清屏按钮下一格。parent 为地图屏幕，关闭设置后返回地图。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, CONFIG_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
@@ -212,13 +212,13 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/scan.png"),
 				button -> MsptMapClient.onButtonPress(),
 				() -> new Tooltip(Component.translatable(MsptMapClient.scanButtonHint()))));
-		// 清屏：位于扫描按钮下一格，同宽同高。只清客户端手上那份结果，服务端不知情。
+		// 清屏：位于扫描按钮下一格，同宽同高。仅清除客户端持有的结果，服务端不知情。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, CLEAR_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/close.png"),
 				button -> MsptMapClient.onClearPress(),
 				new Tooltip(Component.translatable("msptmap.button.clear"))));
-		// 设置：位于清屏按钮下一格。parent 传地图屏幕，关闭设置后回地图。
+		// 设置：位于清屏按钮下一格。parent 为地图屏幕，关闭设置后返回地图。
 		((GuiMap) (Object) this).addButton(new GuiTexturedButton(SCAN_BUTTON_X, CONFIG_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
@@ -231,7 +231,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	}
 
 	/**
-	 * 建折叠钮的两个控件：两者位置相同（{@link #FOLD_BUTTON_X}），靠
+	 * 创建折叠钮的两个控件：两者位置相同（{@link #FOLD_BUTTON_X}），靠
 	 * {@link #msptmap$syncFoldButtons()} 二选一可见，故从不重叠。
 	 *
 	 * <p>贴图边长的两个参数只在 1.21.3 起有，两种形态各写一遍（同上面三个按钮）。
@@ -271,7 +271,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 		msptmap$syncFoldButtons();
 	}
 
-	/** 按当前开关选定折叠钮显示哪一个控件（另一个不可见：既画不出，也接不到鼠标，见 {@code isMouseOver}）。 */
+	/** 按当前开关选定折叠钮显示哪一个控件（另一个不可见：既不绘制，也不接收鼠标事件，见 {@code isMouseOver}）。 */
 	@Unique
 	private void msptmap$syncFoldButtons() {
 		msptmapFoldExpanded.visible = ClientConfig.summaryExpanded;
@@ -282,7 +282,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	 * 绘制挂在 GuiMap.prevLoadingLeaves 字段写完的那一刻：恰在 Xaero 打开叠加层缓冲之后、收缓冲之前，
 	 * 故画进去的方块必被这一帧画出，又不会盖住之后绘制的路标与文字。
 	 *
-	 * <p>局部变量按名字取（Xaero 的类带有局部变量表），不写死槽位号：槽位号随版本变化，名字不会。
+	 * <p>局部变量按名字取（Xaero 的类带有局部变量表），不硬编码槽位号：槽位号随版本变化，名字不会。
 	 * 注入点的方法名随 MC 版本：1.21.11 及以前是 Screen.render 的 intermediary 名 method_25394
 	 * （Xaero 发布时被重映射成它），26.1 起 Xaero 随原版改名 extractRenderState。两个形态只差方法名
 	 * 与屏幕类型的写法，绘制体共用 {@link #msptmap$heatmap}。
@@ -321,7 +321,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	@Unique
 	private void msptmap$heatmap(VertexConsumer overlayBuffer, PoseStack matrixStack, int flooredCameraX,
 			int flooredCameraZ, MapDimension currentDim) {
-		// 维度未定时无可绘制内容（也避免下面取 getDimId() 空指针）
+		// 维度未定时无可绘制内容，也避免下方取 getDimId() 时的空指针
 		if (currentDim == null) {
 			return;
 		}
@@ -330,12 +330,12 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	}
 
 	/**
-	 * 悬停详情挂在方法最末尾（TAIL）：此处地图已绘制完毕、Xaero 的缩放平移也已收干净，用 guiGraphics
+	 * 悬停详情挂在方法最末尾（TAIL）：此处地图已绘制完毕、Xaero 的缩放平移也已结束，经 guiGraphics
 	 * 绘制的文字必在最上层，坐标为普通屏幕坐标。不与热力图共用注入点：后者位于地图自身的矩阵内，
 	 * 在那里绘制的文字会随地图缩放。
 	 *
-	 * <p>读字段而非局部变量：{@code mouseBlockPosX/Z} 本帧最后一次写入在方法很靠前处，到 TAIL 早已
-	 * 定下；Xaero 自身高亮区块用的就是同一个值。压在控件、总览框或右侧完整列表上时不画（见
+	 * <p>读字段而非局部变量：{@code mouseBlockPosX/Z} 本帧最后一次写入在方法很靠前处，至 TAIL 时已
+	 * 确定；Xaero 自身高亮区块用的就是同一个值。压在控件、总览框或右侧完整列表上时不画（见
 	 * {@link ChunkTooltip#overWidget}、{@link ScanSummary#overPanel}、{@link SourceListPanel#overPanel}）。
 	 */
 	//? if >=26.1 {
@@ -359,15 +359,15 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	//?} else {
 	/*private void msptmap$hoverTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
 	*///?}
-		// 按 Xaero「隐藏界面」键时详情随控件一起隐藏（热力图不隐藏，它属于地图内容）
+		// 按 Xaero「隐藏界面」键时详情随控件一并隐藏（热力图不隐藏，其属于地图内容）
 		if (GuiMap.hiddenUI || mapProcessor == null || !mapProcessor.isMapWorldUsable()) {
 			return;
 		}
-		// 鼠标压在控件上时不画（判据见 ChunkTooltip.overWidget）
+		// 鼠标位于控件上时不绘制（判据见 ChunkTooltip.overWidget）
 		if (ChunkTooltip.overWidget(mouseX, mouseY, ((GuiMap) (Object) this).children())) {
 			return;
 		}
-		// 鼠标落在总览框或右侧完整列表上时也让位：详情绘制在它们之后，重叠处会盖住面板
+		// 鼠标落在总览框或右侧完整列表上时同样让位：详情绘制于其后，重叠处会盖住面板
 		if (ScanSummary.overPanel(mouseX, mouseY, SUMMARY_X, SUMMARY_Y)
 				|| SourceListPanel.overPanel(mouseX, mouseY, msptmap$sourcesPanelX(), SUMMARY_Y)) {
 			return;
@@ -377,7 +377,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 			return;
 		}
 		String dimId = ChunkFocus.dimensionId(dimension);
-		// 该维度从未扫描则不显示：没有热力图的地方不应出现「未采样」
+		// 该维度从未扫描则不显示：无热力图之处不应出现「未采样」
 		if (ClientSnapshot.get(dimId) == null) {
 			return;
 		}
@@ -393,7 +393,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	 * 边框上（理由见 {@link ScanRing}）。
 	 *
 	 * <p>不自行计算任何数值：进度全部来自服务端每 0.1 秒推送的包（见 {@link ScanProgress}），故
-	 * 单人档地图开着（世界暂停、服务端发不出包）时它不动。
+	 * 单人档地图开着（世界暂停、服务端发不出包）时进度圈不移动。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "extractRenderState", at = @At("TAIL"), remap = false)
@@ -460,7 +460,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 		if (GuiMap.hiddenUI || !ClientConfig.summaryExpanded) {
 			return;
 		}
-		// 鼠标坐标用于给悬停的可点击行垫高亮底（见 ScanSummary.draw 与 SourceListPanel.draw）
+		// 鼠标坐标用于给悬停的可点击行绘制高亮底色（见 ScanSummary.draw 与 SourceListPanel.draw）
 		ScanSummary.draw(graphics, SUMMARY_X, SUMMARY_Y, mouseX, mouseY);
 		if (ScanSummary.sourcesPanelOpen()) {
 			SourceListPanel.draw(graphics, msptmap$sourcesPanelX(), SUMMARY_Y, mouseX, mouseY);
@@ -518,7 +518,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 		if (mapProcessor == null || !mapProcessor.isMapWorldUsable()) {
 			return false;
 		}
-		// 鼠标压在控件上时让位：与悬停详情的判据一致，画不出详情的地方也不该响应点击
+		// 鼠标位于控件上时让位：与悬停详情的判据一致，无法绘制详情的位置也不应响应点击
 		if (ChunkTooltip.overWidget(mouseX, mouseY, ((GuiMap) (Object) this).children())) {
 			return false;
 		}

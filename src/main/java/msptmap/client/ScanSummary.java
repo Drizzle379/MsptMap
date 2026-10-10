@@ -259,7 +259,7 @@ public final class ScanSummary {
 	}
 
 	/**
-	 * 鼠标是否落在总览框上（收起、无数据时恒 false）。悬停详情绘制在总览之上，重叠处让其不画。
+	 * 鼠标是否落在总览框上（收起、无数据时恒 false）。悬停详情绘制在总览之上，重叠处使其不绘制。
 	 * {@code panelX}/{@code panelY} 是总览左上角，与 {@link #draw} 的调用处同一组坐标。
 	 */
 	public static boolean overPanel(int mouseX, int mouseY, int panelX, int panelY) {

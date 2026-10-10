@@ -8,9 +8,9 @@ import net.minecraft.server.level.ServerPlayer;
 /**
  * 转发命令的处理：校魔数、卡前缀，再把命令以发起者的身份交给服务端命令树。
  *
- * <p>权限不在这里判：{@code performPrefixedCommand} 用的是玩家自己的来源，access 与 monitor 各自的
- * requires 照常生效，无权限者拿到的就是原版那句「未知或不完整的命令」。回执也不必管——命令自己
- * {@code sendSuccess} 给发起者，直接落在他的聊天栏里。
+ * <p>权限不在此处判定：{@code performPrefixedCommand} 使用玩家自身的来源，access 与 monitor 各自的
+ * requires 照常生效，无权限者得到的是原版「未知或不完整的命令」。回执亦无需处理，命令自身
+ * {@code sendSuccess} 给发起者，直接落在其聊天栏。
  *
  * <p>独立于模组入口（同 {@link ScanRequestHandler}）：入口只挂注册。
  */
@@ -28,7 +28,7 @@ public final class CommandRelayHandler {
 		}
 		String command = payload.command();
 		if (!command.startsWith(PREFIX)) {
-			// 客户端只会拼自己的子命令；走到这里说明对面在手工构造包
+			// 客户端只会拼接自己的子命令；走到这里说明对面在手工构造包
 			MsptMapMod.LOGGER.warn("玩家 {} 转发的命令不在允许范围内，已忽略：{}", playerName(player), command);
 			return;
 		}
@@ -37,8 +37,8 @@ public final class CommandRelayHandler {
 			MsptMapMod.LOGGER.warn("玩家 {} 的 MsptMap 版本与本端不一致（对面 {}，本端 {}），仍按其请求执行",
 					playerName(player), payload.protocol(), MsptMapMod.PROTOCOL);
 		}
-		// ServerPlayer 自身没有公开的取 server 的口子（字段是 private，Entity 也没有 getServer），
-		// 经 ServerLevel 拿；这里必然非空
+		// ServerPlayer 自身没有公开的取 server 的入口（字段为 private，Entity 也没有 getServer），
+		// 经 ServerLevel 获取；此处必然非空
 		MinecraftServer server = player.level().getServer();
 		server.getCommands().performPrefixedCommand(player.createCommandSourceStack(), command);
 	}

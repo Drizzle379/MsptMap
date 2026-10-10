@@ -170,7 +170,7 @@ public final class MsptMapCommand {
 		return 1;
 	}
 
-	/** 状态名：键由枚举名拼出，各带英文回退（未装本模组的 OP 也读得懂）。 */
+	/** 状态名：键由枚举名拼出，各带英文回退（未装本模组的 OP 也能读懂）。 */
 	private static Component stateName(MsptMonitor.State state) {
 		String fallback = switch (state) {
 			case OFF -> "off";

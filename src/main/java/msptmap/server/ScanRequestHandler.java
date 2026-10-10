@@ -9,7 +9,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * 扫描请求的处理：校魔数、查权限、开窗口。结果由结果包回发，不在这里。
+ * 扫描请求的处理：校验魔数、检查权限、开启窗口。结果由结果包回发，不在这里。
  *
  * <p>独立于模组入口（{@link MsptMapMod}）：入口只挂注册，收发两端各一处处理逻辑。
  */
@@ -19,7 +19,7 @@ public final class ScanRequestHandler {
 
 	public static void handle(ScanRequestPayload payload, ServerPlayer player) {
 		if (payload.protocol() == ScanRequestPayload.MISMATCH) {
-			// 包体读不出来：无从知道对面要什么，故不回复
+			// 包体无法读取：无从判断对面请求内容，故不回复
 			MsptMapMod.LOGGER.warn("玩家 {} 的 MsptMap 请求包解析不了，已忽略", playerName(player));
 			return;
 		}
@@ -28,12 +28,12 @@ public final class ScanRequestHandler {
 			MsptMapMod.LOGGER.warn("玩家 {} 的 MsptMap 版本与本端不一致（对面 {}，本端 {}），仍按其请求执行",
 					playerName(player), payload.protocol(), MsptMapMod.PROTOCOL);
 		}
-		// 权限闸门，同 MsptMapCommand
+		// 权限校验，同 MsptMapCommand
 		if (!Permissions.canUse(player.createCommandSourceStack())) {
 			ServerPlayNetworking.send(player, ScanResultPayload.denied());
 			return;
 		}
-		// 非 0 为客户端指定的秒数，0 表示用服务端默认值
+		// 非 0 为客户端指定的秒数，0 表示使用服务端默认值
 		int requested = payload.seconds() > 0 ? payload.seconds() : MsptSampler.DEFAULT_SECONDS;
 		int seconds = MsptSampler.clampSeconds(requested);
 
@@ -46,14 +46,14 @@ public final class ScanRequestHandler {
 						MsptSampler.COOLDOWN_SECONDS);
 				ServerPlayNetworking.send(player, ScanResultPayload.cooldown());
 			}
-			// 停滞判定只拒绝无发起人的请求，玩家请求到不了这里（见 MsptSampler.start）；兜底按忙碌回
+			// 停滞判定只拒绝无发起人的请求，玩家请求不会进入此分支（见 MsptSampler.start）；此处按忙碌兜底
 			case STALLED -> ServerPlayNetworking.send(player, ScanResultPayload.busy());
 		}
 	}
 
 	/**
 	 * 玩家名（供日志）。用 {@code getScoreboardName()} 而非 GameProfile：后者在 1.21 系列内两度更名
-	 * （getName/name），前者全版本稳定，语义也更准。
+	 * （getName/name），前者全版本稳定，语义也更准确。
 	 */
 	private static String playerName(ServerPlayer player) {
 		return player.getScoreboardName();

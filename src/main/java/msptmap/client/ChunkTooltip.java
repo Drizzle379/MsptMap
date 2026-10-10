@@ -52,7 +52,7 @@ public final class ChunkTooltip {
 	 * 「未采样」也不给），调用方见到空列表即不画面板。
 	 *
 	 * <p>悬停时每帧都会调用到这里，而输入（区块、窗口、配置）在两次绘制之间通常不变，故按输入
-	 * 缓存：命中即省下约八次 {@code format} 与整串拼接。
+	 * 缓存：命中即省去约八次 {@code format} 与整串拼接。
 	 *
 	 * @param chunk       鼠标所指区块；快照中没有（本次未扫到）时为 null——坐标行照给，另加一行
 	 *                    「未采样」，以便区分「无数据」与「未显示」
@@ -98,7 +98,7 @@ public final class ChunkTooltip {
 					|| TickText.ticketDoubtful(chunk.simTicket(), ClientConfig.tooltipTicketSim);
 		}
 		if (ClientConfig.tooltipEntities) {
-			// 与耗时无关的瞬时值：方块实体 / 实体 / 刷怪那几类耗时的成因多半在这里
+			// 与耗时无关的瞬时值：方块实体 / 实体 / 刷怪这几类耗时的成因多在于此
 			lines.add(Component.translatable("msptmap.tooltip.entities", chunk.entities()));
 		}
 		if (ClientConfig.tooltipTotal) {
@@ -119,7 +119,7 @@ public final class ChunkTooltip {
 	/**
 	 * 面板位置：默认在鼠标右下角，右 / 下放不下则翻到另一侧，再收回屏幕内。返回 {@code {x, y}}。
 	 *
-	 * <p>单独拆出以便离线断言（贴边翻面是 {@link #draw} 中唯一容易算错之处）。
+	 * <p>单独拆出以便离线断言（贴边翻面是 {@link #draw} 中唯一易算错之处）。
 	 */
 	public static int[] position(int mouseX, int mouseY, int boxWidth, int boxHeight, int screenWidth, int screenHeight) {
 		int x = mouseX + OFFSET;

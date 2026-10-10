@@ -32,8 +32,8 @@ import net.minecraft.network.chat.Component;
  * <p>聊天栏只输出状态提示（见 {@link Chat}：参数为语言键，按客户端语言解析；走客户端本地消息，
  * 不发往服务端），其余只写日志。
  *
- * <p>命令在客户端本地解析：解析得动就本地执行、不发往服务端（Fabric 在
- * {@code ClientPacketListener.sendCommand} 处拦截），解析不动才放行给服务端。同一位置的服务端同名
+ * <p>命令在客户端本地解析：可解析的即本地执行，不发往服务端（Fabric 在
+ * {@code ClientPacketListener.sendCommand} 处拦截），无法解析的才放行给服务端。同一位置的服务端同名
  * 命令因此被遮蔽，access 与 monitor 由客户端补上同样形状的子树、执行时转发过去。
  */
 public class MsptMapClient implements ClientModInitializer {
@@ -52,7 +52,7 @@ public class MsptMapClient implements ClientModInitializer {
 		// 退出游戏时补一次落盘：设置界面只在 onClose 里存，用窗口关闭按钮退出或崩溃时改动会丢
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ClientConfig.save());
 
-		// 退出世界 / 掉线：丢弃上一局的结果与未画完的进度圈。快照按维度名存储（minecraft:overworld），
+		// 退出世界 / 掉线：丢弃上一个世界的结果与未画完的进度圈。快照按维度名存储（minecraft:overworld），
 		// 不清则进入同一维度的另一世界仍显示旧颜色，扫描中的进度圈也会一直挂在按钮上。
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			ClientSnapshot.clear();

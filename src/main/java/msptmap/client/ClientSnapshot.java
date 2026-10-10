@@ -22,10 +22,10 @@ public final class ClientSnapshot {
 	 * 一个区块在屏幕上的矩形。坐标为世界方块坐标（chunkX << 4 到 +16）：不减相机（相机每帧才确定，
 	 * 提前计入等于固定），也不做维度缩放（依据见 {@link MapOverlay}）。
 	 *
-	 * <p>{@code timed} = 本段窗口内测到过耗时；false 表示仅被服务端加载、整段窗口无计时，铺淡灰——
+	 * <p>{@code timed} = 本段窗口内测到过耗时；false 表示仅被服务端加载、整段窗口无计时，绘制淡灰色，
 	 * 「未测到」与「测到 0」不同。
 	 *
-	 * <p>{@code entities} 是服务端出快照那一刻该区块的实体数（含乘客），不是窗口内的平均值。
+	 * <p>{@code entities} 是服务端出快照那一刻该区块的实体数（含乘客），并非窗口内的平均值。
 	 *
 	 * <p>{@code loadTicket}/{@code simTicket} 是两条链各自的加载来源（编码见
 	 * {@link msptmap.sampler.TicketCode}），供悬停详情写出「 · 玩家加载中心」一类的后缀。

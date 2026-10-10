@@ -14,13 +14,13 @@ import net.minecraft.resources.Identifier;
  * 资源位置工具：贴图 / 包 ID 的构造与维度 ID、注册表键路径的取用。
  *
  * <p>1.21.11 起 {@code ResourceLocation} 更名为 {@code Identifier}，{@code ResourceKey.location()}
- * 更名为 {@code identifier()}；调用点分散在服务端采样、客户端与网络层，故统一由本类收口。
+ * 更名为 {@code identifier()}。调用点分布于服务端采样、客户端与网络层，故统一由本类收口。
  */
 public final class Ids {
 	private Ids() {
 	}
 
-	/** 构造资源位置（贴图、包 ID 用）。 */
+	/** 构造资源位置，用于贴图与包 ID。 */
 	//? if >=1.21.11 {
 	public static Identifier of(String namespace, String path) {
 		return Identifier.fromNamespaceAndPath(namespace, path);
@@ -35,7 +35,7 @@ public final class Ids {
 	}
 	*///?}
 
-	/** 维度 ID 的全名（如 {@code minecraft:overworld}）。客户端快照按它分组存储。 */
+	/** 维度的完整 ID（如 {@code minecraft:overworld}）；客户端快照按此分组存储。 */
 	public static String id(ResourceKey<Level> dimension) {
 		//? if >=1.21.11 {
 		return dimension.identifier().toString();
@@ -45,8 +45,8 @@ public final class Ids {
 	}
 
 	/**
-	 * 注册表键的路径段（如 {@code player_loading}）；该值不在注册表里时为 null。
-	 * 用 {@code var} 接键对象：其类型名两代不同（Identifier / ResourceLocation），而 getPath() 同名。
+	 * 注册表键的路径段（如 {@code player_loading}）；值未注册时返回 null。
+	 * 以 {@code var} 接收键对象：其类型名两代不同（Identifier / ResourceLocation），而 getPath() 同名。
 	 */
 	public static <T> String path(Registry<T> registry, T value) {
 		var key = registry.getKey(value);

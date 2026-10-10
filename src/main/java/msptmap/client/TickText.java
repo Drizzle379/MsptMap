@@ -72,7 +72,7 @@ public final class TickText {
 	 * 某类的明细行。方块更新行以斜体与行尾星号标示合计不计它；行色由调用方给——悬停详情经
 	 * {@link #secondary} 得附注灰，扫描总览的着色版只给数值上梯度色。
 	 *
-	 * <p>包内可见，吃纳秒而非区块：扫描总览的明细行取自跨维度合计的同类数组。
+	 * <p>包内可见，接收纳秒而非区块坐标：扫描总览的明细行取自跨维度合计的同类数组。
 	 */
 	static Component categoryLine(long nanos, int windowTicks, TickCategory category) {
 		return categoryLine(category, ms(nanos, windowTicks));
@@ -123,9 +123,9 @@ public final class TickText {
 		}
 		Component name = Component.translatable(ticketName(type));
 		if (type == TicketCode.PLAYER_LOADING) {
-			// player_loading 是逐区块铺的：视距内每格一张、等级相同，故此链上不存在「中心」
-			// 与距离（每格算出来都是自己）。只写票名，不编造一个恒为 0 的距离。其余票种（forced /
-			// portal / ender_pearl 等）是稀疏的，中心与距离才有意义。
+			// player_loading 逐区块铺设：视距内每格一张、等级相同，故此链上不存在「中心」
+			// 与距离（每格算出来都是自己）。只写票名，不构造恒为 0 的距离。其余票种（forced /
+			// portal / ender_pearl 等）为稀疏票，中心与距离才有意义。
 			return note(Component.translatable("msptmap.tooltip.ticket_name", name));
 		}
 		// 中心判据与蓝框同源（TicketCode.isCenter），两处显示不会不一致

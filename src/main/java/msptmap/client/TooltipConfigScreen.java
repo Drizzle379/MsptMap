@@ -38,7 +38,7 @@ class TooltipConfigScreen extends ConfigScreenBase {
 						value -> ClientConfig.tooltipCoords = value),
 				new Entry(Component.translatable("msptmap.config.levels"), ClientConfig.tooltipLevels,
 						value -> ClientConfig.tooltipLevels = value),
-				// 两个票开关紧跟在「等级」之后：它们是等级行的一部分，不是独立行
+				// 两个票开关紧跟在「等级」之后：它们属于等级行，不是独立行
 				new Entry(Component.translatable("msptmap.config.ticket_load"), ClientConfig.tooltipTicketLoad,
 						value -> ClientConfig.tooltipTicketLoad = value),
 				new Entry(Component.translatable("msptmap.config.ticket_sim"), ClientConfig.tooltipTicketSim,

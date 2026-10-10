@@ -30,7 +30,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * <p>每个注入点均以 HEAD 记开始、RETURN 记结束，差值即该方法自身的耗时。开始时刻存 {@code @Unique}
  * 字段而不用 ThreadLocal：这些方法只在服务端主线程调用，而 ThreadLocal 每次读写都要装箱一个 Long。
  *
- * <p>各 RETURN 注入点先判「开始时刻为 0（未在采样）」并提前返回，否则每次收尾都要白算一遍区块坐标
+ * <p>各 RETURN 注入点先判「开始时刻为 0（未在采样）」并提前返回，否则每次收尾都要额外计算一遍区块坐标
  * 打包与维度转换（{@link MsptSampler#end} 本就忽略 0，但参数已经求值）。乘客不重复计时，其耗时记在
  * 载具所在区块。
  */
@@ -118,7 +118,7 @@ public abstract class ServerLevelMixin {
 	 * 已含在外层中，逐个记账会重复累加），区块取最外层那次的位置。
 	 *
 	 * <p>用 {@code @WrapMethod} 而非两次 {@code @Inject}（HEAD / RETURN）：深度计数须在 try-finally
-	 * 中还原——目标方法抛异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
+	 * 中还原，目标方法抛异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
 	 */
 	@Unique
 	private void msptmapNeighborBegin() {

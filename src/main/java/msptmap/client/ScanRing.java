@@ -84,7 +84,7 @@ public final class ScanRing {
 	}
 
 	/**
-	 * 逐条边填充；不走 {@link #segments}（每帧省下列表与 int[] 的分配），几何算式与之共用。
+	 * 逐条边填充；不走 {@link #segments}（避免每帧分配列表与 int[]），几何算式与之共用。
 	 *
 	 * <p>声明行分叉（{@code GuiGraphics} 在 26.1 更名为 {@code GuiGraphicsExtractor}），方法体共用；
 	 * else 段的注释里不能再放以星号斜杠收尾的注释（javadoc 也算），那会提前关上包装注释。

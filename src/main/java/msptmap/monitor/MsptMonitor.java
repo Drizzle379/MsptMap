@@ -8,11 +8,11 @@ import net.minecraft.server.MinecraftServer;
  * 常态 MSPT 监控：每 tick 量一次服务端 tick 的实际执行耗时，平滑后持续超标即触发一次自动扫描。
  *
  * <p>与 {@link MsptSampler} 分开：那个只在扫描窗口内累计「区块归属」的耗时，窗口关着就什么都不测，
- * 拿不到整 tick 的耗时，也就无从判断服务器是否变卡。这里测的是 START/END 钩子之间的墙钟差——不含
- * tick 之间的等待，才是真正的 mspt。
+ * 拿不到整 tick 的耗时，无从判断服务器是否变卡。这里测的是 START/END 钩子之间的墙钟差，不含
+ * tick 之间的等待，即真正的 mspt。
  *
- * <p>决策是纯逻辑（{@link #observe} 只吃一个纳秒数与一个时刻），触发时才回头碰服务端对象，因此
- * 去抖、平滑与冷却都能离线断言。
+ * <p>决策为纯逻辑（{@link #observe} 只接收一个纳秒数与一个时刻），仅在触发时才访问服务端对象，
+ * 故去抖、平滑与冷却均可离线断言。
  */
 public final class MsptMonitor {
 	/** 当前状态，供 {@code /msptmap monitor} 显示。 */
@@ -27,7 +27,7 @@ public final class MsptMonitor {
 		COOLDOWN
 	}
 
-	/** 评估间隔（刻）：每 1 秒判一次，不必逐 tick 决策。 */
+	/** 评估间隔（刻）：每 1 秒判定一次，无需逐 tick 决策。 */
 	private static final int EVALUATE_TICKS = MsptSampler.TICKS_PER_SECOND;
 
 	/** 平滑窗口（秒）：固定值，不对外可调。 */
@@ -36,13 +36,13 @@ public final class MsptMonitor {
 	/** 自动扫描的时长（秒）：固定值，不对外可调。 */
 	static final int AUTO_SCAN_SECONDS = 5;
 
-	/** 去抖次数：连续这么多次评估超标才算数，固定值，不对外可调。 */
+	/** 去抖次数：连续该次数的评估超标才有效；固定值，不对外可调。 */
 	static final int CONSECUTIVE_CHECKS = 5;
 
 	/** 环形缓冲容量 = 窗口刻数：窗口固定，一次配足后不再分配。 */
 	private static final int CAPACITY = WINDOW_SECONDS * MsptSampler.TICKS_PER_SECOND;
 
-	/** 最近若干 tick 的耗时（纳秒）。满了覆盖最旧的，{@link #ringSum} 同步加减，均值不必遍历。 */
+	/** 最近若干 tick 的耗时（纳秒）。满后覆盖最旧的，{@link #ringSum} 同步增减，求均值无需遍历。 */
 	private static final long[] ring = new long[CAPACITY];
 	private static int ringIndex;
 	private static int ringCount;
@@ -57,7 +57,7 @@ public final class MsptMonitor {
 	/** 冷却截止时刻（纳秒）；0 = 从未触发。 */
 	private static long cooldownUntilNanos;
 
-	/** 本 tick 开始的时刻（START 钩子写，END 钩子读）；0 = 没有起点。 */
+	/** 本 tick 开始的时刻（START 钩子写，END 钩子读）；0 表示无起点。 */
 	private static long tickStartNanos;
 
 	private MsptMonitor() {
@@ -82,7 +82,7 @@ public final class MsptMonitor {
 	/**
 	 * 每个服务端 tick 结束时调用：量本 tick 耗时并做一次决策，该触发就发起自动扫描。
 	 *
-	 * <p>未启用时连测都不测（关掉即零开销），并顺手清掉上次留下的窗口。
+	 * <p>未启用时不作任何测量（关闭即零开销），并清空上次留下的窗口。
 	 */
 	public static void onTickEnd(MinecraftServer server) {
 		long now = System.nanoTime();
@@ -101,13 +101,13 @@ public final class MsptMonitor {
 		if (!observe(now - start, now)) {
 			return;
 		}
-		// 没有接收者时白扫一次没有意义（也免得占住采样窗口，挡住玩家的手动扫描）
+		// 无接收者时扫描没有意义，且会占用采样窗口，妨碍玩家的手动扫描
 		if (MsptAlert.targets(server).isEmpty()) {
 			return;
 		}
 		switch (MsptSampler.startAuto(AUTO_SCAN_SECONDS, server)) {
 			case STARTED -> markTriggered(now);
-			// 忙 / 冷却中 / 停滞：留在等待态，下次评估再试。不消耗冷却，也不清零去抖计数
+			// 忙 / 冷却中 / 停滞：留在等待态，下次评估再试；不消耗冷却，也不清零去抖计数
 			default -> {
 			}
 		}
@@ -125,7 +125,7 @@ public final class MsptMonitor {
 			return false;
 		}
 		sinceEvaluate = 0;
-		// 窗口未填满时不判：样本太少，均值不具代表性（刚开监控时）
+		// 窗口未填满时不判定：样本过少，均值不具代表性（监控刚启用）
 		if (ringCount < CAPACITY) {
 			consecutiveChecks = 0;
 			return false;

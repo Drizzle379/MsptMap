@@ -15,14 +15,14 @@ import java.util.List;
  * 地图上的小面板：深色半透明底、白字、四周内边距 3、行距 lineHeight + 1。
  *
  * <p>悬停详情（{@link ChunkTooltip}）与扫描总览（{@link ScanSummary}）共用同一套外观与度量，
- * 两处不再各画各的。
+ * 两处不再各自绘制。
  */
 public final class MapPanel {
 	/** 面板四周的内边距。 */
 	private static final int PADDING = 3;
-	/** 深色半透明底：地图颜色杂乱，需垫底才看得清字。 */
+	/** 深色半透明底：地图颜色杂乱，需垫底方能看清文字。 */
 	private static final int BACKGROUND = 0xC0000000;
-	/** 可点击行悬停时的行底：在深底上叠一层淡白，提示可点。 */
+	/** 可点击行悬停时的行底：在深底上叠加一层淡白，提示可点击。 */
 	private static final int HIGHLIGHT = 0x30FFFFFF;
 	private static final int TEXT_COLOR = 0xFFFFFFFF;
 

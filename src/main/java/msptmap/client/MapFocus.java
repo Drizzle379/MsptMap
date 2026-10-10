@@ -30,7 +30,7 @@ public final class MapFocus {
 		return target;
 	}
 
-	/** 丢弃待定位目标（退出世界：目标属于上一局的地图）。 */
+	/** 丢弃待定位目标（退出世界：目标属于上一个世界的地图）。 */
 	public static void clear() {
 		pending = null;
 	}

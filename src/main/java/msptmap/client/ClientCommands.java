@@ -20,7 +20,7 @@ import net.minecraft.network.chat.Component;
 /**
  * 服务端 access 与 monitor 两条子命令的客户端转发子树。
  *
- * <p>命令在客户端本地解析：解析得动就本地执行、不发往服务端，同一位置的服务端同名命令因此被遮蔽。
+ * <p>命令在客户端本地解析：可解析的即本地执行，不发往服务端，同一位置的服务端同名命令因此被遮蔽。
  * 这两棵按服务端同样的形状注册，叶子节点把命令转发上去执行（见 {@link CommandRelayPayload}）。
  */
 final class ClientCommands {
@@ -28,7 +28,7 @@ final class ClientCommands {
 	}
 
 	/**
-	 * {@code /msptmap access ...}：服务端那条命令被本地同名的根遮蔽，故按同样的形状在这里再注册
+	 * {@code /msptmap access ...}：服务端那条命令被本地同名的根遮蔽，故按同样的形状在此再注册
 	 * 一棵，叶子节点把命令转发上去（见 {@link CommandRelayPayload}）。
 	 */
 	static LiteralArgumentBuilder<FabricClientCommandSource> access() {
@@ -66,7 +66,7 @@ final class ClientCommands {
 	/**
 	 * 把一条服务端命令转发上去执行。
 	 *
-	 * <p>权限交给服务端判（那里才有权威的 OP 等级），客户端不预筛：非 OP 收到的正是原版那句
+	 * <p>权限交由服务端判定（那里才有权威的 OP 等级），客户端不作预筛：非 OP 得到的是原版
 	 * 「未知或不完整的命令」，与未装本模组的客户端一致。
 	 */
 	private static int relay(FabricClientCommandSource source, String command) {

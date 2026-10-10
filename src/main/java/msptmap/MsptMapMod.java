@@ -12,7 +12,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-// 1.20.5 起才有这个类；1.20.4 及以前的 FabricPacket 体系由 registerGlobalReceiver 隐式注册，不需要它
+// 该类自 1.20.5 起提供；1.20.4 及以前的 FabricPacket 体系由 registerGlobalReceiver 隐式注册，无需此类
 //? if >=1.20.5 {
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 //?}
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 模组主入口，服务端与客户端都会执行。
  *
- * <p>注册：服务端 tick 的起止（采样器与常态监控）、服务器起止时的读存与复位、{@code /msptmap}
+ * <p>注册项：服务端 tick 的起止（采样器与常态监控）、服务器起止时的读存与复位、{@code /msptmap}
  * 命令、网络包、扫描请求接收器与命令转发接收器。
  */
 public class MsptMapMod implements ModInitializer {
@@ -33,15 +33,15 @@ public class MsptMapMod implements ModInitializer {
 	/**
 	 * 本端可读的字节格式版本（魔数，"MSP4" 的十六进制），两个包均以它打头。
 	 *
-	 * <p>改动包的字节格式（字段增删、顺序调整、类别增删）时递增。两端都将其视为标记而非闸门：
-	 * 值不同仅提示版本可能不一致，仍照常解析，确实读不出来才判本次失败。
+	 * <p>改动包的字节格式（字段增删、顺序调整、类别增删）时递增。两端均视其为标记而非闸门：
+	 * 值不同仅提示版本可能不一致，仍照常解析，仅在解析失败时判定本次失败。
 	 */
 	public static final int PROTOCOL = 0x4D535034;
 
 	@Override
 	public void onInitialize() {
-		// 监控与采样都要量整 tick 的耗时，故自己配一对 START / END 钩子：END 那头同时挂着采样器（保持
-		// 无参签名，离线测试直接调它），这里才拿得到 MinecraftServer
+		// 监控与采样均需整 tick 耗时，故在此注册一对 START / END 钩子。END 回调用以取得
+		// MinecraftServer；采样器保持无参签名，便于离线测试直接调用
 		ServerTickEvents.START_SERVER_TICK.register(server -> {
 			MsptSampler.onTickStart();
 			MsptMonitor.onTickStart();
@@ -50,10 +50,10 @@ public class MsptMapMod implements ModInitializer {
 			MsptSampler.onServerTick();
 			MsptMonitor.onTickEnd(server);
 		});
-		// 服务端配置在服务器起来后读一次（命令改完即存，见 MsptMapCommand 的 monitor 子树）
+		// 服务端配置于服务器启动后读取一次；命令修改后立即存盘，见 MsptMapCommand 的 monitor 子树
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> ServerConfig.load());
-		// 服务器停止：丢弃采样与监控状态。静态字段跨世界存活，不复位则重进后旧窗口继续数刻、新请求
-		// 被误判为「忙」，监控也会带着上一个世界的冷却与均值
+		// 服务器停止时丢弃采样与监控状态。静态字段跨世界存活，不复位则重进后旧窗口继续计数、新请求
+		// 将被误判为「忙」，监控也会沿用上一世界的冷却与均值
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
 			MsptSampler.reset();
 			MsptMonitor.reset();
@@ -61,7 +61,7 @@ public class MsptMapMod implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registryAccess, environment) -> MsptMapCommand.register(dispatcher));
 
-		// 请求包与转发包 客户端 → 服务端，结果包 服务端 → 客户端。包类型注册：1.20.5 起走
+		// 请求包与转发包由客户端发往服务端，结果包由服务端发往客户端。包类型注册：1.20.5 起使用
 		// PayloadTypeRegistry（1.21.11 及以前为 playC2S/playS2C，26.1 起更名为
 		// serverboundPlay/clientboundPlay）；1.20.4 及以前的 FabricPacket 体系无需此步。
 		//? if >=26.1 {

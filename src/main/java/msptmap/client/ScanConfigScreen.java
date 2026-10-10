@@ -32,9 +32,9 @@ class ScanConfigScreen extends ConfigScreenBase {
 	/**
 	 * 秒数输入框。
 	 *
-	 * <p>EditBox 没有 setFilter，合法范围自行把关：输入非法则把框内文本改回当前生效值（改回的文本必然
-	 * 合法，故 responder 不会递归多层），使框内显示与将要发送的始终一致。清空时先不处理——需允许擦掉
-	 * 旧值重输，此时的值仍是上一个合法值。
+	 * <p>EditBox 没有 setFilter，合法范围自行校验：输入非法则将框内文本改回当前生效值（改回的文本必然
+	 * 合法，故 responder 不会递归），使框内显示与将要发送的值始终一致。清空时先不处理：需要允许擦除
+	 * 旧值重输，此时的值仍为上一个合法值。
 	 */
 	private void addSecondsBox(int x, int y) {
 		EditBox box = new EditBox(font, x, y, SECONDS_BOX_WIDTH, WIDGET_HEIGHT,

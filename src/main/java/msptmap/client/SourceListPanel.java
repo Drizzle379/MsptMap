@@ -23,7 +23,7 @@ public final class SourceListPanel {
 	public static final int MAX_ROWS = 30;
 	/** 滚轮一格翻动的行数。 */
 	private static final int SCROLL_STEP = 3;
-	/** 滚动条宽度：贴面板右缘，恰在 3 px 内边距内，不压字。 */
+	/** 滚动条宽度：贴面板右缘，恰在 3 px 内边距内，不遮挡文字。 */
 	private static final int SCROLLBAR_WIDTH = 3;
 	/** 滚动条把手的最小高度：行数远多于可见行时按比例算出的把手会细到看不见。 */
 	private static final int MIN_THUMB = 4;
@@ -101,7 +101,7 @@ public final class SourceListPanel {
 		}
 	}
 
-	/** 鼠标是否落在面板上（未展开、无数据时恒 false）。悬停详情绘制在其上，重叠处让其不画。 */
+	/** 鼠标是否落在面板上（未展开、无数据时恒 false）。悬停详情绘制在其上，重叠处使其不绘制。 */
 	public static boolean overPanel(int mouseX, int mouseY, int panelX, int panelY) {
 		if (!ScanSummary.sourcesPanelOpen()) {
 			return false;

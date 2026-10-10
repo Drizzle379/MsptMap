@@ -56,10 +56,10 @@ public final class ClientConfig {
 	/** 热力填色的透明度。 */
 	public static double fillAlpha;
 
-	/** 弱加载（加载等级 ≥32）且整段窗口无耗时的区块是否铺淡灰。 */
+	/** 弱加载（加载等级 ≥32）且整段窗口无耗时的区块是否绘制淡灰色。 */
 	public static boolean showWeakGray;
 
-	/** 地图上那框扫描总览是否展开；由折叠钮翻转，跨次记忆（见 {@link ScanSummary}）。 */
+	/** 地图上的扫描总览是否展开；由折叠钮翻转，跨次记忆（见 {@link ScanSummary}）。 */
 	public static boolean summaryExpanded;
 
 	/** 扫描总览的数值行是否按热力梯度着色：明细红点固定 20 mspt、合计 40 mspt、TOP5 跟随地图配色。 */
@@ -229,7 +229,7 @@ public final class ClientConfig {
 	/**
 	 * 滑块位置（0~1）→ 区间内的值，保留两位小数。
 	 *
-	 * 两位小数是刻意的：文件中的数要能一眼看懂，也避开浮点尾巴。
+	 * 两位小数是有意为之：文件中的数便于阅读，也避开浮点误差。
 	 */
 	public static double fromSlider(double position, double min, double max) {
 		return round2(min + position * (max - min));
@@ -298,7 +298,7 @@ public final class ClientConfig {
 
 		@Override
 		void clamp() {
-			// 布尔值没有越界一说
+			// 布尔值不存在越界
 		}
 	}
 

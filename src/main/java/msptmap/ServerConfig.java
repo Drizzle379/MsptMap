@@ -11,10 +11,10 @@ import java.util.Properties;
 /**
  * 服务端的可调值：扫描权限，以及常态 MSPT 监控的开关、阈值、冷却与接收范围。
  *
- * <p>存 config/msptmap-server.properties，与客户端那份（msptmap-client.properties）互不覆盖。
+ * <p>存于 config/msptmap-server.properties，与客户端配置（msptmap-client.properties）互不覆盖。
  *
- * <p>值直接存静态字段：监控热路径每 tick 读取；命令改完立即生效，落盘交给 {@link #save()}。
- * 读盘与存盘共用 {@link #clamp()} 夹取区间：文件可手改，外部输入一律不信任。
+ * <p>值直接存于静态字段：监控热路径逐 tick 读取，命令修改后立即生效，落盘交由 {@link #save()}。
+ * 读盘与存盘共用 {@link #clamp()} 夹取区间；文件可手工修改，外部输入一律不信任。
  */
 public final class ServerConfig {
 	/** 触发阈值的合法区间（mspt）；一位小数。 */
@@ -25,12 +25,12 @@ public final class ServerConfig {
 	public static final int MIN_COOLDOWN_MINUTES = 1;
 	public static final int MAX_COOLDOWN_MINUTES = 1440;
 
-	/** 文件名。与客户端那份区分。 */
+	/** 文件名，与客户端配置区分。 */
 	private static final String FILE_NAME = "msptmap-server.properties";
 
 	/** 谁能发起扫描。 */
 	public enum Access {
-		/** 仅原版 OP（管理等级 2）。默认。 */
+		/** 仅原版 OP（管理等级 2）。默认值。 */
 		OPS,
 		/** 所有玩家，由服主用 {@code /msptmap access all} 放开。 */
 		ALL
@@ -38,19 +38,19 @@ public final class ServerConfig {
 
 	/** 自动扫描结果的接收范围。 */
 	public enum Audience {
-		/** 只发给在线 OP：默认。 */
+		/** 仅发给在线 OP。默认值。 */
 		OP,
-		/** 所有在线玩家（不限管理员）——未装本模组的只能收到英文回退文案。 */
+		/** 所有在线玩家（不限管理员）；未装本模组的玩家只能收到英文回退文案。 */
 		ALL
 	}
 
 	/** 扫描权限。 */
 	public static Access access;
 
-	/** 总开关。默认关：装上后需服主显式 {@code /msptmap monitor on}。 */
+	/** 总开关。默认关闭，安装后需服主显式执行 {@code /msptmap monitor on}。 */
 	public static boolean monitorEnabled;
 
-	/** 触发阈值（mspt）：平滑均值高于它即计一次超标。 */
+	/** 触发阈值（mspt）：平滑均值高于该值即计一次超标。 */
 	public static double threshold;
 
 	/** 触发后的冷却（分钟）。 */
@@ -60,14 +60,14 @@ public final class ServerConfig {
 	public static Audience audience;
 
 	static {
-		// 默认值只在 resetToDefaults() 中写一次：首次启动与「改坏了回默认」共用同一份
+		// 默认值仅在 resetToDefaults() 中定义：首次启动与恢复出厂共用同一份
 		resetToDefaults();
 	}
 
 	private ServerConfig() {
 	}
 
-	/** 恢复全部出厂默认。 */
+	/** 恢复全部出厂默认值。 */
 	public static void resetToDefaults() {
 		access = Access.OPS;
 		monitorEnabled = false;
@@ -76,19 +76,19 @@ public final class ServerConfig {
 		audience = Audience.OP;
 	}
 
-	/** 从 config/msptmap-server.properties 读取；文件缺失或损坏则用默认值，绝不因设置崩服务器。 */
+	/** 从 config/msptmap-server.properties 读取；文件缺失或损坏时使用默认值，任何设置问题均不致使服务器崩溃。 */
 	public static void load() {
 		load(FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME));
 	}
 
-	/** 写盘失败只记一行日志：设置存不下不应妨碍服务器。 */
+	/** 写盘失败仅记一行日志；设置无法保存不得妨碍服务器运行。 */
 	public static void save() {
 		save(FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME));
 	}
 
-	/** 实际读盘。带参数是为了离线测试能喂入临时文件。 */
+	/** 实际读盘；带参数以便离线测试传入临时文件。 */
 	static void load(Path file) {
-		// 先回默认值再覆盖：缺失的键用默认值，坏值也不会残留部分旧状态
+		// 先恢复默认值再覆盖：缺失的键沿用默认值，坏值也不会残留部分旧状态
 		resetToDefaults();
 		Properties properties = PropertiesFile.read(file, "服务端设置");
 		if (properties == null) {
@@ -102,7 +102,7 @@ public final class ServerConfig {
 		clamp();
 	}
 
-	/** 实际写盘。手写这几行而不用 Properties.store：后者键序不稳定、还会写入时间戳注释。 */
+	/** 实际写盘。此处手写而不用 {@code Properties.store}：后者键序不稳定，且会写入时间戳注释。 */
 	static void save(Path file) {
 		clamp();
 		StringBuilder text = new StringBuilder();
@@ -120,7 +120,7 @@ public final class ServerConfig {
 		PropertiesFile.write(file, text.toString(), "服务端设置");
 	}
 
-	/** 各值夹回合法区间。 */
+	/** 将各值夹取到合法区间。 */
 	private static void clamp() {
 		threshold = PropertiesFile.clamp(threshold, MIN_THRESHOLD, MAX_THRESHOLD, 1);
 		cooldownMinutes = Clamp.of(cooldownMinutes, MIN_COOLDOWN_MINUTES, MAX_COOLDOWN_MINUTES);

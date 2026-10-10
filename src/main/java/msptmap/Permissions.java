@@ -22,8 +22,8 @@ public final class Permissions {
 	/**
 	 * 是否原版 OP（管理等级 2）。
 	 *
-	 * <p>1.21.11 起原版权限改为 {@code PermissionSet} + {@code PermissionCheck}，等级常量随之从
-	 * {@code hasPermission(int)} 换成 {@code Commands.LEVEL_GAMEMASTERS}。
+	 * <p>1.21.11 起原版权限改为 {@code PermissionSet} 与 {@code PermissionCheck}，等级常量随之由
+	 * {@code hasPermission(int)} 改为 {@code Commands.LEVEL_GAMEMASTERS}。
 	 */
 	public static boolean isOperator(CommandSourceStack source) {
 		//? if >=1.21.11 {

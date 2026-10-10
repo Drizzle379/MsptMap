@@ -26,7 +26,7 @@ import java.util.Map;
 /**
  * 快照构建：把采样表转换成可发送的 {@link SnapshotCodec.DimensionData} 列表。
  *
- * <p>等级、加载来源与实体数都是取样时刻的瞬时值（每次查询都是一次哈希查找，不宜放进采样热路径），
+ * <p>等级、加载来源与实体数均为取样时刻的瞬时值（每次查询都是一次哈希查找，不宜放进采样热路径），
  * 故整段只在窗口收尾时同步执行一次。
  */
 public final class SnapshotBuilder {
@@ -40,7 +40,7 @@ public final class SnapshotBuilder {
 	}
 
 	/**
-	 * 把采样表转换为可发送的快照，同时取两个等级；取的是出快照这一刻的值。
+	 * 将采样表转换为可发送的快照，同时取两个等级，取值状态为出快照这一刻。
 	 *
 	 * <p>字节预算按维度平分，避免外层表的遍历顺序决定谁先吃光预算。
 	 *
@@ -67,7 +67,7 @@ public final class SnapshotBuilder {
 		chunks.forEach((key, timing) -> {
 			measured.add(key);
 			//? if >=1.21.5 {
-			// simulate=false 取加载等级，true 取计算等级（和 /chunkloadinfo 同一个方法）
+			// simulate=false 取加载等级，true 取计算等级（与 /chunkloadinfo 同一个方法）
 			int loadLevel = distanceManager.getChunkLevel(key, false);
 			int computeLevel = distanceManager.getChunkLevel(key, true);
 			//?} else {
@@ -81,7 +81,7 @@ public final class SnapshotBuilder {
 			out.add(chunkData(key, timing.nanosArray(), timing.countsArray(), loadLevel, computeLevel,
 					entityCounts, loadTickets, simTickets));
 		});
-		// 按重量降序：装不下时移除的必然是尾部最轻的。重量先一次算好再排；若在比较器中现算
+		// 按重量降序：装不下时移除的必为尾部最轻的。重量先一次算好再排序；若在比较器中现算
 		// totalNanos()，每次比较都要重加那六个数，数万区块时即为数十万次重复求和
 		List<Weighted> weighted = new ArrayList<>(out.size());
 		for (SnapshotCodec.ChunkData chunk : out) {
@@ -104,7 +104,7 @@ public final class SnapshotBuilder {
 	/**
 	 * 该区块在某条链上的加载来源。表里没有它时，以「该链是否本该覆盖本区块」区分：本该覆盖却无源，
 	 * 说明正推漏了锚点，标为存疑（客户端显示星号）；本就不覆盖（模拟链超出模拟距离）时无源属正常，
-	 * 不应报为异常，否则视距内、模拟距离外的一圈会星号满屏。
+	 * 不应报为异常，否则视距内、模拟距离外的一圈会布满星号。
 	 *
 	 * @param expected 该链是否本该覆盖本区块
 	 */
@@ -115,8 +115,8 @@ public final class SnapshotBuilder {
 	}
 
 	/**
-	 * 出快照那一刻每个区块的实体数（含乘客）。与耗时不同，这是瞬时值而非窗口内的累计，故不放入
-	 * 热路径：每维度遍历一遍全部实体，只在收尾时进行一次。
+	 * 生成快照时每个区块的实体数（含乘客）。与耗时不同，此为瞬时值而非窗口内累计，故不放入
+	 * 热路径：每维度遍历一遍全部实体，仅在收尾时进行一次。
 	 */
 	private static Long2IntOpenHashMap entityCounts(ServerLevel level) {
 		Long2IntOpenHashMap counts = new Long2IntOpenHashMap();
@@ -129,29 +129,29 @@ public final class SnapshotBuilder {
 	}
 
 	/**
-	 * 把「加载着但窗口内无计时」的区块补进快照，耗时与次数全填 0，客户端据此铺淡灰。
+	 * 把「加载着但窗口内无计时」的区块补进快照，耗时与次数全填 0，客户端据此绘制淡灰色。
 	 *
 	 * <p>只收加载等级 ≤ 32 的（31 实体刻 / 32 方块刻）；33 及以上完全不 tick。等级直接读
 	 * {@code ChunkHolder.getTicketLevel()}，与 {@code getChunkLevel(key, false)} 同源。这批区块
 	 * 没有轻重可挑，装不下即中止，并留一行日志。
 	 *
 	 * <p>中心区块（见 {@link TicketSources#isCenter}）不在此列：先于可见区块补上、不计预算。中心
-	 * 不在视距内（远程 forceload、传送门）或没有耗时记录时，只有先补才能保证客户端画得出中心蓝框。
+	 * 不在视距内（远程 forceload、传送门）或没有耗时记录时，只有先补才能保证客户端绘制出中心蓝框。
 	 */
 	private static void addLoadedChunks(ServerLevel level, DistanceManager distanceManager, LongOpenHashSet measured,
 			Long2IntOpenHashMap entityCounts, Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets,
 			List<SnapshotCodec.ChunkData> out, int budget) {
-		// out 里已有的键：实测留下的 + 下面补的中心；实测但被预算裁掉的不在其中
+		// out 中已有的键：实测留下的与下面补的中心；实测但被预算裁掉的不在其中
 		LongOpenHashSet included = new LongOpenHashSet(Math.max(16, out.size()));
 		for (SnapshotCodec.ChunkData chunk : out) {
 			included.add(ChunkKeys.pack(chunk.x(), chunk.z()));
 		}
 		//? if >=1.21.5 {
-		// 一、两个链的中心先补：每张票一个、数量少，不计预算（1.21.4 及以前来源降级，表是空的）
+		// 一、先补两条链的中心：每张票一个、数量少，不计预算（1.21.4 及以前来源降级，表为空）
 		for (Long2IntOpenHashMap tickets : new Long2IntOpenHashMap[] {loadTickets, simTickets}) {
 			for (Long2IntMap.Entry entry : tickets.long2IntEntrySet()) {
 				long key = entry.getLongKey();
-				// add 返回 false = 快照里已有（同一区块在两条链上都是中心也只补一次）
+				// add 返回 false 表示快照中已有（同一区块在两条链上均为中心时也只补一次）
 				if (TicketCode.isCenter(entry.getIntValue()) && included.add(key)) {
 					out.add(loadedChunk(key, distanceManager.getChunkLevel(key, false),
 							distanceManager.getChunkLevel(key, true), entityCounts, loadTickets, simTickets));
@@ -192,7 +192,7 @@ public final class SnapshotBuilder {
 		}
 	}
 
-	/** 「仅加载、无计时」形态的区块数据（耗时与次数全填 0，客户端据此铺淡灰）。 */
+	/** 「仅加载、无计时」形态的区块数据（耗时与次数全填 0，客户端据此绘制淡灰色）。 */
 	private static SnapshotCodec.ChunkData loadedChunk(long key, int loadLevel, int computeLevel,
 			Long2IntOpenHashMap entityCounts, Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets) {
 		return chunkData(key, SnapshotCodec.ZERO_NANOS, SnapshotCodec.ZERO_COUNTS,
@@ -208,7 +208,7 @@ public final class SnapshotBuilder {
 			Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets) {
 		return new SnapshotCodec.ChunkData(ChunkPos.getX(key), ChunkPos.getZ(key), nanos, counts,
 				// key 为原始 long，走原始版 get(long)（缺省值 0）；装箱版 get(Object) 对不存在的键
-				// 在部分 fastutil 版本上返回 null，拆箱即 NPE（1.21.8 实机曾触发）
+				// 在部分 fastutil 版本中返回 null，拆箱即 NPE（1.21.8 实机曾触发）
 				entityCounts.get(key), loadLevel, computeLevel,
 				//? if >=1.21.5 {
 				ticketCode(loadTickets, key, ChunkLevel.isBlockTicking(loadLevel)),
