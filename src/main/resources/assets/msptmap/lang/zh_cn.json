@@ -9,7 +9,7 @@
   "msptmap.message.version_mismatch": "MsptMap 客户端与服务端版本不一致，结果可能不准",
   "msptmap.message.no_xaero": "无法定位：未安装 Xaero 的世界地图",
 
-  "msptmap.alert.title": "[MsptMap] 服务器 MSPT 持续高于 %1$s，已自动扫描 %2$s 秒，最重的区块：",
+  "msptmap.alert.title": "[MsptMap] 服务器 MSPT 持续高于 %1$s，已自动扫描 %2$s 秒，卡顿区块：",
   "msptmap.alert.row": "%1$d) %2$s · 区块 (%3$d, %4$d) · %5$s mspt",
   "msptmap.alert.hover": "点击在世界地图上定位该区块",
 

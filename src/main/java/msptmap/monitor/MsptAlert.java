@@ -19,10 +19,11 @@ import java.util.List;
  * 自动扫描的聊天告警：一条标题加若干可点击的区块行。
  *
  * <p>文案一律 {@code translatableWithFallback}：接收范围设为「所有玩家」时，未装本模组的玩家没有
- * msptmap.* 的翻译，回退文案（英文）兜底，否则他们只会看到裸键名。行里嵌的维度名同理走
- * {@link Dimensions#vanillaKey}（原版键人人都有），而不是本模组的短名键。
+ * msptmap.* 的翻译，回退文案（英文）兜底，否则他们只会看到裸键名。行里嵌的维度名同理：装了的客户端
+ * 走 {@link Dimensions#key} 的短名，未装的按 {@link Dimensions#fallbackName} 回退英文短名——原版语言
+ * 文件里没有 {@code dimension.*} 键，只用原版键会显出裸键名。
  *
- * <p>整行带 {@code runCommand} 点击事件：装了本模组的 OP 点了即由客户端打开世界地图并定位过去。
+ * <p>整行带 {@code runCommand} 点击事件与下划线：装了本模组的 OP 点了即由客户端打开世界地图并定位过去。
  */
 public final class MsptAlert {
 	/** 告警里列出的区块行数。 */
@@ -30,7 +31,7 @@ public final class MsptAlert {
 
 	private static final String TITLE_KEY = "msptmap.alert.title";
 	private static final String TITLE_FALLBACK =
-			"[MsptMap] Server MSPT stayed above %1$s mspt; scanned %2$s s - heaviest chunks:";
+			"[MsptMap] Server MSPT stayed above %1$s mspt; scanned %2$s s - lagging chunks:";
 	private static final String ROW_KEY = "msptmap.alert.row";
 	private static final String ROW_FALLBACK = "%1$d) %2$s - chunk (%3$d, %4$d) - %5$s mspt";
 	private static final String HOVER_KEY = "msptmap.alert.hover";
@@ -74,11 +75,14 @@ public final class MsptAlert {
 				Decimals.format1(ServerConfig.threshold), windowTicks / MsptSampler.TICKS_PER_SECOND);
 	}
 
-	/** 一条区块行：序号、维度、区块坐标、耗时，整行可点。 */
+	/** 一条区块行：序号、维度、区块坐标、耗时，整行可点（带下划线提示可点）。 */
 	private static Component row(int index, MsptSampler.Heavy heavy, int windowTicks) {
+		// 维度名走本模组短名键（装了本模组的客户端才是中文短名）；未装的玩家按原版短名回退，
+		// 不能只给原版 dimension.* 键：官方语言文件里并没有这个键，那只会显示裸键名
 		MutableComponent text = Component.translatableWithFallback(ROW_KEY, ROW_FALLBACK,
 				index,
-				Component.translatable(Dimensions.vanillaKey(heavy.dimension())),
+				Component.translatableWithFallback(Dimensions.key(heavy.dimension()),
+						Dimensions.fallbackName(heavy.dimension())),
 				heavy.chunkX(), heavy.chunkZ(),
 				msptText(heavy.totalNanos(), windowTicks));
 		// 维度 ID 含冒号，命令里走字符串参数，故加引号
@@ -88,8 +92,8 @@ public final class MsptAlert {
 	}
 
 	/**
-	 * 给组件挂上点击与悬停。1.21.6 起 ClickEvent / HoverEvent 改为 record 实现，此前是「动作 + 值」
-	 * 的构造器。
+	 * 给组件挂上点击、悬停与下划线（下划线即「可点」的视觉提示，同聊天里的链接）。1.21.6 起
+	 * ClickEvent / HoverEvent 改为 record 实现，此前是「动作 + 值」的构造器。
 	 *
 	 * <p>命令文本带前导斜杠：旧版由客户端剥（{@code startsWith("/")} 不成立直接报错），新版由
 	 * {@code Commands.trimOptionalPrefix} 剥，两端一致。
@@ -98,11 +102,11 @@ public final class MsptAlert {
 		Component hover = Component.translatableWithFallback(HOVER_KEY, HOVER_FALLBACK);
 		//? if >=1.21.6 {
 		return text.withStyle(style -> style.withClickEvent(new ClickEvent.RunCommand(command))
-				.withHoverEvent(new HoverEvent.ShowText(hover)));
+				.withHoverEvent(new HoverEvent.ShowText(hover)).withUnderlined(true));
 		//?} else {
 		/*return text.withStyle(style -> style.withClickEvent(
 						new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
-				.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover)));
+				.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover)).withUnderlined(true));
 		*///?}
 	}
 

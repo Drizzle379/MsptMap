@@ -9,7 +9,7 @@
   "msptmap.message.version_mismatch": "MsptMap client and server versions differ; results may be inaccurate",
   "msptmap.message.no_xaero": "Cannot locate: Xaero's World Map is not installed",
 
-  "msptmap.alert.title": "[MsptMap] Server MSPT stayed above %1$s mspt; scanned %2$s s - heaviest chunks:",
+  "msptmap.alert.title": "[MsptMap] Server MSPT stayed above %1$s mspt; scanned %2$s s - lagging chunks:",
   "msptmap.alert.row": "%1$d) %2$s - chunk (%3$d, %4$d) - %5$s mspt",
   "msptmap.alert.hover": "Click to locate this chunk on the world map",
 
