@@ -109,9 +109,9 @@ public final class ScanSummary {
 			foldRow = lines.size();
 			lines.add(foldLine(sourceRows.size() - SOURCE_ROWS));
 		}
-		// 总卡顿：区块合计 [整 tick]（区块合计占整 tick 的百分比），不带 mspt 单位。着色开启时梯度色
-		// 仍只挂区块合计这一个数值（低于绿点取起点绿），名称、整 tick 与百分比保持白字。服务端没量到
-		// 整 tick（tickNanos 为 0）时退化回只显示区块合计
+		// 总卡顿：区块合计 [整 tick]（区块合计占整 tick 的百分比），不带 mspt 单位。着色开启时梯度色挂
+		// 区块合计与整 tick 两个数值（低于绿点取起点绿），名称与百分比保持白字。服务端没量到整 tick
+		// （tickNanos 为 0）时退化回只显示区块合计
 		long totalNanos = totals.totalNanos();
 		long tickNanos = totals.tickNanos();
 		Component totalLabel = Component.translatable("msptmap.summary.total");
@@ -119,9 +119,12 @@ public final class ScanSummary {
 				? TickText.colored(TickText.ms(totalNanos, windowTicks),
 						rangeColor(mspt(totalNanos, windowTicks), TOTAL_GREEN_MS, TOTAL_RED_MS))
 				: Component.literal(TickText.ms(totalNanos, windowTicks));
+		Component tickValue = ClientConfig.summaryColored
+				? TickText.colored(TickText.ms(tickNanos, windowTicks),
+						rangeColor(mspt(tickNanos, windowTicks), TOTAL_GREEN_MS, TOTAL_RED_MS))
+				: Component.literal(TickText.ms(tickNanos, windowTicks));
 		lines.add(tickNanos > 0L
-				? Component.translatable("msptmap.summary.total_line", totalLabel, totalValue,
-						TickText.ms(tickNanos, windowTicks),
+				? Component.translatable("msptmap.summary.total_line", totalLabel, totalValue, tickValue,
 						Decimals.format1(Math.min(100.0, totalNanos * 100.0 / tickNanos)))
 				: Component.translatable("msptmap.tooltip.plain_line", totalLabel, totalValue));
 		// 七类明细：整体缩进、类别名附注灰；着色开启时梯度色只给数值（压暗一档），星号与斜体照旧
