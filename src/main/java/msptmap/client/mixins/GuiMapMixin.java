@@ -138,14 +138,17 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	private GuiTexturedButton msptmapFoldCollapsed;
 
 	/**
-	 * 折叠钮的悬停提示：描述下一次点击的行为。
+	 * 折叠钮的悬停提示：描述下一次点击的行为；无扫描数据（钮整体隐藏）时返回 null。
 	 *
 	 * <p>两个控件共用同一个 Supplier：Xaero 扫描提示时只比对坐标矩形、不看 {@code visible}（见
 	 * {@code xaero.lib.client.gui.ScreenBase#renderTooltips}），隐藏的控件同样会被命中，故文案须与
-	 * 命中的是哪一个无关。
+	 * 命中的是哪一个无关；返回 null 是该处唯一能让提示随钮一并消失的手段。
 	 */
 	@Unique
 	private static Tooltip msptmapFoldTooltip() {
+		if (!ScanSummary.hasData()) {
+			return null;
+		}
 		return new Tooltip(Component.translatable(ClientConfig.summaryExpanded
 				? "msptmap.hint.summary_collapse" : "msptmap.hint.summary_expand"));
 	}
@@ -271,11 +274,16 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 		msptmap$syncFoldButtons();
 	}
 
-	/** 按当前开关选定折叠钮显示哪一个控件（另一个不可见：既不绘制，也不接收鼠标事件，见 {@code isMouseOver}）。 */
+	/**
+	 * 按当前开关选定折叠钮显示哪一个控件（另一个不可见：既不绘制，也不接收鼠标事件，见
+	 * {@code isMouseOver}）；无扫描数据时两个都不可见——没有可开合的框，钮与提示一并藏起（见
+	 * {@link ScanSummary#hasData}）。
+	 */
 	@Unique
 	private void msptmap$syncFoldButtons() {
-		msptmapFoldExpanded.visible = ClientConfig.summaryExpanded;
-		msptmapFoldCollapsed.visible = !ClientConfig.summaryExpanded;
+		boolean hasData = ScanSummary.hasData();
+		msptmapFoldExpanded.visible = hasData && ClientConfig.summaryExpanded;
+		msptmapFoldCollapsed.visible = hasData && !ClientConfig.summaryExpanded;
 	}
 
 	/**
@@ -456,6 +464,8 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	//?} else {
 	/*private void msptmap$summary(GuiGraphics graphics, int mouseX, int mouseY) {
 	*///?}
+		// 折叠钮的显隐随数据有无而变（扫描完成、清屏都发生在帧外），每帧同步一次
+		msptmap$syncFoldButtons();
 		// 按「隐藏界面」键时随按钮一起隐藏（与悬停详情一致）；收起由折叠钮决定，与隐藏界面无关
 		if (GuiMap.hiddenUI || !ClientConfig.summaryExpanded) {
 			return;

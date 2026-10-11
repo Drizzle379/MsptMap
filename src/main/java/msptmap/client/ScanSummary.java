@@ -62,6 +62,14 @@ public final class ScanSummary {
 	}
 
 	/**
+	 * 当前是否有可显示的扫描数据（未扫描、已清屏时为 false）。地图上的折叠钮据此显隐：无数据时
+	 * 没有可开合的框，钮连同悬停提示一并隐藏。
+	 */
+	public static boolean hasData() {
+		return ClientSnapshot.totals() != null;
+	}
+
+	/**
 	 * 总览要显示的每一行；未扫描、已清屏（合计取不到）时返回空列表，调用方见到空列表即不画面板。
 	 *
 	 * <p>每帧都会被调用到这里，而输入（合计、三个开关）在两次绘制之间通常不变，故按输入缓存。
