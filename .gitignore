@@ -23,6 +23,7 @@ hs_err_*.log
 # 本地留存、不进仓库
 .minecraft/
 testlibs/
+CLAUDE.md
 PLAN.md
 PLAN-MULTIVERSION.md
 OPTIMIZE.md
