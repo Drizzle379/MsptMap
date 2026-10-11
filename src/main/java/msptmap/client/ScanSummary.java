@@ -102,7 +102,10 @@ public final class ScanSummary {
 		lines.add(Component.translatable("msptmap.summary.chunks", totals.chunks(), totals.timed(),
 				windowTicks / MsptSampler.TICKS_PER_SECOND));
 		lines.add(Component.translatable("msptmap.summary.entities", totals.entities()));
+		//? if >=1.21.5 {
+		// 加载源合计：1.21.4 及以前的票体系认不出来源（见 TicketSources.resolve），无此统计
 		lines.add(Component.translatable("msptmap.summary.sources", totals.sourceList().size()));
+		//?}
 		// 加载源逐条列出（与「加载源」同源，见 ClientSnapshot.accept）：一行一个源，票名 @ 维度 坐标
 		List<ClientSnapshot.Source> sources = totals.sourceList();
 		List<Component> sourceRows = new ArrayList<>(sources.size());
