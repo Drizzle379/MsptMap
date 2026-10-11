@@ -5,8 +5,10 @@
   "mixins": [
     "BoundTickingBlockEntityMixin",
     "ChunkMapAccessor",
+    "ChunkMapTrackedEntityMixin",
     "LevelMixin",
     "NaturalSpawnerMixin",
+    "ServerEntityMixin",
     "ServerLevelMixin"
   ],
   "injectors": {

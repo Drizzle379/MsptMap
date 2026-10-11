@@ -169,7 +169,7 @@ The server samples the time spent on seven kinds of tick work and sends the resu
 | Block update | The neighbour-update entry points of `ServerLevel` and `Level.neighborShapeChanged` |
 | Block event | `ServerLevel.doBlockEvent` |
 | Block entity | `LevelChunk$BoundTickingBlockEntity.tick` |
-| Entity | `ServerLevel.tickNonPassenger` |
+| Entity | `ServerLevel.tickNonPassenger`, plus the per-tick synchronisation (`ChunkMap$TrackedEntity.updatePlayers` / `ServerEntity.sendChanges`) |
 | Mob spawning | `NaturalSpawner.spawnForChunk` |
 
 > [!IMPORTANT]

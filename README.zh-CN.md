@@ -169,7 +169,7 @@ flowchart LR
 | 方块更新 | `ServerLevel` 的邻居更新各入口，以及 `Level.neighborShapeChanged` |
 | 方块事件 | `ServerLevel.doBlockEvent` |
 | 方块实体 | `LevelChunk$BoundTickingBlockEntity.tick` |
-| 实体 | `ServerLevel.tickNonPassenger` |
+| 实体 | `ServerLevel.tickNonPassenger`，以及每 tick 的同步（`ChunkMap$TrackedEntity.updatePlayers` / `ServerEntity.sendChanges`） |
 | 刷怪 | `NaturalSpawner.spawnForChunk` |
 
 > [!IMPORTANT]

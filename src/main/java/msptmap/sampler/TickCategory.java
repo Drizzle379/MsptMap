@@ -13,7 +13,7 @@ public enum TickCategory {
 	SCHEDULED,
 	/** 方块实体：{@code LevelChunk$BoundTickingBlockEntity.tick()}（见 BoundTickingBlockEntityMixin）。 */
 	BLOCK_ENTITY,
-	/** 实体：{@code ServerLevel.tickNonPassenger}。 */
+	/** 实体：{@code ServerLevel.tickNonPassenger}，以及每 tick 的同步（{@code ChunkMap$TrackedEntity.updatePlayers} 与 {@code ServerEntity.sendChanges}）。 */
 	ENTITY,
 	/** 刷怪：{@code NaturalSpawner.spawnForChunk}。 */
 	SPAWN,
