@@ -14,6 +14,7 @@ Identifies the specific chunks responsible for server-side lag.
 [![Environment](https://img.shields.io/badge/Environment-client_%2B_server-4c8eda?style=flat-square)](#-installation)
 [![License](https://img.shields.io/github/license/Drizzle379/MsptMap?style=flat-square&label=License&color=3da639)](#-license)
 [![Release](https://img.shields.io/github/v/release/Drizzle379/MsptMap?style=flat-square&label=Release&sort=semver&color=8957e5)](https://github.com/Drizzle379/MsptMap/releases)
+[![Downloads](https://img.shields.io/github/downloads/Drizzle379/MsptMap/total?style=flat-square&label=Downloads&color=1f6feb)](https://github.com/Drizzle379/MsptMap/releases)
 [![Stars](https://img.shields.io/github/stars/Drizzle379/MsptMap?style=flat-square&label=Stars&color=e3b341)](https://github.com/Drizzle379/MsptMap)
 
 **English** · [简体中文](README.zh-CN.md)
