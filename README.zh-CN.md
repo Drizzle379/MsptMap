@@ -166,14 +166,16 @@ flowchart LR
 | :--- | :--- |
 | 随机刻 | `ServerLevel.tickChunk` |
 | 计划刻 | `ServerLevel.tickBlock` / `tickFluid` |
-| 方块更新 | `ServerLevel` 的邻居更新各入口 |
+| 方块更新 | `ServerLevel` 的邻居更新各入口，以及 `Level.neighborShapeChanged` |
 | 方块事件 | `ServerLevel.doBlockEvent` |
 | 方块实体 | `LevelChunk$BoundTickingBlockEntity.tick` |
 | 实体 | `ServerLevel.tickNonPassenger` |
 | 刷怪 | `NaturalSpawner.spawnForChunk` |
 
-> [!NOTE]
+> [!IMPORTANT]
 > 方块更新会被计量，但不计入合计：其耗时已包含在触发它的类别中，例如由计划刻引发的红石连锁。
+>
+> 受技术所限，上表各类计时并不严格准确（可能等于或略小于实际耗时），仅供参考。
 
 ## 🔨 构建
 

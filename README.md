@@ -166,14 +166,16 @@ The server samples the time spent on seven kinds of tick work and sends the resu
 | :--- | :--- |
 | Random tick | `ServerLevel.tickChunk` |
 | Scheduled tick | `ServerLevel.tickBlock` / `tickFluid` |
-| Block update | The neighbour-update entry points of `ServerLevel` |
+| Block update | The neighbour-update entry points of `ServerLevel` and `Level.neighborShapeChanged` |
 | Block event | `ServerLevel.doBlockEvent` |
 | Block entity | `LevelChunk$BoundTickingBlockEntity.tick` |
 | Entity | `ServerLevel.tickNonPassenger` |
 | Mob spawning | `NaturalSpawner.spawnForChunk` |
 
-> [!NOTE]
+> [!IMPORTANT]
 > Block updates are measured but excluded from the total: their cost is already contained within the category that triggered them — a redstone chain initiated by a scheduled tick, for example.
+>
+> For technical reasons the timings above are not strictly accurate — they may equal or slightly understate the real cost — and serve as a reference only.
 
 ## 🔨 Building
 

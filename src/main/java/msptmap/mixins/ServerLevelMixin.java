@@ -3,6 +3,7 @@ package msptmap.mixins;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import msptmap.util.ChunkKeys;
+import msptmap.util.NeighborTiming;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import net.minecraft.core.BlockPos;
@@ -35,7 +36,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 载具所在区块。
  */
 @Mixin(ServerLevel.class)
-public abstract class ServerLevelMixin {
+public abstract class ServerLevelMixin implements NeighborTiming {
 	@Unique
 	private long msptmapRandomTickStart;
 
@@ -47,13 +48,6 @@ public abstract class ServerLevelMixin {
 
 	@Unique
 	private long msptmapEntityStart;
-
-	@Unique
-	private long msptmapNeighborStart;
-
-	/** 方块更新的嵌套层数（各入口共享）：只有最外层那次计时。 */
-	@Unique
-	private int msptmapNeighborDepth;
 
 	@Unique
 	private long msptmapBlockEventStart;
@@ -111,30 +105,12 @@ public abstract class ServerLevelMixin {
 		MsptSampler.end(TickCategory.ENTITY, this.msptmapLevel(), ChunkKeys.pack(entity.chunkPosition()), this.msptmapEntityStart);
 	}
 
-	/**
-	 * 方块更新的各入口共享同一深度计数：{@code updateNeighborsAt}（六向派发）、
-	 * {@code updateNeighborsAtExceptFromFacing}（排除某方向）与 {@code neighborChanged}（单点通知，三参与
-	 * BlockState 五参两个重载）。红石连锁在派发过程中会绕回这些方法，故只记最外层那一次（嵌套调用的耗时
-	 * 已含在外层中，逐个记账会重复累加），区块取最外层那次的位置。
-	 *
-	 * <p>用 {@code @WrapMethod} 而非两次 {@code @Inject}（HEAD / RETURN）：深度计数须在 try-finally
-	 * 中还原，目标方法抛异常时 RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
-	 */
-	@Unique
-	private void msptmapNeighborBegin() {
-		if (this.msptmapNeighborDepth++ == 0) {
-			this.msptmapNeighborStart = MsptSampler.begin();
-		}
-	}
-
-	/** 退出任一方块更新入口：最外层关窗并记账。 */
-	@Unique
-	private void msptmapNeighborEnd(BlockPos pos) {
-		if (--this.msptmapNeighborDepth == 0 && this.msptmapNeighborStart != 0L) {
-			MsptSampler.end(TickCategory.NEIGHBOR_UPDATE, this.msptmapLevel(), ChunkKeys.pack(pos),
-					this.msptmapNeighborStart);
-		}
-	}
+	// 邻居更新（NC）的各入口：updateNeighborsAt（六向派发）、updateNeighborsAtExceptFromFacing（排除某方向）
+	// 与 neighborChanged（单点通知，三参与 BlockState 五参两个重载）。红石连锁在派发过程中会绕回这些方法，
+	// 故只记最外层那一次；嵌套层数与形状更新（PP）共用，见 NeighborTiming。
+	//
+	// 用 @WrapMethod 而非两次 @Inject（HEAD / RETURN）：嵌套层数须在 try-finally 中还原，目标方法抛异常时
+	// RETURN 注入不会执行，计数将永久失衡，此后所有红石耗时都不再记录。
 
 	// 1.21.2 起红石派发改用 Orientation 参数（neighborChanged 原有的 BlockPos 参数被其替换），以下各入口
 	// 的签名均在此处分叉。
@@ -142,21 +118,21 @@ public abstract class ServerLevelMixin {
 	@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
 			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
 	private void msptmapNeighbor(BlockPos pos, Block sourceBlock, Orientation orientation, Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(pos, sourceBlock, orientation);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	//?} else {
 	/*@WrapMethod(method = "updateNeighborsAt(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;)V")
 	private void msptmapNeighbor(BlockPos pos, Block sourceBlock, Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(pos, sourceBlock);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	*///?}
@@ -168,11 +144,11 @@ public abstract class ServerLevelMixin {
 			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
 	private void msptmapNeighborExceptFromFacing(BlockPos pos, Block sourceBlock, Direction except,
 			Orientation orientation, Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(pos, sourceBlock, except, orientation);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	//?} else {
@@ -180,11 +156,11 @@ public abstract class ServerLevelMixin {
 			+ "Lnet/minecraft/world/level/block/Block;Lnet/minecraft/core/Direction;)V")
 	private void msptmapNeighborExceptFromFacing(BlockPos pos, Block sourceBlock, Direction except,
 			Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(pos, sourceBlock, except);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	*///?}
@@ -195,22 +171,22 @@ public abstract class ServerLevelMixin {
 			+ "Lnet/minecraft/world/level/redstone/Orientation;)V")
 	private void msptmapNeighborChanged(BlockPos pos, Block sourceBlock, Orientation orientation,
 			Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(pos, sourceBlock, orientation);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	//?} else {
 	/*@WrapMethod(method = "neighborChanged(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;"
 			+ "Lnet/minecraft/core/BlockPos;)V")
 	private void msptmapNeighborChanged(BlockPos pos, Block sourceBlock, BlockPos fromPos, Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(pos, sourceBlock, fromPos);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	*///?}
@@ -222,11 +198,11 @@ public abstract class ServerLevelMixin {
 			+ "Lnet/minecraft/world/level/redstone/Orientation;Z)V")
 	private void msptmapNeighborChangedState(BlockState state, BlockPos pos, Block sourceBlock,
 			Orientation orientation, boolean movedByPiston, Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(state, pos, sourceBlock, orientation, movedByPiston);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	//?} else {
@@ -235,11 +211,11 @@ public abstract class ServerLevelMixin {
 			+ "Lnet/minecraft/core/BlockPos;Z)V")
 	private void msptmapNeighborChangedState(BlockState state, BlockPos pos, Block sourceBlock, BlockPos fromPos,
 			boolean movedByPiston, Operation<Void> original) {
-		this.msptmapNeighborBegin();
+		this.msptmapUpdateBegin();
 		try {
 			original.call(state, pos, sourceBlock, fromPos, movedByPiston);
 		} finally {
-			this.msptmapNeighborEnd(pos);
+			this.msptmapUpdateEnd(pos);
 		}
 	}
 	*///?}

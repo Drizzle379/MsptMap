@@ -17,7 +17,7 @@ public enum TickCategory {
 	ENTITY,
 	/** 刷怪：{@code NaturalSpawner.spawnForChunk}。 */
 	SPAWN,
-	/** 方块更新：{@code ServerLevel} 的邻居更新各入口（红石连锁的耗时落在这里）；累加合计时不计入，其耗时已含在触发它的类别中。 */
+	/** 方块更新：邻居更新（NC）的各入口与形状更新（PP）的唯一入口 {@code Level.neighborShapeChanged}（红石连锁与火把、栅栏一类的形状检查都落在这里）；累加合计时不计入，其耗时已含在触发它的类别中。 */
 	NEIGHBOR_UPDATE,
 	/** 方块事件：{@code ServerLevel.doBlockEvent}（活塞、箱子、音符盒一类的排队方块动作）。 */
 	BLOCK_EVENT;
