@@ -35,7 +35,6 @@ Identifies the specific chunks responsible for server-side lag.
 | 📊 **Scan overview** | A single panel reports total mspt, entity count, load sources and the five most costly chunks, aggregated across **all three dimensions**, whereas the map itself displays one dimension at a time. |
 | 🖱️ **Click to locate** | Selecting an entry in the overview moves the map to the corresponding chunk. A fold row expands the complete source list. When the overview or that list is taller than the screen, a scroll bar appears on its right edge and the mouse wheel scrolls it. |
 | 📡 **Optional monitoring** | Off by default. When enabled, the server watches MSPT and, on sustained overload, scans on its own and alerts the online operators with a clickable list of the five most costly chunks. |
-| 🔁 **Version tolerance** | The client and the server are not required to run the same version. A version mismatch still produces a result, accompanied by a chat notice; a packet that cannot be interpreted is reported as a failure in chat and does not disconnect the client. |
 
 ## 📦 Requirements
 
@@ -44,7 +43,7 @@ Identifies the specific chunks responsible for server-side lag.
 | **Minecraft** | Yes | See [supported versions](#supported-versions) |
 | **Fabric Loader** | Yes | ≥ 0.19.3 |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | Yes | |
-| [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map) | Client only | Injection anchors verified on Xaero 1.44.2 / 1.46.0 / 1.46.4 (most versions use 1.46.0). Should a future Xaero update invalidate an anchor, the button and heatmap are disabled and the game starts normally. |
+| [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map) | Client only | Verified on Xaero 1.44.2 / 1.46.0 / 1.46.4 (most versions use 1.46.0); other versions are not guaranteed to hook successfully |
 | [Mod Menu](https://modrinth.com/mod/modmenu) | Recommended | Provides a shortcut to the settings screen |
 
 ### Supported versions
@@ -62,50 +61,48 @@ Identifies the specific chunks responsible for server-side lag.
 | 26.3 | `versions/26.3` | 25 | `0.158.0+26.3` |
 
 > [!NOTE]
-> **1.20.5, 1.20.6 and 1.21.5 are not supported.** Each row above corresponds to one jar; a full build produces one per row.
+> 1.20.5, 1.20.6 and 1.21.5 are not supported.
 
 ## 🚀 Installation
 
 Download the latest build from [Modrinth](https://modrinth.com/mod/msptmap) or the [releases page](https://github.com/Drizzle379/MsptMap/releases), then place the jar in the `mods/` directory.
 
 > [!IMPORTANT]
-> Sampling is performed on the **server**, so the mod is required on both sides. The client additionally requires Xaero's World Map. In single-player, both sides run on the same machine and a single copy suffices.
+> Sampling is performed on the **server**, so the mod is required on both sides;
 
-The server and the client may run different versions of MsptMap. A mismatch still yields a result, with a chat notice that it may be inaccurate; a packet that cannot be interpreted is reported in chat as a failure and does not disconnect the client.
 
 ## 🎮 Usage
 
 1. Open the world map and select the **scan** button in the upper-left corner
-2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are always pale grey
+2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are pale grey
 3. Hovering over a chunk displays its coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown
-4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; with more than 3 sources the 4th row is a fold row that expands the complete source list on the right; if the panel or that list is taller than the screen, a scroll bar appears and the mouse wheel scrolls it
+4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; the source list can be expanded when there are many sources
 5. The ✕ button clears the heatmap
 
 ### Interpreting load tickets
 
-The load ticket identifies the mechanism that keeps a chunk loaded: `player_loading` for a nearby player, `forced` for `/forceload`, `ender_pearl` for a thrown pearl, among others. The `@x,z` suffix gives the coordinates of the chunk on which the ticket resides; a chunk outlined in blue holds a ticket.
+The load ticket identifies the ticket that keeps the chunk loaded; the `@x,z` suffix gives the coordinates of the chunk on which the ticket resides; a chunk outlined in blue holds a ticket.
+(In fact, every chunk around a player holds a ticket; for brevity, only the ticket of the chunk the player is in is shown.)
 
 <details>
 <summary>All ticket names</summary>
 
 | Ticket | Reason the chunk remains loaded |
 | :--- | :--- |
-| `player_loading` | A player is within view distance (applied per chunk; no centre) |
-| `player_simulation` | A player is within simulation distance |
-| `forced` | The chunk was force-loaded with `/forceload` |
-| `portal` | A portal is nearby |
-| `ender_pearl` | A thrown ender pearl landed there |
+| `player_loading` | A player |
+| `player_simulation` | A player |
+| `forced` | Force-loaded by the `/forceload` command |
+| `portal` | An entity passes through a portal |
+| `ender_pearl` | While an ender pearl has not landed |
 | `player_spawn` | The chunk is the world spawn point (named `start` up to 1.21.10) |
 | `spawn_search` | A spawn point search is in progress (1.21.11 and later) |
 | `dragon` | The ender dragon fight holds the chunk |
-| `unknown` | Vanilla's fallback ticket type |
+| `unknown` | Vanilla's fallback ticket type, or a custom ticket from another mod |
 
 > [!NOTE]
 > Games through 1.21.4 have no queryable ticket table; the ticket name and its `@x,z` are therefore not displayed there, and only the load level is shown.
 </details>
 
-> [!NOTE]
-> Total mspt excludes block updates: their cost is already accounted for within the category that triggered them, so including them would inflate the total.
 
 > [!TIP]
 > **Single-player:** the world is paused while the map is open; after selecting scan, close the map and wait.
@@ -117,7 +114,7 @@ The load ticket identifies the mechanism that keeps a chunk loaded: `player_load
 | `/msptmap scan [seconds]` | Server | Runs a scan and logs the result to the server console. Omit `seconds` to use the configured value; range 1 – 60. |
 | `/msptmap access <ops\|all>` | Both | Who may start a scan: operators only (default) or every player. |
 | `/msptmap monitor` | Both | Prints the monitoring state and its settings. |
-| `/msptmap monitor <on\|off>` | Both | Master switch, off by default; turning it off also discards the current window and the cooldown. |
+| `/msptmap monitor <on\|off>` | Both | Master switch for monitoring, off by default; turning it off also discards the current window and the cooldown. |
 | `/msptmap monitor threshold <mspt>` | Both | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
 | `/msptmap monitor cooldown <minutes>` | Both | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
 | `/msptmap monitor audience <op\|all>` | Both | Who is alerted: online operators only (default `op`), or every online player. |
@@ -126,7 +123,7 @@ Scanning is limited to vanilla permission level 2 (operators) by default; `/mspt
 
 ## 📡 Monitoring
 
-Off by default. When enabled, the server times every tick and, once the smoothed average stays above a threshold, starts a scan of its own: the five most costly chunks are sent to the online operators as a chat alert, and selecting a row opens the world map at that chunk. The scan chain is the same one described below — only the result goes to the operators instead of the requester.
+Off by default. When enabled, once the server sees MSPT rise above the threshold, the five most costly chunks are sent to the online operators as a chat alert; selecting a row opens the world map at that chunk.
 
 Monitoring is an operator command, switched with `/msptmap monitor <on\|off>`; its settings are stored in `config/msptmap-server.properties` — see [Commands](#-commands).
 
@@ -168,14 +165,14 @@ The server samples the time spent on seven kinds of tick work and sends the resu
 | :--- | :--- |
 | Random tick | `ServerLevel.tickChunk` |
 | Scheduled tick | `ServerLevel.tickBlock` / `tickFluid` |
-| Block update | The neighbour-update entry points of `ServerLevel` and `Level.neighborShapeChanged` |
+| Block update | NC updates (`ServerLevel`), PP update (`Level.neighborShapeChanged`) |
 | Block event | `ServerLevel.doBlockEvent` |
 | Block entity | `LevelChunk$BoundTickingBlockEntity.tick` |
 | Entity | `ServerLevel.tickNonPassenger`, plus the per-tick synchronisation (`ChunkMap$TrackedEntity.updatePlayers` / `ServerEntity.sendChanges`) |
 | Mob spawning | `NaturalSpawner.spawnForChunk` |
 
 > [!IMPORTANT]
-> Block updates are measured but excluded from the total: their cost is already contained within the category that triggered them — a redstone chain initiated by a scheduled tick, for example.
+> Block updates are measured but excluded from the total: their cost is already contained within the category that triggered them.
 >
 > For technical reasons the timings above are not strictly accurate — they may equal or slightly understate the real cost — and serve as a reference only.
 
@@ -186,8 +183,6 @@ Requires **JDK 25**.
 ```shell
 ./gradlew build    # gradlew.bat on Windows
 ```
-
-This produces one jar per supported Minecraft version, named `MsptMap-Fabric-v<mod version>+<highest supported version>.jar`, under `versions/<minecraft-version>/build/libs/`.
 
 ## 📄 License
 
