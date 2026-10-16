@@ -44,6 +44,14 @@ public final class MapPanel {
 	}
 
 	/**
+	 * 面板内第 {@code row} 行的行格顶端：行格高与上下内边距相抵，故以它为顶另画一个面板，两框的
+	 * 第 {@code row} 行文字落在同一水平线（见 {@link ScanSummary#foldRowTop}）。
+	 */
+	public static int rowTop(int y, int row) {
+		return y + row * (Minecraft.getInstance().font.lineHeight + 1);
+	}
+
+	/**
 	 * 鼠标落在第几行（自 0 起）；不在面板上时返回 -1。行区与 {@link #draw} 的排布同源：自
 	 * y + PADDING 起、每行 lineHeight 高。
 	 */
@@ -62,14 +70,15 @@ public final class MapPanel {
 
 	/**
 	 * 以 ({@code x}, {@code y}) 为左上角画面板；{@code size} 由 {@link #size} 预先算出。
-	 * {@code highlightRow} 为要高亮底的行号（{@link #rowAt} 的结果），-1 表示不高亮任何行。
+	 * {@code highlightRow} 与 {@code pinnedRow} 各垫一层高亮底（{@link #rowAt} 的结果），
+	 * 前者随鼠标、后者常驻，取 -1 表示不垫；两者同行也只垫一层。
 	 */
 	//? if >=26.1 {
 	public static void draw(GuiGraphicsExtractor graphics, int x, int y, int[] size, List<Component> lines,
-			int highlightRow) {
+			int highlightRow, int pinnedRow) {
 	//?} else {
 	/*public static void draw(GuiGraphics graphics, int x, int y, int[] size, List<Component> lines,
-			int highlightRow) {
+			int highlightRow, int pinnedRow) {
 	*///?}
 		graphics.fill(x, y, x + size[0], y + size[1], BACKGROUND);
 		Font font = Minecraft.getInstance().font;
@@ -77,7 +86,7 @@ public final class MapPanel {
 		// 行的样式（颜色、斜体等）已内嵌在组件里，此处不再区分
 		for (int i = 0; i < lines.size(); i++) {
 			int lineY = y + PADDING + i * lineHeight;
-			if (i == highlightRow) {
+			if (i == highlightRow || i == pinnedRow) {
 				// 高亮底上移 1px：块在字形上下各余 1px
 				graphics.fill(x, lineY - 1, x + size[0], lineY + lineHeight - 1, HIGHLIGHT);
 			}

@@ -127,6 +127,13 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	}
 
 	/**
+	 * 上次复位面板状态时所在的地图屏实例：Xaero 切维度会在同一屏上重建控件、再走一次 {@code init}
+	 * （见 {@link #msptmap$addButton}），据实例区分「重新打开地图」与「同一次地图内切维度」。
+	 */
+	@Unique
+	private static GuiMap msptmapResetScreen;
+
+	/**
 	 * 折叠钮的两个控件：展开态显示 ▾、收起态显示 ▸，同一位置只留一个可见。
 	 *
 	 * <p>用两个控件的原因：{@code GuiTexturedButton} 的贴图区域构造时确定、之后只读，运行中无法修改
@@ -229,8 +236,13 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 				new Tooltip(Component.translatable("msptmap.button.config"))));
 		*///?}
 		msptmap$addFoldButtons();
-		// 打开地图时复位右侧完整列表（状态不落盘，见 ScanSummary.resetSourcesPanel）
-		ScanSummary.resetSourcesPanel();
+		// 重新打开地图时复位面板状态：右侧完整列表收起、总览与它都回到顶部（不落盘，见
+		// resetSourcesPanel）。按屏实例判断，切维度虽会重建控件并再走一次 init，展开态须照旧
+		GuiMap self = (GuiMap) (Object) this;
+		if (self != msptmapResetScreen) {
+			msptmapResetScreen = self;
+			ScanSummary.resetSourcesPanel();
+		}
 	}
 
 	/**
@@ -377,7 +389,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 		}
 		// 鼠标落在总览框或右侧完整列表上时同样让位：详情绘制于其后，重叠处会盖住面板
 		if (ScanSummary.overPanel(mouseX, mouseY, SUMMARY_X, SUMMARY_Y)
-				|| SourceListPanel.overPanel(mouseX, mouseY, msptmap$sourcesPanelX(), SUMMARY_Y)) {
+				|| SourceListPanel.overPanel(mouseX, mouseY, msptmap$sourcesPanelX(), msptmap$sourcesPanelY())) {
 			return;
 		}
 		MapDimension dimension = mapProcessor.getMapWorld().getCurrentDimension();
@@ -473,14 +485,23 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 		// 鼠标坐标用于给悬停的可点击行绘制高亮底色（见 ScanSummary.draw 与 SourceListPanel.draw）
 		ScanSummary.draw(graphics, SUMMARY_X, SUMMARY_Y, mouseX, mouseY);
 		if (ScanSummary.sourcesPanelOpen()) {
-			SourceListPanel.draw(graphics, msptmap$sourcesPanelX(), SUMMARY_Y, mouseX, mouseY);
+			SourceListPanel.draw(graphics, msptmap$sourcesPanelX(), msptmap$sourcesPanelY(), mouseX, mouseY);
 		}
 	}
 
-	/** 右侧完整列表的横坐标：紧贴总览右缘（隔 {@link #SUMMARY_GAP}）；纵坐标与总览同用 {@link #SUMMARY_Y}。 */
+	/** 右侧完整列表的左缘：紧贴总览右缘（隔 {@link #SUMMARY_GAP}）。 */
 	@Unique
 	private static int msptmap$sourcesPanelX() {
-		return SUMMARY_X + ScanSummary.panelSize()[0] + SUMMARY_GAP;
+		return SUMMARY_X + ScanSummary.panelWidth() + SUMMARY_GAP;
+	}
+
+	/**
+	 * 右侧完整列表的上沿：与总览的折叠行并排（见 {@link ScanSummary#foldRowTop}），而非与总览顶对齐
+	 * ——列表正是那一行展开出来的。
+	 */
+	@Unique
+	private static int msptmap$sourcesPanelY() {
+		return ScanSummary.foldRowTop(SUMMARY_Y);
 	}
 
 	/**
@@ -538,7 +559,7 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 			return true;
 		}
 		// 先右框后总览：两框位置不重叠，先后不影响结果
-		ChunkRef target = SourceListPanel.hitTarget(mouseX, mouseY, msptmap$sourcesPanelX(), SUMMARY_Y);
+		ChunkRef target = SourceListPanel.hitTarget(mouseX, mouseY, msptmap$sourcesPanelX(), msptmap$sourcesPanelY());
 		if (target == null) {
 			target = ScanSummary.hitTarget(mouseX, mouseY, SUMMARY_X, SUMMARY_Y);
 		}
@@ -568,42 +589,50 @@ public abstract class GuiMapMixin implements ChunkFocus.Host {
 	*///?}
 
 	/**
-	 * 右侧完整列表的滚轮翻动：同样挂在 mouseScrolled 最前，鼠标在面板上即消费（否则被当作地图
+	 * 面板的滚轮翻动：同样挂在 mouseScrolled 最前，鼠标在总览或右侧完整列表上即消费（否则被当作地图
 	 * 缩放）；参数按版本三档（1.20.1 三参、1.20.2 起四参、26.x 起 named），都只取纵向量。
 	 */
 	//? if >=26.1 {
 	@Inject(method = "mouseScrolled", at = @At("HEAD"), remap = false, cancellable = true)
-	private void msptmap$scrollSources(double mouseX, double mouseY, double scrollX, double scrollY,
+	private void msptmap$scrollPanels(double mouseX, double mouseY, double scrollX, double scrollY,
 			CallbackInfoReturnable<Boolean> cir) {
-		if (msptmap$sourcesScroll(mouseX, mouseY, scrollY)) {
+		if (msptmap$panelScroll(mouseX, mouseY, scrollY)) {
 			cir.setReturnValue(true);
 		}
 	}
 	//?} else if >=1.20.2 {
 	/*@Inject(method = "method_25401", at = @At("HEAD"), remap = false, cancellable = true)
-	private void msptmap$scrollSources(double mouseX, double mouseY, double scrollX, double scrollY,
+	private void msptmap$scrollPanels(double mouseX, double mouseY, double scrollX, double scrollY,
 			CallbackInfoReturnable<Boolean> cir) {
-		if (msptmap$sourcesScroll(mouseX, mouseY, scrollY)) {
+		if (msptmap$panelScroll(mouseX, mouseY, scrollY)) {
 			cir.setReturnValue(true);
 		}
 	}
 	*///?} else {
 	/*@Inject(method = "method_25401", at = @At("HEAD"), remap = false, cancellable = true)
-	private void msptmap$scrollSources(double mouseX, double mouseY, double scrollY,
+	private void msptmap$scrollPanels(double mouseX, double mouseY, double scrollY,
 			CallbackInfoReturnable<Boolean> cir) {
-		if (msptmap$sourcesScroll(mouseX, mouseY, scrollY)) {
+		if (msptmap$panelScroll(mouseX, mouseY, scrollY)) {
 			cir.setReturnValue(true);
 		}
 	}
 	*///?}
 
-	/** 滚轮的判定体（与注入点的方法名 / 参数个数无关，三档共用）：在面板上则翻动并返回 true。 */
+	/**
+	 * 滚轮的判定体（与注入点的方法名 / 参数个数无关，三档共用）：鼠标在右侧完整列表或总览框上则翻动
+	 * 并返回 true，都不在则返回 false（交回地图缩放）。
+	 */
 	@Unique
-	private static boolean msptmap$sourcesScroll(double mouseX, double mouseY, double amount) {
-		if (GuiMap.hiddenUI || !ScanSummary.sourcesPanelOpen()) {
+	private static boolean msptmap$panelScroll(double mouseX, double mouseY, double amount) {
+		if (GuiMap.hiddenUI || !ClientConfig.summaryExpanded) {
 			return false;
 		}
-		return SourceListPanel.scroll((int) mouseX, (int) mouseY, msptmap$sourcesPanelX(), SUMMARY_Y,
-				(int) Math.signum(amount));
+		int direction = (int) Math.signum(amount);
+		if (ScanSummary.sourcesPanelOpen()
+				&& SourceListPanel.scroll((int) mouseX, (int) mouseY, msptmap$sourcesPanelX(), msptmap$sourcesPanelY(),
+						direction)) {
+			return true;
+		}
+		return ScanSummary.scroll((int) mouseX, (int) mouseY, SUMMARY_X, SUMMARY_Y, direction);
 	}
 }

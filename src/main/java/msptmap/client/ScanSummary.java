@@ -20,13 +20,14 @@ import java.util.List;
  *
  * <p>数据是三个维度的合计（见 {@link ClientSnapshot.Totals}）：Xaero 地图一次只显示一个维度，
  * 总览给的是全局视角。加载源逐条列出（票名 @ 维度 坐标，与蓝框同源），超过 {@link #SOURCE_ROWS}
- * 条的折到右侧完整列表（{@link SourceListPanel}），由折叠行开合。组装与绘制分离（同
- * {@link ChunkTooltip}）：{@link #lines} 只拼文本组件（可离线断言），{@link #draw} 只负责绘制。
+ * 条的折到右侧完整列表（{@link SourceListPanel}），由折叠行开合。全框高于屏幕时只画一段、右缘出
+ * 滚动条（见 {@link PanelScroll}），滚轮在框上翻动。组装与绘制分离（同 {@link ChunkTooltip}）：
+ * {@link #lines} 只拼文本组件（可离线断言），{@link #draw} 只负责绘制。
  * 文本一律经 {@link Component#translatable} 引用语言文件里的键，翻译在绘制时才按当前语言解析。
  */
 public final class ScanSummary {
-	/** 总览内逐条列出的加载源行数上限；超出的折到右侧完整列表。 */
-	private static final int SOURCE_ROWS = 5;
+	/** 总览内逐条列出的加载源行数上限；超出的折到右侧完整列表，第 {@code SOURCE_ROWS + 1} 行为折叠行。 */
+	private static final int SOURCE_ROWS = 3;
 
 	/** 七类明细数值的着色区间（mspt）：绿点 3、红点 20，均匀过渡（黄在 11.5）；低于绿点也取起点绿。 */
 	private static final float CATEGORY_GREEN_MS = 3.0f;
@@ -47,6 +48,9 @@ public final class ScanSummary {
 
 	/** 右侧完整源列表是否展开：折叠行翻转，打开地图时复位（不落盘）。 */
 	private static boolean sourcesExpanded;
+
+	/** 总览窗口的首行序号（全框高于屏幕时靠它滚动，见 {@link PanelScroll}）；同样不落盘。 */
+	private static int scroll;
 
 	/**
 	 * 拼行结果：{@code lines} 为总览全部行；{@code heaviest} 为 TOP 数据行、{@code topFirstRow} 为其
@@ -246,14 +250,53 @@ public final class ScanSummary {
 		return bits;
 	}
 
-	/** 总览框尺寸（宽, 高）；调用方据此把右侧完整列表摆在紧邻的右边。 */
-	public static int[] panelSize() {
-		return MapPanel.size(lines());
+	/** 总览框的宽：按全部行算，滚动不改变它（右侧完整列表据此摆在紧邻的右边）。 */
+	public static int panelWidth() {
+		return MapPanel.size(lines())[0];
+	}
+
+	/** 总览框的窗口尺寸（宽, 高）：高按自 {@code panelY} 起屏幕容得下的行数。 */
+	public static int[] panelSize(int panelY) {
+		List<Component> lines = lines();
+		return new int[]{panelWidth(), windowSize(lines, panelY)[1]};
+	}
+
+	/** 当前窗口容纳的行数（至少 1）；{@code panelY} 为框顶。 */
+	private static int windowRows(int panelY) {
+		return PanelScroll.shownRows(lines().size(), panelY, Integer.MAX_VALUE);
+	}
+
+	/** 窗口的尺寸；{@code lines} 为全部行。 */
+	private static int[] windowSize(List<Component> lines, int panelY) {
+		return MapPanel.size(lines.subList(0, windowRows(panelY)));
+	}
+
+	/** 窗口首行序号（按当前行数与屏幕高度夹回合法区间）。 */
+	private static int firstRow(int panelY) {
+		List<Component> lines = lines();
+		return PanelScroll.clampScroll(lines.size(), windowRows(panelY), scroll);
+	}
+
+	/** 窗口内第 {@code row} 行对应的全局行号；{@code row < 0}（不在框上）时返回 -1。 */
+	private static int globalRow(int row, int panelY) {
+		return row < 0 ? -1 : firstRow(panelY) + row;
+	}
+
+	/**
+	 * 右侧完整列表应与折叠行并排：返回该行对应的面板顶（{@link MapPanel#rowTop}），以它为顶画出的
+	 * 列表，其首行与折叠行同一水平线。折叠行被滚出窗口时取窗口内最近的一行。
+	 */
+	public static int foldRowTop(int panelY) {
+		lines();
+		int first = firstRow(panelY);
+		int offset = Math.max(0, Math.min(windowRows(panelY) - 1, cached.foldRow() - first));
+		return MapPanel.rowTop(panelY, offset);
 	}
 
 	/**
 	 * 以 ({@code x}, {@code y}) 为左上角绘制总览。无行可画时直接返回，不留空框；鼠标下的可点击行
-	 * （TOP 数据行、加载源行、折叠行）垫一层淡白底，提示可点击。
+	 * （TOP 数据行、加载源行、折叠行）垫一层淡白底，提示可点击，其中折叠行在展开期间常驻该底。
+	 * 全框高于屏幕时只画一段，右缘出滚动条。
 	 */
 	//? if >=26.1 {
 	public static void draw(GuiGraphicsExtractor graphics, int x, int y, int mouseX, int mouseY) {
@@ -264,9 +307,18 @@ public final class ScanSummary {
 		if (lines.isEmpty()) {
 			return;
 		}
-		int[] size = MapPanel.size(lines);
+		int shown = PanelScroll.shownRows(lines.size(), y, Integer.MAX_VALUE);
+		int first = PanelScroll.clampScroll(lines.size(), shown, scroll);
+		scroll = first;
+		int[] size = panelSize(y);
 		int row = MapPanel.rowAt(mouseX, mouseY, x, y, size);
-		MapPanel.draw(graphics, x, y, size, lines, clickableRow(row) ? row : -1);
+		// 高亮按全局行号判定，传回 MapPanel 的仍是窗口内的行号；常驻高亮另算一层，二者互不顶替
+		int highlight = clickableRow(globalRow(row, y)) ? row : -1;
+		int pinned = sourcesExpanded && cached.foldRow() >= first && cached.foldRow() < first + shown
+				? cached.foldRow() - first // 展开期间折叠行常驻衬底，指示它此刻是「收起」入口
+				: -1;
+		MapPanel.draw(graphics, x, y, size, lines.subList(first, first + shown), highlight, pinned);
+		PanelScroll.draw(graphics, x, y, size, lines.size(), shown, first);
 	}
 
 	/**
@@ -281,8 +333,7 @@ public final class ScanSummary {
 		if (lines.isEmpty()) {
 			return false;
 		}
-		int[] size = MapPanel.size(lines);
-		return MapPanel.contains(mouseX, mouseY, panelX, panelY, size);
+		return MapPanel.contains(mouseX, mouseY, panelX, panelY, panelSize(panelY));
 	}
 
 	/**
@@ -293,9 +344,8 @@ public final class ScanSummary {
 		if (ClientSnapshot.totals() == null) {
 			return null;
 		}
-		int[] size = MapPanel.size(lines());
-		int row = MapPanel.rowAt(mouseX, mouseY, panelX, panelY, size);
-		return row < 0 ? null : targetAt(row);
+		int row = MapPanel.rowAt(mouseX, mouseY, panelX, panelY, panelSize(panelY));
+		return row < 0 ? null : targetAt(globalRow(row, panelY));
 	}
 
 	/** 该行指向的区块：TOP 数据行与加载源行；其余行（标题、明细、折叠行等）返回 null。 */
@@ -317,9 +367,8 @@ public final class ScanSummary {
 		if (ClientSnapshot.totals() == null) {
 			return false;
 		}
-		int[] size = MapPanel.size(lines());
-		int row = MapPanel.rowAt(mouseX, mouseY, panelX, panelY, size);
-		return row >= 0 && row == cached.foldRow();
+		int row = MapPanel.rowAt(mouseX, mouseY, panelX, panelY, panelSize(panelY));
+		return row >= 0 && globalRow(row, panelY) == cached.foldRow();
 	}
 
 	/** 该行是否可点击（TOP 数据行、加载源行或折叠行）——悬停高亮与命中共用同一判据。 */
@@ -353,9 +402,24 @@ public final class ScanSummary {
 		sourcesExpanded = !sourcesExpanded;
 	}
 
+	/**
+	 * 滚轮落在总览上：按 {@link PanelScroll#STEP} 行翻动（{@code direction} 正为上滚、看更前面的行），
+	 * 并返回 true 让调用方消费事件（避免地图随之缩放）；没落在框上返回 false。
+	 */
+	public static boolean scroll(int mouseX, int mouseY, int panelX, int panelY, int direction) {
+		if (!overPanel(mouseX, mouseY, panelX, panelY)) {
+			return false;
+		}
+		List<Component> lines = lines();
+		int shown = PanelScroll.shownRows(lines.size(), panelY, Integer.MAX_VALUE);
+		scroll = PanelScroll.clampScroll(lines.size(), shown, scroll - direction * PanelScroll.STEP);
+		return true;
+	}
+
 	/** 打开地图时复位：右侧完整列表回到收起态、滚动回到顶部（状态不落盘）。 */
 	public static void resetSourcesPanel() {
 		sourcesExpanded = false;
+		scroll = 0;
 		SourceListPanel.reset();
 	}
 }

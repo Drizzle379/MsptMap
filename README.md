@@ -33,7 +33,7 @@ Identifies the specific chunks responsible for server-side lag.
 | 🧩 **Seven tick categories** | Random ticks, scheduled ticks, block updates, block events, block entities, entities and mob spawning are measured independently; the tooltip identifies the category to which the cost belongs. |
 | 🏷️ **Load source lookup** | The load ticket behind each chunk is resolved: `player_loading`, `forced`, `portal`, `ender_pearl`, `dragon`, and others. Chunks that hold a ticket are outlined in blue, and the tooltip reports the ticket name together with the `@x,z` coordinates of the chunk on which the ticket resides. |
 | 📊 **Scan overview** | A single panel reports total mspt, entity count, load sources and the five most costly chunks, aggregated across **all three dimensions**, whereas the map itself displays one dimension at a time. |
-| 🖱️ **Click to locate** | Selecting an entry in the overview moves the map to the corresponding chunk. A fold row expands the complete source list, which supports scrolling. |
+| 🖱️ **Click to locate** | Selecting an entry in the overview moves the map to the corresponding chunk. A fold row expands the complete source list. When the overview or that list is taller than the screen, a scroll bar appears on its right edge and the mouse wheel scrolls it. |
 | 📡 **Optional monitoring** | Off by default. When enabled, the server watches MSPT and, on sustained overload, scans on its own and alerts the online operators with a clickable list of the five most costly chunks. |
 | 🔁 **Version tolerance** | The client and the server are not required to run the same version. A version mismatch still produces a result, accompanied by a chat notice; a packet that cannot be interpreted is reported as a failure in chat and does not disconnect the client. |
 
@@ -78,7 +78,7 @@ The server and the client may run different versions of MsptMap. A mismatch stil
 1. Open the world map and select the **scan** button in the upper-left corner
 2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are always pale grey
 3. Hovering over a chunk displays its coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown
-4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; the fold row expands the complete source list
+4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; with more than 3 sources the 4th row is a fold row that expands the complete source list on the right; if the panel or that list is taller than the screen, a scroll bar appears and the mouse wheel scrolls it
 5. The ✕ button clears the heatmap
 
 ### Interpreting load tickets
