@@ -1,6 +1,8 @@
 # 每次 push 时在 GitHub 的服务器上编译两个代表版本：
-#   26.2   当前活跃版本，需要 Java 25
-#   1.20.1 支持范围里最老的版本，需要 Java 17
+#   26.2   当前活跃版本
+#   1.20.1 支持范围里最老的版本
+# 两个版本都用 Java 25 构建：跑构建的 JVM 只负责运行 Gradle（Stonecutter 插件要求不低于 21），
+# 产物本身的 Java 版本由各版本 gradle.properties 里的 java_release 决定（javac --release），二者无关。
 # 编译结果会挂到对应的 commit 上（通过显示绿勾，失败显示红叉）。失败不阻止本地提交与推送。
 name: build
 
@@ -11,24 +13,20 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.version }} (Java ${{ matrix.java }})
+    name: ${{ matrix.version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - version: "26.2"
-            java: "25"
-          - version: "1.20.1"
-            java: "17"
+        version: ["26.2", "1.20.1"]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
+          java-version: "25"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
