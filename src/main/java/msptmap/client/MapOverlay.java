@@ -2,6 +2,7 @@ package msptmap.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import msptmap.sampler.TicketCode;
+import msptmap.util.HeatColors;
 import org.joml.Matrix4f;
 import xaero.map.graphics.MapRenderHelper;
 
@@ -30,12 +31,6 @@ public final class MapOverlay {
 
 	/** 蓝框宽度（世界格）：沿区块内沿一圈，压住最外圈的热力色。 */
 	private static final int CENTER_BORDER = 1;
-
-	/**
-	 * 黄点在红点上的位置（1/3）：颜色只保留红点一个可调参数，黄点由它推出，相对模式下同样跟随本次
-	 * 最重的区块。默认红阈值 1.5 时黄点为 0.50。
-	 */
-	private static final float YELLOW_KNEE = 1.0f / 3.0f;
 
 	private MapOverlay() {
 	}
@@ -113,20 +108,18 @@ public final class MapOverlay {
 		return heaviest > 0.0f ? heaviest : (float) ClientConfig.redAt;
 	}
 
-	/** 黄点 = 红点 × {@link #YELLOW_KNEE}；红点恒大于 0，可作分母。 */
+	/** 黄点 = 红点 × {@link HeatColors} 里的系数；红点恒大于 0，可作分母。 */
 	static float yellowAt(float redPoint) {
-		return redPoint * YELLOW_KNEE;
+		return HeatColors.yellowAt(redPoint);
 	}
 
-	/** 红色分量：黄点以下为绿→黄斜坡，以上为黄→红斜坡。 */
+	/** 红色分量：黄点以下为绿→黄斜坡，以上为黄→红斜坡（见 {@link HeatColors}）。 */
 	static float red(float mspt, float redPoint) {
-		float knee = yellowAt(redPoint);
-		return mspt <= knee ? mspt / knee : 1.0f;
+		return HeatColors.red(mspt, redPoint);
 	}
 
 	/** 绿色分量：与 {@link #red} 配成同一条斜坡（0 → 绿，黄点 → 黄，≥红点 → 红）。 */
 	static float green(float mspt, float redPoint) {
-		float knee = yellowAt(redPoint);
-		return mspt <= knee ? 1.0f : 1.0f - Math.min(1.0f, (mspt - knee) / (redPoint - knee));
+		return HeatColors.green(mspt, redPoint);
 	}
 }

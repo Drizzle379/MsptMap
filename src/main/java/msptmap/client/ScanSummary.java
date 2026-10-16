@@ -2,6 +2,7 @@ package msptmap.client;
 
 import msptmap.util.Decimals;
 import msptmap.util.Dimensions;
+import msptmap.util.HeatColors;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 //? if >=26.1 {
@@ -148,7 +149,7 @@ public final class ScanSummary {
 			float categoryMspt = mspt(nanos, windowTicks);
 			lines.add(TickText.secondary(ClientConfig.summaryColored
 					? TickText.categoryLine(nanos, windowTicks, category,
-							soften(rangeColor(categoryMspt, CATEGORY_GREEN_MS, CATEGORY_RED_MS)))
+							HeatColors.soften(rangeColor(categoryMspt, CATEGORY_GREEN_MS, CATEGORY_RED_MS)))
 					: TickText.categoryLine(nanos, windowTicks, category)));
 		}
 		// 卡顿区块 TOP5：分区标题白字不加粗；一个都没有时连分区标题都不出现。着色时数值色与地图同源
@@ -161,7 +162,8 @@ public final class ScanSummary {
 			for (ClientSnapshot.Heavy heavy : heaviest) {
 				String value = TickText.ms(heavy.totalNanos(), windowTicks);
 				Component shown = ClientConfig.summaryColored
-						? TickText.colored(value, soften(heatColor(mspt(heavy.totalNanos(), windowTicks),
+						? TickText.colored(value, HeatColors.soften(HeatColors.rgb(
+								mspt(heavy.totalNanos(), windowTicks),
 								MapOverlay.redPoint(ClientSnapshot.heaviestMspt(heavy.dimension())))))
 						: Component.literal(value);
 				lines.add(TickText.secondary(Component.translatable("msptmap.summary.line", shown,
@@ -170,13 +172,6 @@ public final class ScanSummary {
 			}
 		}
 		return new Built(lines, heaviest, topFirstRow, sources, sourceRows, sourceFirstRow, sourceShown, foldRow);
-	}
-
-	/** 按热力图同一公式（{@link MapOverlay#red} / {@link MapOverlay#green}）把耗时换算成 0xRRGGBB 文字色；TOP5 行用它。 */
-	private static int heatColor(float mspt, float redPoint) {
-		int r = Math.round(MapOverlay.red(mspt, redPoint) * 255.0f);
-		int g = Math.round(MapOverlay.green(mspt, redPoint) * 255.0f);
-		return r << 16 | g << 8;
 	}
 
 	/**
@@ -189,11 +184,6 @@ public final class ScanSummary {
 		int red = Math.round(Math.min(1.0f, twoT) * 255.0f);
 		int green = Math.round(Math.min(1.0f, 2.0f - twoT) * 255.0f);
 		return red << 16 | green << 8;
-	}
-
-	/** 明细与 TOP5 行的数值柔化：每通道 ×0xD0/0xFF（比灰字档 0xB0 亮约 18%），色相不变。 */
-	private static int soften(int rgb) {
-		return ((rgb >> 16 & 0xFF) * 0xD0 / 0xFF) << 16 | ((rgb >> 8 & 0xFF) * 0xD0 / 0xFF) << 8;
 	}
 
 	/** 纳秒 → ms/tick，与 {@link TickText#ms} 的字符串同口径。 */
