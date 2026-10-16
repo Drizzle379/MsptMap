@@ -11,14 +11,15 @@ import xaero.map.graphics.MapRenderHelper;
  * <p>地图空间即当前维度的方块坐标（1 单位 = 1 格）：区块矩形由快照中的世界坐标减去相机偏移得到，
  * 不做缩放。矩阵为 Xaero 当前帧已带好缩放平移的 PoseStack。
  *
- * <p>填色规则：测到过耗时 → 按 ms/tick 铺绿黄红；弱加载（加载等级 ≥32）且整段窗口无耗时 → 淡灰；
- * 弱加载但测到过耗时 → 照常铺热力色。阈值与透明度每帧从 {@link ClientConfig} 现读。
+ * <p>填色规则：弱加载（加载等级 ≥32）的区块一律铺淡灰，不参与热力着色；勾选「弱加载区块计时时染色」
+ * 后，其中整段窗口测到过耗时的改铺热力色。其余区块按 ms/tick 铺绿黄红。阈值与透明度每帧从
+ * {@link ClientConfig} 现读。
  */
 public final class MapOverlay {
 	/** 达到该加载等级即弱加载（与 {@code ChunkLevel.isBlockTicking} 的分界一致）。 */
 	private static final int WEAK_LOAD_LEVEL = 32;
 
-	/** 弱加载且无耗时区块的填充色与透明度。 */
+	/** 弱加载区块的填充色与透明度。 */
 	private static final float IDLE_GRAY = 0.7f;
 	private static final float IDLE_ALPHA = 0.3f;
 
@@ -59,7 +60,8 @@ public final class MapOverlay {
 			int x2 = chunk.x2() - flooredCameraX;
 			int z2 = chunk.z2() - flooredCameraZ;
 
-			if (ClientConfig.showWeakGray && chunk.loadLevel() >= WEAK_LOAD_LEVEL && !chunk.timed()) {
+			if (ClientConfig.showWeakGray && chunk.loadLevel() >= WEAK_LOAD_LEVEL
+					&& !(chunk.timed() && ClientConfig.weakTimedColor)) {
 				MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1, x2, z2,
 						IDLE_GRAY, IDLE_GRAY, IDLE_GRAY, IDLE_ALPHA);
 				continue;

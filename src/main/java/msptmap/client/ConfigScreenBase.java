@@ -191,12 +191,12 @@ abstract class ConfigScreenBase extends Screen {
 	}
 
 	/** 不带悬停说明的勾选框（子页的开关：勾的是什么看标签即可）。 */
-	protected void addCheckbox(int x, int y, Component label, boolean selected, Consumer<Boolean> apply) {
-		addCheckbox(x, y, label, selected, null, apply);
+	protected Checkbox addCheckbox(int x, int y, Component label, boolean selected, Consumer<Boolean> apply) {
+		return addCheckbox(x, y, label, selected, null, apply);
 	}
 
-	/** 勾选框（含 1.20.2 及以前无 Builder 的兼容）。 */
-	protected void addCheckbox(int x, int y, Component label, boolean selected, Component tooltip,
+	/** 勾选框（含 1.20.2 及以前无 Builder 的兼容）；返回值供子类按需控制 active。 */
+	protected Checkbox addCheckbox(int x, int y, Component label, boolean selected, Component tooltip,
 			Consumer<Boolean> apply) {
 		//? if >=1.20.3 {
 		Checkbox checkbox = Checkbox.builder(label, font)
@@ -215,6 +215,7 @@ abstract class ConfigScreenBase extends Screen {
 			checkbox.setTooltip(Tooltip.create(tooltip));
 		}
 		addRenderableWidget(checkbox);
+		return checkbox;
 	}
 
 	//? if <1.20.3 {

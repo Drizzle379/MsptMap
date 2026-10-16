@@ -3,6 +3,7 @@ package msptmap.client;
 import msptmap.util.Clamp;
 import msptmap.util.Decimals;
 import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -12,7 +13,7 @@ import java.util.function.DoubleConsumer;
 import java.util.function.DoubleFunction;
 
 /**
- * 「颜色」子页：热力配色的四个选项（相对模式、红色阈值、不透明度、弱加载变灰）。
+ * 「颜色」子页：热力配色的五个选项（相对模式、红色阈值、不透明度、弱加载变灰、弱加载计时时染色）。
  */
 class ColorConfigScreen extends ConfigScreenBase {
 	/** 行标签的最小宽度；英文标签更长时按实际宽度扩展。 */
@@ -26,6 +27,9 @@ class ColorConfigScreen extends ConfigScreenBase {
 
 	/** 「红色阈值」滑块。在 {@link #init()} 中赋值：勾选「采用相对模式」时需关闭其 active。 */
 	private ConfigSlider redSlider;
+
+	/** 「弱加载区块计时时染色」勾选框。在 {@link #init()} 中赋值：未显示弱加载区块时需关闭其 active。 */
+	private Checkbox weakTimedBox;
 
 	ColorConfigScreen(Screen parent) {
 		super(parent, Component.translatable("msptmap.config.group.colors"));
@@ -64,7 +68,18 @@ class ColorConfigScreen extends ConfigScreenBase {
 				new Row(ROW, (x, y) -> addCheckbox(x, y, Component.translatable("msptmap.config.weak"),
 						ClientConfig.showWeakGray,
 						Component.translatable("msptmap.config.weak_tooltip"),
-						value -> ClientConfig.showWeakGray = value)))));
+						value -> {
+							ClientConfig.showWeakGray = value;
+							// 关掉后弱加载区块不再上色，这一开关随之失效
+							weakTimedBox.active = value;
+						})),
+				new Row(ROW, (x, y) -> {
+					weakTimedBox = addCheckbox(x, y, Component.translatable("msptmap.config.weak_timed"),
+							ClientConfig.weakTimedColor,
+							Component.translatable("msptmap.config.weak_timed_tooltip"),
+							value -> ClientConfig.weakTimedColor = value);
+					weakTimedBox.active = ClientConfig.showWeakGray;
+				}))));
 	}
 
 	/** 行标签宽度：取当前语言中最长者（英文标签通常更宽）。 */

@@ -56,8 +56,15 @@ public final class ClientConfig {
 	/** 热力填色的透明度。 */
 	public static double fillAlpha;
 
-	/** 弱加载（加载等级 ≥32）且整段窗口无耗时的区块是否绘制淡灰色。 */
+	/** 弱加载（加载等级 ≥32）的区块是否绘制淡灰色。 */
 	public static boolean showWeakGray;
+
+	/**
+	 * 弱加载区块在整段窗口内测到过耗时时是否仍铺热力色。
+	 *
+	 * 开：这类区块照常着色；关（默认）：一律淡灰。仅 {@link #showWeakGray} 勾选时有效。
+	 */
+	public static boolean weakTimedColor;
 
 	/** 地图上的扫描总览是否展开；由折叠钮翻转，跨次记忆（见 {@link ScanSummary}）。 */
 	public static boolean summaryExpanded;
@@ -115,6 +122,7 @@ public final class ClientConfig {
 		options.add(new DecimalValue("color.fillAlpha", MIN_FILL_ALPHA, 1.0,
 				() -> fillAlpha, value -> fillAlpha = value));
 		options.add(new Flag("color.showWeakGray", () -> showWeakGray, value -> showWeakGray = value));
+		options.add(new Flag("color.weakTimedColor", () -> weakTimedColor, value -> weakTimedColor = value));
 		options.add(new Flag("summary.expanded", () -> summaryExpanded, value -> summaryExpanded = value));
 		options.add(new Flag("summary.colored", () -> summaryColored, value -> summaryColored = value));
 		options.add(new Flag("tooltip.coords", () -> tooltipCoords, value -> tooltipCoords = value));
@@ -140,6 +148,7 @@ public final class ClientConfig {
 		relativeColor = false;
 		fillAlpha = 0.35;
 		showWeakGray = true;
+		weakTimedColor = false;
 		summaryExpanded = true;
 		summaryColored = true;
 		tooltipCoords = true;

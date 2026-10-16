@@ -76,7 +76,7 @@ The server and the client may run different versions of MsptMap. A mismatch stil
 ## 🎮 Usage
 
 1. Open the world map and select the **scan** button in the upper-left corner
-2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are pale grey
+2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are always pale grey
 3. Hovering over a chunk displays its coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown
 4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; the fold row expands the complete source list
 5. The ✕ button clears the heatmap
@@ -143,7 +143,8 @@ Open **Mod Menu → Settings**, or select the **settings** button on the map. Se
 | Colors | **Relative mode** | Colours are scaled to the most costly chunk **in the current scan**, so that relatively costly chunks remain distinguishable under light overall load. When disabled, the fixed red threshold below is applied instead. |
 | Colors | **Red threshold** | A chunk costing at least this value, in ms/tick, is displayed in the deepest red; below it, colour transitions continuously from green through yellow to red. Not applied, and not adjustable, while relative mode is enabled. |
 | Colors | **Opacity** | Opacity of the heat fill, 0.05 – 1.00. Lower values reveal more of the underlying map. |
-| Colors | **Show weak-loaded chunks** | Displays chunks at load level ≥ 32 that performed no measurable work in pale grey. |
+| Colors | **Show weak-loaded chunks** | Displays chunks at load level ≥ 32 in pale grey; these chunks do not take heat colours. |
+| Colors | **Color weak chunks when timed** | Weak-loaded chunks that performed measurable work during the window are coloured by cost. Off by default; available only while **Show weak-loaded chunks** is checked. |
 | Hover details | **Coordinates** / **Levels** / **Entities** | Determines which lines appear in the hover tooltip. |
 | Hover details | **Load ticket** / **Compute ticket** | Appends the ticket source to the load-level / compute-level line. |
 | Hover details | **Show abbreviations** | Displays category names as two-letter codes: `RT ST BU EV BE EN SP`. |
