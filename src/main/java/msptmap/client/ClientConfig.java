@@ -1,6 +1,7 @@
 package msptmap.client;
 
 import msptmap.util.Clamp;
+import msptmap.util.HeatColors;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import msptmap.util.PropertiesFile;
@@ -144,7 +145,7 @@ public final class ClientConfig {
 	/** 恢复全部出厂默认（设置界面的「恢复默认」按钮同样走这里）。 */
 	public static void resetToDefaults() {
 		scanSeconds = 2;
-		redAt = 1.5;
+		redAt = HeatColors.DEFAULT_RED_POINT;
 		relativeColor = false;
 		fillAlpha = 0.35;
 		showWeakGray = true;

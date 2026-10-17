@@ -5,11 +5,14 @@ package msptmap.util;
  * 三处的颜色因此总是一致。
  *
  * <p>斜坡自绿经黄至红，黄点在红点的 {@link #YELLOW_KNEE} 处；红点由调用方给：地图按本次扫描
- * 的最重区块或红色阈值，告警按触发阈值。不依赖游戏类，服务端同样可用。
+ * 的最重区块或红色阈值，告警按单区块的默认红阈值。不依赖游戏类，服务端同样可用。
  */
 public final class HeatColors {
 	/** 黄点 = 红点 × 该系数。 */
 	private static final float YELLOW_KNEE = 1.0f / 3.0f;
+
+	/** 单区块红点的默认值（ms/tick）：客户端的地图、总览与服务端的聊天告警共用，三处默认配色一致。 */
+	public static final float DEFAULT_RED_POINT = 1.5f;
 
 	private HeatColors() {
 	}

@@ -21,8 +21,8 @@ import java.util.List;
  * 自动扫描的聊天告警：一条标题加若干可点击的区块行。
  *
  * <p>区块行与扫描总览的卡顿区块行同构（同用 {@code msptmap.summary.line} 语言键）：二级条目的缩进与
- * 附注灰、{@code 耗时 @ 维度 x,z} 的排布，耗时按热力色的同一条斜坡着色，红点取触发阈值。两处因此
- * 一眼可对照。
+ * 附注灰、{@code 耗时 @ 维度 x,z} 的排布，耗时按热力色的同一条斜坡着色，红点取单区块的默认红阈值。
+ * 两处因此一眼可对照。
  *
  * <p>文案一律 {@code translatableWithFallback}：接收范围设为「所有玩家」时，未装本模组的玩家没有
  * msptmap.* 的翻译，回退文案（英文）兜底，否则他们只会看到裸键名。行里嵌的维度名同理：装了的客户端
@@ -107,13 +107,13 @@ public final class MsptAlert {
 	}
 
 	/**
-	 * 耗时文本：与悬停详情、总览同口径（{@link Decimals#format3}）；颜色与地图热力图同源，红点取触发
-	 * 阈值（达到阈值即纯红），再压暗一档。
+	 * 耗时文本：与悬停详情、总览同口径（{@link Decimals#format3}）；颜色与地图热力图同源，红点取单区块
+	 * 的默认红阈值（与总览 TOP5 行一致）。告警在服务端拼装，读不到各玩家的客户端阈值，故用默认值。
 	 */
 	private static Component value(long nanos, int windowTicks) {
 		float mspt = mspt(nanos, windowTicks);
 		return Component.literal(Decimals.format3(mspt)).withStyle(style -> style.withColor(
-				TextColor.fromRgb(HeatColors.soften(HeatColors.rgb(mspt, (float) ServerConfig.threshold)))));
+				TextColor.fromRgb(HeatColors.soften(HeatColors.rgb(mspt, HeatColors.DEFAULT_RED_POINT)))));
 	}
 
 	/** 纳秒 → ms/tick，与 {@link Decimals#format3} 的字符串同口径。 */
