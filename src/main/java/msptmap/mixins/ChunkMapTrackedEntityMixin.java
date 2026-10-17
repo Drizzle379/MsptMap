@@ -46,7 +46,7 @@ public abstract class ChunkMapTrackedEntityMixin {
 		if (this.msptmapStart == 0L) {
 			return;
 		}
-		if (this.entity.level() instanceof ServerLevel level) {
+		if (((EntityLevelAccessor) this.entity).msptmap$level() instanceof ServerLevel level) {
 			MsptSampler.end(TickCategory.ENTITY, level, ChunkKeys.pack(this.entity.chunkPosition()),
 					this.msptmapStart);
 		}

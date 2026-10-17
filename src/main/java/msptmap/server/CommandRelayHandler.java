@@ -1,6 +1,7 @@
 package msptmap.server;
 
 import msptmap.MsptMapMod;
+import msptmap.mixins.EntityLevelAccessor;
 import msptmap.net.CommandRelayPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,9 +38,9 @@ public final class CommandRelayHandler {
 			MsptMapMod.LOGGER.warn("玩家 {} 的 MsptMap 版本与本端不一致（对面 {}，本端 {}），仍按其请求执行",
 					playerName(player), payload.protocol(), MsptMapMod.PROTOCOL);
 		}
-		// ServerPlayer 自身没有公开的取 server 的入口（字段为 private，Entity 也没有 getServer），
-		// 经 ServerLevel 获取；此处必然非空
-		MinecraftServer server = player.level().getServer();
+		// ServerPlayer 自身没有公开的取 server 的入口（字段为 private，Entity.getServer() 1.21.9 起已移除），
+		// 经 ServerLevel 获取；level 走字段访问器，理由见 EntityLevelAccessor。此处必然非空
+		MinecraftServer server = ((EntityLevelAccessor) player).msptmap$level().getServer();
 		server.getCommands().performPrefixedCommand(player.createCommandSourceStack(), command);
 	}
 

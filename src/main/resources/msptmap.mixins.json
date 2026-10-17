@@ -6,6 +6,7 @@
     "BoundTickingBlockEntityMixin",
     "ChunkMapAccessor",
     "ChunkMapTrackedEntityMixin",
+    "EntityLevelAccessor",
     "LevelMixin",
     "NaturalSpawnerMixin",
     "ServerEntityMixin",
