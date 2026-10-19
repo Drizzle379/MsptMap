@@ -3,7 +3,8 @@
   "package": "msptmap.client.mixins",
   "compatibilityLevel": "${mixin_compat_level}",
   "client": [
-    "GuiMapMixin"
+    "GuiMapMixin",
+    "MinimapFboMixin"
   ],
   "injectors": {
     "defaultRequire": 0

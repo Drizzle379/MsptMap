@@ -45,6 +45,8 @@ dependencies {
 	}
 	// Xaero 的坐标自带 MC 版本后缀，故随版本变化
 	dependencies.add(optional, "xaero.map:xaeroworldmap-fabric-${project.minecraft_version}:${project.xaero_worldmap_version}")
+	// Xaero 小地图：同样只编译期引用，用于在小地图上叠加热力图
+	dependencies.add(optional, "xaero.minimap:xaerominimap-fabric-${project.minecraft_version}:${project.xaero_minimap_version}")
 	// 前置库由上面那个包的 pom 带进来，但其版本是区间 [1.7.0,1.8)（会解析成最新 1.7.x），这里钉死实测版本
 	dependencies.add(optional, "xaero.lib:xaerolib-fabric-${project.minecraft_version}:${project.xaero_lib_version}") {
 		version { strictly "${project.xaero_lib_version}" }

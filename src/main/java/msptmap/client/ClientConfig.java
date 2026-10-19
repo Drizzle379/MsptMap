@@ -57,6 +57,9 @@ public final class ClientConfig {
 	/** 热力填色的透明度。 */
 	public static double fillAlpha;
 
+	/** 是否在 Xaero 小地图上同步显示热力图（世界地图不受影响）。 */
+	public static boolean minimapHeatmap;
+
 	/** 弱加载（加载等级 ≥32）的区块是否绘制淡灰色。 */
 	public static boolean showWeakGray;
 
@@ -122,6 +125,7 @@ public final class ClientConfig {
 		options.add(new Flag("color.relative", () -> relativeColor, value -> relativeColor = value));
 		options.add(new DecimalValue("color.fillAlpha", MIN_FILL_ALPHA, 1.0,
 				() -> fillAlpha, value -> fillAlpha = value));
+		options.add(new Flag("minimap.enabled", () -> minimapHeatmap, value -> minimapHeatmap = value));
 		options.add(new Flag("color.showWeakGray", () -> showWeakGray, value -> showWeakGray = value));
 		options.add(new Flag("color.weakTimedColor", () -> weakTimedColor, value -> weakTimedColor = value));
 		options.add(new Flag("summary.expanded", () -> summaryExpanded, value -> summaryExpanded = value));
@@ -148,6 +152,7 @@ public final class ClientConfig {
 		redAt = HeatColors.DEFAULT_RED_POINT;
 		relativeColor = false;
 		fillAlpha = 0.35;
+		minimapHeatmap = false;
 		showWeakGray = true;
 		weakTimedColor = false;
 		summaryExpanded = true;

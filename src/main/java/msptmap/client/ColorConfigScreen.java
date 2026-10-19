@@ -13,7 +13,8 @@ import java.util.function.DoubleConsumer;
 import java.util.function.DoubleFunction;
 
 /**
- * 「颜色」子页：热力配色的五个选项（相对模式、红色阈值、不透明度、弱加载变灰、弱加载计时时染色）。
+ * 「颜色」子页：热力配色的六个选项（相对模式、红色阈值、不透明度、弱加载变灰、弱加载计时时染色、
+ * 小地图同步）。
  */
 class ColorConfigScreen extends ConfigScreenBase {
 	/** 行标签的最小宽度；英文标签更长时按实际宽度扩展。 */
@@ -79,7 +80,11 @@ class ColorConfigScreen extends ConfigScreenBase {
 							Component.translatable("msptmap.config.weak_timed_tooltip"),
 							value -> ClientConfig.weakTimedColor = value);
 					weakTimedBox.active = ClientConfig.showWeakGray;
-				}))));
+				}),
+				new Row(ROW, (x, y) -> addCheckbox(x, y, Component.translatable("msptmap.config.minimap"),
+						ClientConfig.minimapHeatmap,
+						Component.translatable("msptmap.config.minimap_tooltip"),
+						value -> ClientConfig.minimapHeatmap = value)))));
 	}
 
 	/** 行标签宽度：取当前语言中最长者（英文标签通常更宽）。 */

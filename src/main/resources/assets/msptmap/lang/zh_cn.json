@@ -49,6 +49,8 @@
   "msptmap.config.weak_tooltip": "以淡灰色显示加载等级为 32 及以上的区块；这些区块不参与热力着色。",
   "msptmap.config.weak_timed": "弱加载区块计时时染色",
   "msptmap.config.weak_timed_tooltip": "弱加载区块在采样窗口内产生过耗时时，仍按热力色着色。仅勾选「显示弱加载区块」时可用。",
+  "msptmap.config.minimap": "小地图显示热力图",
+  "msptmap.config.minimap_tooltip": "勾选后，Xaero 小地图同步显示热力色；世界地图不受影响。",
   "msptmap.config.coords": "坐标",
   "msptmap.config.levels": "等级",
   "msptmap.config.ticket_load": "加载票",

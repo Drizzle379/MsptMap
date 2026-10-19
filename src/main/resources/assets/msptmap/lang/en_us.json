@@ -49,6 +49,8 @@
   "msptmap.config.weak_tooltip": "Show chunks with load level 32 or above in pale grey; these chunks do not take heat colours.",
   "msptmap.config.weak_timed": "Color weak chunks when timed",
   "msptmap.config.weak_timed_tooltip": "Weak-loaded chunks that performed measurable work during the window are colored by cost. Available only while \"Show weak-loaded chunks\" is checked.",
+  "msptmap.config.minimap": "Minimap heatmap",
+  "msptmap.config.minimap_tooltip": "Show the heatmap on the Xaero minimap as well. The world map is unaffected.",
   "msptmap.config.coords": "Coordinates",
   "msptmap.config.levels": "Levels",
   "msptmap.config.ticket_load": "Load ticket",

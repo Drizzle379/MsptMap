@@ -102,10 +102,7 @@ public final class MapOverlay {
 	 * 无任何耗时测得时退回固定阈值，保证结果恒大于 0，可作分母。
 	 */
 	static float redPoint(float heaviest) {
-		if (!ClientConfig.relativeColor) {
-			return (float) ClientConfig.redAt;
-		}
-		return heaviest > 0.0f ? heaviest : (float) ClientConfig.redAt;
+		return HeatColors.redPoint(ClientConfig.relativeColor, (float) ClientConfig.redAt, heaviest);
 	}
 
 	/** 黄点 = 红点 × {@link HeatColors} 里的系数；红点恒大于 0，可作分母。 */

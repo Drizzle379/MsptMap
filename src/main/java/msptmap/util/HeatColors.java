@@ -17,6 +17,14 @@ public final class HeatColors {
 	private HeatColors() {
 	}
 
+	/**
+	 * 当前红点：固定模式取 {@code redAt}，相对模式取本次最重值；无耗时测得时退回 {@code redAt}。
+	 * 地图与小地图共用这一条规则。
+	 */
+	public static float redPoint(boolean relative, float redAt, float heaviest) {
+		return relative && heaviest > 0.0f ? heaviest : redAt;
+	}
+
 	/** 黄点：红点 × {@link #YELLOW_KNEE}；红点恒大于 0，可作分母。 */
 	public static float yellowAt(float redPoint) {
 		return redPoint * YELLOW_KNEE;
