@@ -29,7 +29,7 @@ Identifies the specific chunks responsible for server-side lag.
 
 | | |
 | :--- | :--- |
-| 🌡️ **Per-chunk heatmap** | Chunks are coloured green → yellow → red according to the tick time they consume. Weakly-loaded chunks that performed no measurable work remain pale grey, so that areas of genuine load are not obscured. |
+| 🌡️ **Per-chunk heatmap** | Chunks are coloured green → yellow → red according to the tick time they consume. Weakly-loaded chunks that performed no measurable work remain pale grey, so that areas of genuine load are not obscured. The heatmap can also be shown on the Xaero minimap. |
 | 🧩 **Seven tick categories** | Random ticks, scheduled ticks, block updates, block events, block entities, entities and mob spawning are measured independently; the tooltip identifies the category to which the cost belongs. |
 | 🏷️ **Load source lookup** | The load ticket behind each chunk is resolved: `player_loading`, `forced`, `portal`, `ender_pearl`, `dragon`, and others. Chunks that hold a ticket are outlined in blue, and the tooltip reports the ticket name together with the `@x,z` coordinates of the chunk on which the ticket resides. |
 | 📊 **Scan overview** | A single panel reports total mspt, entity count, load sources and the five most costly chunks, aggregated across **all three dimensions**, whereas the map itself displays one dimension at a time. |
@@ -44,6 +44,7 @@ Identifies the specific chunks responsible for server-side lag.
 | **Fabric Loader** | Yes | ≥ 0.19.3 |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | Yes | |
 | [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map) | Client only | Verified on Xaero 1.44.2 / 1.46.0 / 1.46.4 (most versions use 1.46.0); other versions are not guaranteed to hook successfully |
+| [Xaero's Minimap](https://modrinth.com/mod/xaeros-minimap) | Optional | When **Minimap heatmap** is checked, heat colours are drawn on the minimap as well. Built against 25.3.5; verified on 26.4.2 |
 | [Mod Menu](https://modrinth.com/mod/modmenu) | Recommended | Provides a shortcut to the settings screen |
 
 ### Supported versions
@@ -142,6 +143,7 @@ Open **Mod Menu → Settings**, or select the **settings** button on the map. Se
 | Colors | **Opacity** | Opacity of the heat fill, 0.05 – 1.00. Lower values reveal more of the underlying map. |
 | Colors | **Show weak-loaded chunks** | Displays chunks at load level ≥ 32 in pale grey; these chunks do not take heat colours. |
 | Colors | **Color weak chunks when timed** | Weak-loaded chunks that performed measurable work during the window are coloured by cost. Off by default; available only while **Show weak-loaded chunks** is checked. |
+| Colors | **Minimap heatmap** | Shows heat colours on the Xaero minimap as well. Off by default; the world map is unaffected. |
 | Hover details | **Coordinates** / **Levels** / **Entities** | Determines which lines appear in the hover tooltip. |
 | Hover details | **Load ticket** / **Compute ticket** | Appends the ticket source to the load-level / compute-level line. |
 | Hover details | **Show abbreviations** | Displays category names as two-letter codes: `RT ST BU EV BE EN SP`. |
