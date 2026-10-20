@@ -167,9 +167,9 @@ public final class TicketSources {
 		}
 
 		// 诊断：持票区块数应为「玩家数 + forceload + 传送门/珍珠」之和，覆盖数应接近快照中的区块数
-		// （淡灰的弱加载区块也在覆盖内）。两者对不上即说明正推有误。默认级别不打印（每次扫描每维度
+		// （淡灰的弱加载区块也在覆盖内）。两者不一致即说明正推有误。默认级别不打印（每次扫描每维度
 		// 一条，生产服上过于吵闹），排查时开到 debug。
-		MsptMapMod.LOGGER.debug("维度 {} 加载票（{}）：持票区块 {} 个、覆盖 {} 个区块。前几个持票区块：{}",
+		MsptMapMod.LOGGER.debug("维度 {} 加载票（{}）：持票区块 {} 个、覆盖 {} 个区块。前若干个持票区块：{}",
 				dimension, simulation ? "模拟链" : "加载链", anchors, sources.size(),
 				sample.isEmpty() ? "（无）" : sample);
 		return sources;

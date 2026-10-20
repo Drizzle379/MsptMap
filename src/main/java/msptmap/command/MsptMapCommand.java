@@ -19,7 +19,7 @@ import java.util.Locale;
 /**
  * 服务端的 {@code /msptmap} 命令：scan、access 与 monitor 三条子命令。
  *
- * <p>{@code scan} 不向来源回话，结果打到服务端控制台；{@code access} 与 {@code monitor} 改完
+ * <p>{@code scan} 不向来源回话，结果输出到服务端控制台；{@code access} 与 {@code monitor} 改完
  * 立即生效并落盘，回执报给来源。玩家在地图上取热力图走的是地图按钮（客户端直接发包），与这条
  * {@code scan} 无关。
  *
@@ -60,7 +60,8 @@ public final class MsptMapCommand {
 
 	private static int scan(CommandSourceStack source, int seconds) {
 		// requester 为 null：结果只打控制台，不发包
-		switch (MsptSampler.start(seconds, null)) {
+		MsptSampler.StartResult result = MsptSampler.start(seconds, null);
+		switch (result) {
 			case STARTED -> MsptMapMod.LOGGER.info("开始采样 {} 秒（请求来自 {}）", seconds, source.getTextName());
 			case BUSY -> MsptMapMod.LOGGER.info("已经在采样了，这次请求忽略（请求来自 {}）", source.getTextName());
 			case COOLDOWN -> MsptMapMod.LOGGER.info("距上次扫描结束不足 {} 秒，这次请求忽略（请求来自 {}）",
@@ -68,7 +69,8 @@ public final class MsptMapCommand {
 			case STALLED -> MsptMapMod.LOGGER.info("服务端当前没有在运行（空载暂停或长时间卡顿），"
 					+ "采样窗口数不到刻，这次请求忽略（请求来自 {}）", source.getTextName());
 		}
-		return 1;
+		// 未开窗时返回 0，便于命令方块与函数判断本次是否真正开始
+		return result == MsptSampler.StartResult.STARTED ? 1 : 0;
 	}
 
 	/**
@@ -76,6 +78,8 @@ public final class MsptMapCommand {
 	 */
 	private static LiteralArgumentBuilder<CommandSourceStack> access() {
 		return Commands.literal("access")
+				// 权限修改始终限 OP：根节点的 canUse 在 access=all 时对所有人放行
+				.requires(Permissions::isOperator)
 				.executes(context -> accessStatus(context.getSource()))
 				.then(Commands.literal("ops").executes(context -> setAccess(context.getSource(), ServerConfig.Access.OPS)))
 				.then(Commands.literal("all").executes(context -> setAccess(context.getSource(), ServerConfig.Access.ALL)));

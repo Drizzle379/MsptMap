@@ -12,26 +12,11 @@ import xaero.map.graphics.MapRenderHelper;
  * <p>地图空间即当前维度的方块坐标（1 单位 = 1 格）：区块矩形由快照中的世界坐标减去相机偏移得到，
  * 不做缩放。矩阵为 Xaero 当前帧已带好缩放平移的 PoseStack。
  *
- * <p>填色规则：弱加载（加载等级 ≥32）的区块一律铺淡灰，不参与热力着色；勾选「弱加载区块计时时染色」
- * 后，其中整段窗口测到过耗时的改铺热力色。其余区块按 ms/tick 铺绿黄红。阈值与透明度每帧从
- * {@link ClientConfig} 现读。
+ * <p>填色规则：开启「显示弱加载区块」时，加载等级 ≥32 的区块铺淡灰、不参与热力着色；勾选
+ * 「弱加载区块计时时染色」后，其中整段窗口测到过耗时的改铺热力色。其余区块按 ms/tick 铺绿黄红。
+ * 阈值与透明度每帧从 {@link ClientConfig} 现读。
  */
 public final class MapOverlay {
-	/** 达到该加载等级即弱加载（与 {@code ChunkLevel.isBlockTicking} 的分界一致）。 */
-	private static final int WEAK_LOAD_LEVEL = 32;
-
-	/** 弱加载区块的填充色与透明度。 */
-	private static final float IDLE_GRAY = 0.7f;
-	private static final float IDLE_ALPHA = 0.3f;
-
-	/** 加载源中心蓝框的颜色（不透明，与绿黄红热力色区分）。 */
-	private static final float CENTER_RED = 0.2f;
-	private static final float CENTER_GREEN = 0.5f;
-	private static final float CENTER_BLUE = 1.0f;
-
-	/** 蓝框宽度（世界格）：沿区块内沿一圈，压住最外圈的热力色。 */
-	private static final int CENTER_BORDER = 1;
-
 	private MapOverlay() {
 	}
 
@@ -48,17 +33,16 @@ public final class MapOverlay {
 		}
 
 		// 红点整帧只算一次
-		float redPoint = redPoint(ClientSnapshot.heaviestMspt(dimension));
+		float redPoint = HeatStyle.redPoint(ClientSnapshot.heaviestMspt(dimension));
 		for (ClientSnapshot.Chunk chunk : chunks) {
 			int x1 = chunk.x1() - flooredCameraX;
 			int z1 = chunk.z1() - flooredCameraZ;
 			int x2 = chunk.x2() - flooredCameraX;
 			int z2 = chunk.z2() - flooredCameraZ;
 
-			if (ClientConfig.showWeakGray && chunk.loadLevel() >= WEAK_LOAD_LEVEL
-					&& !(chunk.timed() && ClientConfig.weakTimedColor)) {
+			if (HeatStyle.weakGray(chunk)) {
 				MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1, x2, z2,
-						IDLE_GRAY, IDLE_GRAY, IDLE_GRAY, IDLE_ALPHA);
+						HeatStyle.IDLE_GRAY, HeatStyle.IDLE_GRAY, HeatStyle.IDLE_GRAY, HeatStyle.IDLE_ALPHA);
 				continue;
 			}
 			float mspt = chunk.mspt();
@@ -85,24 +69,16 @@ public final class MapOverlay {
 	/** 沿区块内沿画一圈蓝框：上、下两条横边跨满，左、右两条竖边接在两横边之间。 */
 	private static void centerBorder(Matrix4f matrix, VertexConsumer buffer, int x1, int z1, int x2, int z2) {
 		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1,
-				x2, z1 + CENTER_BORDER, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
-		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z2 - CENTER_BORDER,
-				x2, z2, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
-		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1 + CENTER_BORDER,
-				x1 + CENTER_BORDER, z2 - CENTER_BORDER, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
-		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x2 - CENTER_BORDER, z1 + CENTER_BORDER,
-				x2, z2 - CENTER_BORDER, CENTER_RED, CENTER_GREEN, CENTER_BLUE, 1.0f);
-	}
-
-	/**
-	 * 当前帧的红点：耗时达到它即为最高等级的红。
-	 *
-	 * <p>固定模式（默认）取设置中的红色阈值，跨次可比；相对模式取当前显示维度、本次快照中最重的区块
-	 * （最重值由 {@link ClientSnapshot#accept} 预计算，见 {@link ClientSnapshot#heaviestMspt}）。
-	 * 无任何耗时测得时退回固定阈值，保证结果恒大于 0，可作分母。
-	 */
-	static float redPoint(float heaviest) {
-		return HeatColors.redPoint(ClientConfig.relativeColor, (float) ClientConfig.redAt, heaviest);
+				x2, z1 + HeatStyle.CENTER_BORDER, HeatStyle.CENTER_RED, HeatStyle.CENTER_GREEN,
+				HeatStyle.CENTER_BLUE, 1.0f);
+		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z2 - HeatStyle.CENTER_BORDER,
+				x2, z2, HeatStyle.CENTER_RED, HeatStyle.CENTER_GREEN, HeatStyle.CENTER_BLUE, 1.0f);
+		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x1, z1 + HeatStyle.CENTER_BORDER,
+				x1 + HeatStyle.CENTER_BORDER, z2 - HeatStyle.CENTER_BORDER,
+				HeatStyle.CENTER_RED, HeatStyle.CENTER_GREEN, HeatStyle.CENTER_BLUE, 1.0f);
+		MapRenderHelper.fillIntoExistingBuffer(matrix, buffer, x2 - HeatStyle.CENTER_BORDER,
+				z1 + HeatStyle.CENTER_BORDER, x2, z2 - HeatStyle.CENTER_BORDER,
+				HeatStyle.CENTER_RED, HeatStyle.CENTER_GREEN, HeatStyle.CENTER_BLUE, 1.0f);
 	}
 
 	/** 黄点 = 红点 × {@link HeatColors} 里的系数；红点恒大于 0，可作分母。 */

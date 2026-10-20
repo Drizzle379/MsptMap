@@ -42,8 +42,9 @@ public record ScanResultPayload(int protocol, Status status, int seconds, int wi
 	 * 状态按 ordinal 上线：新增状态只能追加在末尾，插入中间会使版本不一致的另一端读错状态。
 	 *
 	 * <p>START = 窗口已开，秒数为服务端最终采用的秒数（客户端据此定进度圈的总刻数）；
-	 * PROGRESS = 窗口已过的刻数（每 0.1 秒一次，客户端只画服务端报过的数）；DENIED / BUSY =
-	 * 本次未扫描，客户端取消读条并在聊天栏提示；COOLDOWN = 冷却中拒绝（距上次扫描结束不足
+	 * PROGRESS = 窗口已过的刻数（每 0.1 秒一次，客户端只画服务端报过的数）；DONE = 本次结果，
+	 * 带三个维度的区块数据；DENIED / BUSY = 本次未扫描，客户端取消读条并在聊天栏提示；
+	 * COOLDOWN = 冷却中拒绝（距上次扫描结束不足
 	 * {@link msptmap.sampler.MsptSampler#COOLDOWN_SECONDS} 秒）。
 	 */
 	public enum Status {

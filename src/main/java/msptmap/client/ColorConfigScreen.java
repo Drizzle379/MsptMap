@@ -61,8 +61,8 @@ class ColorConfigScreen extends ConfigScreenBase {
 				}),
 				new Row(ROW, (x, y) -> {
 					addRowLabel(Component.translatable("msptmap.config.opacity"), x, y);
-					addSlider(x + labelWidth, y, control, ClientConfig.MIN_FILL_ALPHA, 1.0,
-							ClientConfig.fillAlpha, Decimals::format2,
+					addSlider(x + labelWidth, y, control, ClientConfig.MIN_FILL_ALPHA,
+							ClientConfig.MAX_FILL_ALPHA, ClientConfig.fillAlpha, Decimals::format2,
 							value -> ClientConfig.fillAlpha = value,
 							Component.translatable("msptmap.config.opacity_tooltip"));
 				}),

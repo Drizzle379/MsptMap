@@ -32,7 +32,7 @@ class ScanConfigScreen extends ConfigScreenBase {
 	/**
 	 * 秒数输入框。
 	 *
-	 * <p>EditBox 没有 setFilter，合法范围自行校验：输入非法则将框内文本改回当前生效值（改回的文本必然
+	 * <p>EditBox 的 setFilter 只按字符过滤，1–60 的范围仍需自行校验：输入非法则将框内文本改回当前生效值（改回的文本必然
 	 * 合法，故 responder 不会递归），使框内显示与将要发送的值始终一致。清空时先不处理：需要允许擦除
 	 * 旧值重输，此时的值仍为上一个合法值。
 	 */

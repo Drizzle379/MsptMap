@@ -5,8 +5,8 @@ import xaero.map.WorldMapSession;
 import xaero.map.gui.GuiMap;
 
 /**
- * 打开 Xaero 的世界地图。本类是普通代码里唯一引用 Xaero 的类（mixin 另在客户端配置中），只在
- * {@code xaeroworldmap} 已加载时才被调用，故未安装时不会加载它。
+ * 打开 Xaero 的世界地图。本类是普通代码中唯一由命令入口直接调用 Xaero 的类；其余引用 Xaero 的
+ * 绘制类只在 required:false 的 mixin 调用链上加载，未安装时不会加载它们。
  */
 public final class XaeroMapOpen {
 	private XaeroMapOpen() {
@@ -20,7 +20,7 @@ public final class XaeroMapOpen {
 	 */
 	static void openIfClosed() {
 		Minecraft minecraft = Minecraft.getInstance();
-		// 当前屏幕：26.2 起挪进了 Gui（同 MsptMapClient.chat），26.1 及以前是 Minecraft 自己的字段
+		// 当前屏幕：26.2 起挪进了 Gui（同 Chat.chat()），26.1 及以前是 Minecraft 自己的字段
 		//? if >=26.2 {
 		if (minecraft.gui.screen() instanceof GuiMap) {
 		//?} else {

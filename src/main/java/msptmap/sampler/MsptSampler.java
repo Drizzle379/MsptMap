@@ -55,7 +55,7 @@ public final class MsptSampler {
 	/** 本次扫描的发起人：客户端请求为玩家，服务端命令 / 控制台为 null。 */
 	private static ServerPlayer requester;
 
-	/** 本次结果是否广播给在线 OP（由 {@link msptmap.monitor.MsptMonitor} 触发的自动扫描）。 */
+	/** 本次结果是否广播给监控受众（由 {@link msptmap.monitor.MsptMonitor} 触发的自动扫描）。 */
 	private static boolean broadcast;
 
 	/** 广播时的服务端句柄：出结果时从这里取在线玩家列表；非广播时为 null。 */
@@ -139,8 +139,8 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 开一个 N 秒的窗口，结果广播给在线 OP：由 {@link msptmap.monitor.MsptMonitor} 在 MSPT 持续
-	 * 超标时发起。没有发起人，也没有进度包（无人在等，逐个 OP 推包并无意义）。
+	 * 开一个 N 秒的窗口，结果广播给监控受众：由 {@link msptmap.monitor.MsptMonitor} 在 MSPT 持续
+	 * 超标时发起。没有发起人，也没有进度包（无人在等，逐个受众推包并无意义）。
 	 */
 	public static StartResult startAuto(int seconds, MinecraftServer server) {
 		return startInternal(seconds, null, true, server);
@@ -155,7 +155,7 @@ public final class MsptSampler {
 			if (!stalled) {
 				return StartResult.BUSY;
 			}
-			// 服务端已长时间没有 tick：旧窗口僵死（发起人掉线、世界暂停后未恢复）。作废重开，
+			// 服务端已长时间没有 tick：旧窗口已停滞（发起人掉线、世界暂停后未恢复）。作废并重新开启，
 			// 否则将持续占用，后续请求均被判为「忙」
 			MsptMapMod.LOGGER.info("上一个采样窗口已停滞（服务端 {} 秒没有 tick），已作废",
 					(now - lastTickNanos) / 1_000_000_000L);
@@ -303,8 +303,8 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 收尾：结果打包给发起人；自动扫描的结果广播给在线 OP；无法回发（控制台发起 / 中途掉线）则打到
-	 * 服务端控制台。
+	 * 收尾：结果封装后发给发起人；自动扫描的结果广播给监控受众；无法回发（控制台发起 / 中途掉线）则
+	 * 输出到服务端控制台。
 	 */
 	private static void finish() {
 		sampling = false;
@@ -324,12 +324,12 @@ public final class MsptSampler {
 				pendingDone = ScanResultPayload.done(seconds, windowTicks, windowTickNanos, SnapshotBuilder.build(timings));
 				pendingPlayer = player;
 			} else if (toOperators && server != null) {
-				broadcastToOperators(server);
+				broadcastToAudience(server);
 			} else {
 				logTopChunks();
 			}
 		} finally {
-			// 须在 snapshot()/logTopChunks() 之后执行，且发送路径抛异常时同样执行：外层表的键是
+			// 须在 SnapshotBuilder.build(...) / logTopChunks() 之后执行，且发送路径抛异常时同样执行：外层表的键是
 			// ServerLevel，不清则多世界服务器卸载某世界后它仍被强引用，无法回收。
 			clearTimings();
 		}
@@ -339,11 +339,11 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 自动扫描收尾：TOP 区块以聊天告警发给受众，热力数据同步给其中装有本模组（能收包）的玩家。
+	 * 自动扫描收尾：TOP 区块以聊天告警发给监控受众，热力数据同步给其中装有本模组（能收包）的玩家。
 	 *
 	 * <p>须在 {@link #clearTimings()} 之前执行（快照与排行都读采样表）。
 	 */
-	private static void broadcastToOperators(MinecraftServer server) {
+	private static void broadcastToAudience(MinecraftServer server) {
 		List<ServerPlayer> targets = MsptAlert.targets(server);
 		if (targets.isEmpty()) {
 			// 扫描期间受众全部下线：结果不宜彻底消失，保留一份到控制台
@@ -369,16 +369,22 @@ public final class MsptSampler {
 	}
 
 	/**
-	 * 窗口内最重的 n 个区块，跨维度降序；未测到任何区块时为空列表。
+	 * 窗口内最重的 n 个区块，跨维度降序；无正耗时区块时为空列表。
+	 *
+	 * <p>只收合计大于 0 的：只发生方块更新的区块合计为 0（方块更新不计入合计），不应占告警示额。
 	 *
 	 * <p>须在 {@link #clearTimings()} 之前调用。
 	 */
-	public static List<Heavy> topRows(int n) {
+	private static List<Heavy> topRows(int n) {
 		List<Row> rows = sortedRows();
-		int count = Math.min(n, rows.size());
-		List<Heavy> heaviest = new ArrayList<>(count);
-		for (int i = 0; i < count; i++) {
-			Row row = rows.get(i);
+		List<Heavy> heaviest = new ArrayList<>(n);
+		for (Row row : rows) {
+			if (heaviest.size() >= n) {
+				break;
+			}
+			if (row.total <= 0L) {
+				continue;
+			}
 			heaviest.add(new Heavy(Ids.id(row.level.dimension()), ChunkPos.getX(row.key),
 					ChunkPos.getZ(row.key), row.total));
 		}
@@ -398,21 +404,29 @@ public final class MsptSampler {
 	public record Heavy(String dimension, int chunkX, int chunkZ, long totalNanos) {
 	}
 
-	/** 结果无法发回客户端时，将最重的 5 个区块打到服务端控制台。 */
+	/** 结果无法发回客户端时，将最重的 5 个区块输出到服务端控制台。 */
 	private static void logTopChunks() {
 		List<Row> rows = sortedRows();
 		MsptMapMod.LOGGER.info("扫描结束：{} 个维度 / {} 个区块，窗口 {} 秒 / {} tick",
 				timings.size(), rows.size(), seconds, windowTicks);
 
-		for (int i = 0; i < Math.min(5, rows.size()); i++) {
-			Row row = rows.get(i);
+		int printed = 0;
+		for (Row row : rows) {
+			if (printed >= 5) {
+				break;
+			}
+			// 与聊天告警同口径：只打印正耗时的区块
+			if (row.total <= 0L) {
+				continue;
+			}
+			printed++;
 			MsptMapMod.LOGGER.info("  #{} {} ({}, {})  {} mspt [随机刻 {} 计划刻 {} 方块更新 {} 方块事件 {} "
 							+ "方块实体 {} 实体 {} 刷怪 {}]",
-					i + 1,
+					printed,
 					Ids.id(row.level.dimension()),
 					ChunkPos.getX(row.key),
 					ChunkPos.getZ(row.key),
-					ms(row.timing.totalNanos()),
+					ms(row.total),
 					ms(row.timing.nanos(TickCategory.RANDOM_TICK)),
 					ms(row.timing.nanos(TickCategory.SCHEDULED)),
 					ms(row.timing.nanos(TickCategory.NEIGHBOR_UPDATE)),
@@ -425,7 +439,7 @@ public final class MsptSampler {
 
 	/** 纳秒 → mspt 文本，仅供打印（精度与 Locale 见 {@link Decimals}）。 */
 	private static String ms(long nanos) {
-		return Decimals.format3(nanos / 1_000_000.0 / windowTicks);
+		return Decimals.formatMspt(nanos, windowTicks);
 	}
 
 	/** 打印用的临时行，最多 5 行；total 为排序前一次算好的重量。 */

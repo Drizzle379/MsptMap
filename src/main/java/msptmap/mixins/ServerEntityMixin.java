@@ -46,7 +46,6 @@ public abstract class ServerEntityMixin {
 		if (this.msptmapStart == 0L) {
 			return;
 		}
-		MsptSampler.end(TickCategory.ENTITY, this.level, ChunkKeys.pack(this.entity.chunkPosition()),
-				this.msptmapStart);
+		MsptSampler.end(TickCategory.ENTITY, this.level, ChunkKeys.pack(this.entity), this.msptmapStart);
 	}
 }

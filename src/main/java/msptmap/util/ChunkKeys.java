@@ -1,6 +1,7 @@
 package msptmap.util;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 
 /**
@@ -35,5 +36,13 @@ public final class ChunkKeys {
 		//?} else {
 		/*return ChunkPos.asLong(pos);
 		*///?}
+	}
+
+	/**
+	 * 实体所在区块。与 {@code chunkPosition()} 等价，但直接用已取整的方块坐标，不构造 ChunkPos
+	 * （采样热路径上省一次分配）。
+	 */
+	public static long pack(Entity entity) {
+		return pack(entity.getBlockX() >> 4, entity.getBlockZ() >> 4);
 	}
 }

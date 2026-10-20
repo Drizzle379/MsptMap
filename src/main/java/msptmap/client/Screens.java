@@ -38,6 +38,11 @@ final class Screens {
 		pending = target;
 	}
 
+	/** 丢弃排队的界面（退出世界时调用，避免断线后仍切出旧地图屏）。 */
+	static void clearPending() {
+		pending = null;
+	}
+
 	/** 客户端每 tick 末尾调用：把命令里排队的界面切过去。此刻聊天栏已关，屏幕稳定。 */
 	static void applyPending(Minecraft minecraft) {
 		if (pending == null) {

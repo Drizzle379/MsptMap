@@ -30,11 +30,12 @@ final class PanelScroll {
 	/**
 	 * 面板自 {@code panelY} 起能画下的行数：总行数、{@code maxRows} 与屏幕容得下的行数三者取小
 	 * （自面板上沿量到屏幕底，上下各去 3 px 内边距，同 {@link MapPanel}），至少 1。
+	 *
+	 * <p>调用方须先确认行列表非空：空列表下返回值仍为 1，直接 {@code subList(0, 1)} 会越界。
 	 */
 	static int shownRows(int rows, int panelY, int maxRows) {
 		int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-		int lineHeight = Minecraft.getInstance().font.lineHeight + 1;
-		int fits = (screenHeight - panelY - 6) / lineHeight;
+		int fits = (screenHeight - panelY - MapPanel.PADDING * 2) / MapPanel.lineHeight();
 		return Math.max(1, Math.min(Math.min(rows, maxRows), fits));
 	}
 
@@ -51,6 +52,10 @@ final class PanelScroll {
 	 * ({@code trackY}, 高 {@code trackH})。只在确有滚动（总行数 &gt; 窗口行数）时调用。
 	 */
 	static int[] thumb(int rows, int shown, int scroll, int trackY, int trackH) {
+		// 防御：不需滚动时把手占满整条轨道（当前只由 draw 在 rows > shown 时调用）
+		if (rows <= shown) {
+			return new int[]{trackY, trackH};
+		}
 		int height = Math.max(MIN_THUMB, (int) ((long) trackH * shown / rows));
 		int y = trackY + (int) ((long) (trackH - height) * scroll / (rows - shown));
 		return new int[]{y, height};

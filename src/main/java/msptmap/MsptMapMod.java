@@ -31,7 +31,7 @@ public class MsptMapMod implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	/**
-	 * 本端可读的字节格式版本（魔数，"MSP4" 的十六进制），两个包均以它打头。
+	 * 本端可读的字节格式版本（魔数，"MSP4" 的十六进制），三个包均以它打头。
 	 *
 	 * <p>改动包的字节格式（字段增删、顺序调整、类别增删）时递增。两端均视其为标记而非闸门：
 	 * 值不同仅提示版本可能不一致，仍照常解析，仅在解析失败时判定本次失败。

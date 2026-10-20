@@ -200,6 +200,6 @@ public final class TickText {
 
 	/** 纳秒 → 毫秒/tick 文本，与 MsptSampler 打印共用 {@link Decimals} 的口径。 */
 	static String ms(long nanos, int windowTicks) {
-		return Decimals.format3(nanos / 1_000_000.0 / Math.max(1, windowTicks));
+		return Decimals.formatMspt(nanos, windowTicks);
 	}
 }

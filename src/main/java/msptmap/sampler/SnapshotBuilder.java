@@ -36,6 +36,13 @@ public final class SnapshotBuilder {
 	 */
 	public static final int MAX_SNAPSHOT_BYTES = 700 * 1024;
 
+	/**
+	 * 「仅加载」区块共用的全零数组：单次扫描中这类区块可达数万个，逐个分配两个数组并无必要。
+	 * 以只读方式交给 ChunkData，不在此类之外暴露。
+	 */
+	private static final long[] ZERO_NANOS = new long[TickCategory.COUNT];
+	private static final int[] ZERO_COUNTS = new int[TickCategory.COUNT];
+
 	private SnapshotBuilder() {
 	}
 
@@ -46,7 +53,7 @@ public final class SnapshotBuilder {
 	 *
 	 * @param timings 每个维度一张采样表（外层按对象身份比，内层按区块坐标免装箱）
 	 */
-	public static List<SnapshotCodec.DimensionData> build(
+	static List<SnapshotCodec.DimensionData> build(
 			Map<ServerLevel, Long2ObjectOpenHashMap<ChunkTiming>> timings) {
 		List<SnapshotCodec.DimensionData> dimensions = new ArrayList<>(timings.size());
 		int share = MAX_SNAPSHOT_BYTES / Math.max(1, timings.size());
@@ -93,10 +100,10 @@ public final class SnapshotBuilder {
 		}
 		int used = SnapshotCodec.fitToBudget(out, budget);
 		if (out.size() < chunks.size()) {
-			MsptMapMod.LOGGER.info("维度 {} 超出字节预算：{} 个干过活的区块没带上（最轻的那些）",
+			MsptMapMod.LOGGER.info("维度 {} 超出字节预算：{} 个执行过计时的区块没带上（最轻的那些）",
 					Ids.id(level.dimension()), chunks.size() - out.size());
 		}
-		// 有计时的收完，再补「加载着、窗口内无计时」的那些
+		// 已计时区块处理完毕后，再补「加载着、窗口内无计时」的那些
 		addLoadedChunks(level, distanceManager, measured, entityCounts, loadTickets, simTickets, out, budget - used);
 		return new SnapshotCodec.DimensionData(Ids.id(level.dimension()), out);
 	}
@@ -122,7 +129,7 @@ public final class SnapshotBuilder {
 		Long2IntOpenHashMap counts = new Long2IntOpenHashMap();
 		for (Entity entity : level.getAllEntities()) {
 			if (!entity.isRemoved()) {
-				counts.addTo(ChunkKeys.pack(entity.chunkPosition()), 1);
+				counts.addTo(ChunkKeys.pack(entity), 1);
 			}
 		}
 		return counts;
@@ -133,7 +140,7 @@ public final class SnapshotBuilder {
 	 *
 	 * <p>只收加载等级 ≤ 32 的（31 实体刻 / 32 方块刻）；33 及以上完全不 tick。等级直接读
 	 * {@code ChunkHolder.getTicketLevel()}，与 {@code getChunkLevel(key, false)} 同源。这批区块
-	 * 没有轻重可挑，装不下即中止，并留一行日志。
+	 * 无轻重之分，装不下即中止，并留一行日志。
 	 *
 	 * <p>中心区块（见 {@link TicketSources#isCenter}）不在此列：先于可见区块补上、不计预算。中心
 	 * 不在视距内（远程 forceload、传送门）或没有耗时记录时，只有先补才能保证客户端绘制出中心蓝框。
@@ -195,13 +202,13 @@ public final class SnapshotBuilder {
 	/** 「仅加载、无计时」形态的区块数据（耗时与次数全填 0，客户端据此绘制淡灰色）。 */
 	private static SnapshotCodec.ChunkData loadedChunk(long key, int loadLevel, int computeLevel,
 			Long2IntOpenHashMap entityCounts, Long2IntOpenHashMap loadTickets, Long2IntOpenHashMap simTickets) {
-		return chunkData(key, SnapshotCodec.ZERO_NANOS, SnapshotCodec.ZERO_COUNTS,
+		return chunkData(key, ZERO_NANOS, ZERO_COUNTS,
 				loadLevel, computeLevel, entityCounts, loadTickets, simTickets);
 	}
 
 	/**
 	 * 组装一个区块的数据；实测区块与仅加载区块共用（前者给 {@code timing} 的两组数组，后者传
-	 * {@link SnapshotCodec#ZERO_NANOS}）。
+	 * {@link #ZERO_NANOS}）。
 	 */
 	private static SnapshotCodec.ChunkData chunkData(long key, long[] nanos, int[] counts,
 			int loadLevel, int computeLevel, Long2IntOpenHashMap entityCounts,

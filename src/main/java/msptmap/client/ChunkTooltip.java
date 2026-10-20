@@ -201,13 +201,12 @@ public final class ChunkTooltip {
 				bits |= 1 << (6 + category.ordinal());
 			}
 		}
-		// 类别名缩写紧随类别段之后占一位
+		// 类别名缩写与明细单位排在类别段之后：位序随 TickCategory 数量顺延，新增类别不会碰撞
 		if (ClientConfig.tooltipAbbreviate) {
-			bits |= 1 << 13;
+			bits |= 1 << (6 + TickCategory.COUNT);
 		}
-		// 明细行的 mspt 单位占一位（行内容随之变，须入签名）
 		if (ClientConfig.tooltipMsptUnit) {
-			bits |= 1 << 14;
+			bits |= 1 << (7 + TickCategory.COUNT);
 		}
 		return bits;
 	}

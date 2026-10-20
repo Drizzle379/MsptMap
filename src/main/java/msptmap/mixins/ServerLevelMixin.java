@@ -102,7 +102,7 @@ public abstract class ServerLevelMixin implements NeighborTiming {
 		if (this.msptmapEntityStart == 0L) {
 			return;
 		}
-		MsptSampler.end(TickCategory.ENTITY, this.msptmapLevel(), ChunkKeys.pack(entity.chunkPosition()), this.msptmapEntityStart);
+		MsptSampler.end(TickCategory.ENTITY, this.msptmapLevel(), ChunkKeys.pack(entity), this.msptmapEntityStart);
 	}
 
 	// 邻居更新（NC）的各入口：updateNeighborsAt（六向派发）、updateNeighborsAtExceptFromFacing（排除某方向）

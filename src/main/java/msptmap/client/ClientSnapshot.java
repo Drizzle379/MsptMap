@@ -3,6 +3,8 @@ package msptmap.client;
 import msptmap.net.SnapshotCodec;
 import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketCode;
+import msptmap.util.Decimals;
+import msptmap.util.Dimensions;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -13,8 +15,8 @@ import java.util.Map;
 /**
  * 客户端持有的最后一份扫描结果：按维度分组，且已转换为绘制用的形状。
  *
- * <p>本类不涉及任何 Xaero 代码（坐标只到世界方块坐标），将来若要同步显示到小地图，只需另写绘制
- * 入口。写入只发生在收到 DONE 包时，且在客户端主线程（Fabric 将客户端 play 包派发到
+ * <p>本类不涉及任何 Xaero 代码（坐标只到世界方块坐标）；小地图的绘制入口见
+ * {@link MinimapOverlay}。写入只发生在收到 DONE 包时，且在客户端主线程（Fabric 将客户端 play 包派发到
  * packetProcessor 线程，即主线程），故渲染时读取无需加锁。
  */
 public final class ClientSnapshot {
@@ -70,20 +72,10 @@ public final class ClientSnapshot {
 	private static final Comparator<Source> SOURCE_ORDER =
 			Comparator.comparingInt((Source source) -> TicketCode.priority(source.type()))
 					.thenComparingInt(Source::type)
-					.thenComparingInt(source -> dimensionRank(source.dimension()))
+					.thenComparingInt(source -> Dimensions.rank(source.dimension()))
 					.thenComparing(Source::dimension)
 					.thenComparingInt(Source::chunkX)
 					.thenComparingInt(Source::chunkZ);
-
-	/** 维度排序档次：三个原版维度按主世界 / 下界 / 末地的习惯序排在前，其余维度按 ID 字典序排在其后。 */
-	private static int dimensionRank(String dimension) {
-		return switch (dimension) {
-			case "minecraft:overworld" -> 0;
-			case "minecraft:the_nether" -> 1;
-			case "minecraft:the_end" -> 2;
-			default -> 3;
-		};
-	}
 
 	private static final Map<String, Chunk[]> byDimension = new HashMap<>();
 
@@ -92,9 +84,6 @@ public final class ClientSnapshot {
 	 * 快照时随转换循环一并算好，不从 {@link #byDimension} 中现扫。
 	 */
 	private static final Map<String, Float> heaviestByDimension = new HashMap<>();
-
-	/** 本次窗口实际经过的 tick 数：各类纳秒换算 ms/tick 的分母。 */
-	private static int windowTicks;
 
 	/** 总览的合计（三个维度一并累加）；未扫描、已清屏时为 null。 */
 	private static Totals totals;
@@ -113,7 +102,6 @@ public final class ClientSnapshot {
 	 */
 	public static void accept(int windowTicks, long tickNanos, List<SnapshotCodec.DimensionData> dimensions) {
 		int window = Math.max(1, windowTicks);
-		ClientSnapshot.windowTicks = window;
 		byDimension.clear();
 		heaviestByDimension.clear();
 		int chunkCount = 0;
@@ -188,7 +176,6 @@ public final class ClientSnapshot {
 		byDimension.clear();
 		heaviestByDimension.clear();
 		totals = null;
-		windowTicks = 0;
 		return dropped;
 	}
 
@@ -224,9 +211,9 @@ public final class ClientSnapshot {
 		}
 	}
 
-	/** 本次窗口经过的 tick 数。悬停详情用它把各类纳秒换算成 ms/tick。 */
+	/** 本次窗口经过的 tick 数；未扫描、已清屏时为 0。与 {@link Totals#windowTicks} 同源。 */
 	public static int windowTicks() {
-		return windowTicks;
+		return totals == null ? 0 : totals.windowTicks();
 	}
 
 	/**
@@ -269,6 +256,6 @@ public final class ClientSnapshot {
 
 	/** 纳秒 → ms/tick。分母兜底，避免窗口 tick 为 0 时除零。 */
 	private static float mspt(long totalNanos, int windowTicks) {
-		return (float) (totalNanos / 1_000_000.0 / Math.max(1, windowTicks));
+		return (float) Decimals.mspt(totalNanos, windowTicks);
 	}
 }

@@ -34,7 +34,7 @@ public final class ScanSummary {
 	private static final float CATEGORY_GREEN_MS = 3.0f;
 	private static final float CATEGORY_RED_MS = 20.0f;
 
-	/** 「总卡顿」数值的着色区间（mspt）：绿点 10、红点 40，取明细区间两倍；低于绿点同样取起点绿。 */
+	/** 「总卡顿」数值的着色区间（mspt）：绿点 10、红点 40（红点为明细两倍）；低于绿点同样取起点绿。 */
 	private static final float TOTAL_GREEN_MS = 10.0f;
 	private static final float TOTAL_RED_MS = 40.0f;
 
@@ -77,7 +77,7 @@ public final class ScanSummary {
 	/**
 	 * 总览要显示的每一行；未扫描、已清屏（合计取不到）时返回空列表，调用方见到空列表即不画面板。
 	 *
-	 * <p>每帧都会被调用到这里，而输入（合计、三个开关）在两次绘制之间通常不变，故按输入缓存。
+	 * <p>每帧都会被调用到这里，而输入（合计、五个开关与配色两个输入）在两次绘制之间通常不变，故按输入缓存。
 	 */
 	public static List<Component> lines() {
 		ClientSnapshot.Totals totals = ClientSnapshot.totals();
@@ -164,7 +164,7 @@ public final class ScanSummary {
 				Component shown = ClientConfig.summaryColored
 						? TickText.colored(value, HeatColors.soften(HeatColors.rgb(
 								mspt(heavy.totalNanos(), windowTicks),
-								MapOverlay.redPoint(ClientSnapshot.heaviestMspt(heavy.dimension())))))
+								HeatStyle.redPoint(ClientSnapshot.heaviestMspt(heavy.dimension())))))
 						: Component.literal(value);
 				lines.add(TickText.secondary(Component.translatable("msptmap.summary.line", shown,
 						Component.translatable(Dimensions.key(heavy.dimension())),
@@ -188,7 +188,7 @@ public final class ScanSummary {
 
 	/** 纳秒 → ms/tick，与 {@link TickText#ms} 的字符串同口径。 */
 	private static float mspt(long nanos, int windowTicks) {
-		return (float) (nanos / 1_000_000.0 / Math.max(1, windowTicks));
+		return (float) Decimals.mspt(nanos, windowTicks);
 	}
 
 	/** 标题行：加粗白字，不缩进。 */
@@ -219,6 +219,7 @@ public final class ScanSummary {
 	 * <p>类别勾选不进签名：它只决定悬停详情显示哪几行，总览的七类明细恒全列。
 	 */
 	private static int signature() {
+		// 位 0..4 为五个开关，bit 5..13 为红色阈值（量化成 5~500）；类别勾选不进签名
 		int bits = 0;
 		if (ClientConfig.tooltipAbbreviate) {
 			bits |= 1 << 0;
@@ -242,7 +243,7 @@ public final class ScanSummary {
 
 	/** 总览框的宽：按全部行算，滚动不改变它（右侧完整列表据此摆在紧邻的右边）。 */
 	public static int panelWidth() {
-		return MapPanel.size(lines())[0];
+		return MapPanel.width(lines());
 	}
 
 	/** 总览框的窗口尺寸（宽, 高）：高按自 {@code panelY} 起屏幕容得下的行数。 */

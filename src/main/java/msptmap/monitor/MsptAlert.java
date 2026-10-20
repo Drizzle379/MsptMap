@@ -22,7 +22,7 @@ import java.util.List;
  *
  * <p>区块行与扫描总览的卡顿区块行同构（同用 {@code msptmap.summary.line} 语言键）：二级条目的缩进与
  * 附注灰、{@code 耗时 @ 维度 x,z} 的排布，耗时按热力色的同一条斜坡着色，红点取单区块的默认红阈值。
- * 两处因此一眼可对照。
+ * 两处因此可直接对照。
  *
  * <p>文案一律 {@code translatableWithFallback}：接收范围设为「所有玩家」时，未装本模组的玩家没有
  * msptmap.* 的翻译，回退文案（英文）兜底，否则他们只会看到裸键名。行里嵌的维度名同理：装了的客户端
@@ -30,7 +30,7 @@ import java.util.List;
  * 文件无 {@code dimension.*} 键，仅用原版键会显示裸键名。
  *
  * <p>整行带 {@code runCommand} 点击事件与悬停提示（不加下划线：整行皆为可点区域，逐字下划线反而杂乱）：
- * 装了本模组的 OP 点了即由客户端打开世界地图并定位过去。
+ * 装了本模组的玩家点击后即由客户端打开世界地图并定位过去（受众可为非 OP）。
  */
 public final class MsptAlert {
 	/** 告警里列出的区块行数。 */
@@ -118,7 +118,7 @@ public final class MsptAlert {
 
 	/** 纳秒 → ms/tick，与 {@link Decimals#format3} 的字符串同口径。 */
 	private static float mspt(long nanos, int windowTicks) {
-		return (float) (nanos / 1_000_000.0 / Math.max(1, windowTicks));
+		return (float) Decimals.mspt(nanos, windowTicks);
 	}
 
 	/**

@@ -1,4 +1,5 @@
 plugins {
 	id "dev.kikugie.stonecutter"
 }
+// 升版本时须与 settings.gradle 的 vcsVersion 同步改
 stonecutter.active "26.2"

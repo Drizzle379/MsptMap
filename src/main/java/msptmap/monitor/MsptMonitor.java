@@ -2,13 +2,14 @@ package msptmap.monitor;
 
 import msptmap.ServerConfig;
 import msptmap.sampler.MsptSampler;
+import msptmap.util.Decimals;
 import net.minecraft.server.MinecraftServer;
 
 /**
  * 常态 MSPT 监控：每 tick 量一次服务端 tick 的实际执行耗时，平滑后持续超标即触发一次自动扫描。
  *
  * <p>与 {@link MsptSampler} 分开：那个只在扫描窗口内累计「区块归属」的耗时，窗口关着就什么都不测，
- * 拿不到整 tick 的耗时，无从判断服务器是否变卡。这里测的是 START/END 钩子之间的墙钟差，不含
+ * 无法取得整 tick 耗时，无从判断服务器是否变卡。这里测的是 START/END 钩子之间的墙钟差，不含
  * tick 之间的等待，即真正的 mspt。
  *
  * <p>决策为纯逻辑（{@link #observe} 只接收一个纳秒数与一个时刻），仅在触发时才访问服务端对象，
@@ -82,7 +83,7 @@ public final class MsptMonitor {
 	/**
 	 * 每个服务端 tick 结束时调用：量本 tick 耗时并做一次决策，该触发就发起自动扫描。
 	 *
-	 * <p>未启用时不作任何测量（关闭即零开销），并清空上次留下的窗口。
+	 * <p>未启用时不作任何测量（钩子仍各取一次时刻，但不算差值），并清空上次留下的窗口。
 	 */
 	public static void onTickEnd(MinecraftServer server) {
 		long now = System.nanoTime();
@@ -158,7 +159,7 @@ public final class MsptMonitor {
 
 	/** 已收样本的平均 mspt；还没有样本时为 0。 */
 	public static double meanMspt() {
-		return ringCount == 0 ? 0.0 : ringSum / 1_000_000.0 / ringCount;
+		return ringCount == 0 ? 0.0 : Decimals.mspt(ringSum, ringCount);
 	}
 
 	/** 当前状态。 */

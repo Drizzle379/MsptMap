@@ -69,7 +69,7 @@ Identifies the specific chunks responsible for server-side lag.
 Download the latest build from [Modrinth](https://modrinth.com/mod/msptmap) or the [releases page](https://github.com/Drizzle379/MsptMap/releases), then place the jar in the `mods/` directory.
 
 > [!IMPORTANT]
-> Sampling is performed on the **server**, so the mod is required on both sides;
+> Sampling is performed on the **server**, so the mod is required on both sides.
 
 
 ## 🎮 Usage
@@ -112,7 +112,7 @@ The load ticket identifies the ticket that keeps the chunk loaded; the `@x,z` su
 
 | Command | Side | Effect |
 | :--- | :--- | :--- |
-| `/msptmap scan [seconds]` | Server | Runs a scan and logs the result to the server console. Omit `seconds` to use the configured value; range 1 – 60. |
+| `/msptmap scan [seconds]` | Server | Runs a scan and logs the result to the server console. Omit `seconds` to use the default of 2 seconds; range 1 – 60. |
 | `/msptmap access <ops\|all>` | Both | Who may start a scan: operators only (default) or every player. |
 | `/msptmap monitor` | Both | Prints the monitoring state and its settings. |
 | `/msptmap monitor <on\|off>` | Both | Master switch for monitoring, off by default; turning it off also discards the current window and the cooldown. |
@@ -148,6 +148,9 @@ Open **Mod Menu → Settings**, or select the **settings** button on the map. Se
 | Hover details | **Load ticket** / **Compute ticket** | Appends the ticket source to the load-level / compute-level line. |
 | Hover details | **Show abbreviations** | Displays category names as two-letter codes: `RT ST BU EV BE EN SP`. |
 | Hover details | **Show mspt unit** | Appends `mspt` to each category line. The total line displays its unit unconditionally. |
+| Hover details | **Total** | Shows the total mspt line. |
+| Hover details | **Color summary values** | Colors the scan overview's values by the heat gradient. On by default. |
+| Hover details | **Category lines** | Seven checkboxes (random tick, scheduled tick, block update, block event, block entity, entity, mob spawning) control which category lines appear. |
 
 **Reset defaults** restores all of the above to their default values.
 </details>

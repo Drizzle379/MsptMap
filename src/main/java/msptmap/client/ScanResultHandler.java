@@ -24,7 +24,8 @@ public final class ScanResultHandler {
 	/** 收结果包：按状态更新进度圈、快照与聊天栏。 */
 	static void handle(ScanResultPayload payload) {
 		if (payload.protocol() == ScanResultPayload.MISMATCH) {
-			// 包体无法读取：对面格式与本端差异过大，本次作废
+			// 包体无法读取：对面格式与本端差异过大，本次作废。START 可能已到，圈需一并收掉
+			ScanProgress.stop();
 			MsptMapMod.LOGGER.warn("服务端 MsptMap 的结果包解析不了（本端 {}），已丢弃", MsptMapMod.PROTOCOL);
 			Chat.say(MISMATCH_KEY);
 			return;

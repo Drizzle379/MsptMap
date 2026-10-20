@@ -38,6 +38,7 @@
 	},
 	"suggests": {
 		"xaeroworldmap": "*",
+		"xaerominimap": "*",
 		"modmenu": "*"
 	}
 }

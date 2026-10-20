@@ -86,12 +86,12 @@ class TooltipConfigScreen extends ConfigScreenBase {
 		return new Column(checkboxWidth(widest), rows);
 	}
 
-	/** 勾选框整宽 = 盒子 + 4 + 文字；1.20.4 及以前没有公开的盒子尺寸接口，盒子 + 间距按 24 估计。 */
+	/** 勾选框整宽 = 盒子 + 4 + 文字；旧版盒子尺寸按 {@link #CHECKBOX_BOX_ESTIMATE} 估计。 */
 	private int checkboxWidth(int widest) {
 		//? if >=1.20.5 {
 		int width = Checkbox.getBoxSize(font) + 4 + widest;
 		//?} else {
-		/*int width = 24 + widest;
+		/*int width = CHECKBOX_BOX_ESTIMATE + widest;
 		*///?}
 		return width;
 	}

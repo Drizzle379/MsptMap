@@ -47,8 +47,7 @@ public abstract class ChunkMapTrackedEntityMixin {
 			return;
 		}
 		if (((EntityLevelAccessor) this.entity).msptmap$level() instanceof ServerLevel level) {
-			MsptSampler.end(TickCategory.ENTITY, level, ChunkKeys.pack(this.entity.chunkPosition()),
-					this.msptmapStart);
+			MsptSampler.end(TickCategory.ENTITY, level, ChunkKeys.pack(this.entity), this.msptmapStart);
 		}
 	}
 }

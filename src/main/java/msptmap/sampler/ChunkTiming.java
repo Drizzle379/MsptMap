@@ -5,7 +5,7 @@ package msptmap.sampler;
  *
  * <p>耗时以 long 存纳秒而非 double 存毫秒，使热路径只需加法与自增，单位换算留待窗口结束时统一进行。
  */
-public final class ChunkTiming {
+final class ChunkTiming {
 	private final long[] nanos = new long[TickCategory.COUNT];
 	private final int[] counts = new int[TickCategory.COUNT];
 

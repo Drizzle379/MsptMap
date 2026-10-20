@@ -19,7 +19,7 @@ public final class PropertiesFile {
 	private PropertiesFile() {
 	}
 
-	/** 读取配置文件；文件不存在或读取失败时返回 null（已记日志），调用方据此沿用默认值。 */
+	/** 读取配置文件；文件不存在时返回 null，读取失败记日志后返回 null，调用方据此沿用默认值。 */
 	public static Properties read(Path file, String description) {
 		if (!Files.exists(file)) {
 			return null;
@@ -27,7 +27,8 @@ public final class PropertiesFile {
 		Properties properties = new Properties();
 		try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
 			properties.load(reader);
-		} catch (IOException e) {
+		} catch (IOException | RuntimeException e) {
+			// Properties.load 对畸形的反斜杠-u 转义抛 IllegalArgumentException，同样视为坏文件
 			MsptMapMod.LOGGER.warn("{}读不出来，先用默认值：{}", description, file, e);
 			return null;
 		}
@@ -44,10 +45,14 @@ public final class PropertiesFile {
 		}
 	}
 
-	/** 读取布尔值：仅接受 true / false，其余文本（含空值）退回 fallback。 */
+	/** 读取布尔值：仅接受 true / false（忽略首尾空白），其余文本（含空值）退回 fallback。 */
 	public static boolean readBoolean(Properties properties, String key, boolean fallback) {
 		String value = properties.getProperty(key);
 		// Boolean.parseBoolean 将任意文本视为 false，会静默改写设置
+		if (value == null) {
+			return fallback;
+		}
+		value = value.trim();
 		if ("true".equalsIgnoreCase(value)) {
 			return true;
 		}

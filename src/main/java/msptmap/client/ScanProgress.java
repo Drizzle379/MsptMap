@@ -13,6 +13,8 @@ import msptmap.sampler.MsptSampler;
 public final class ScanProgress {
 	/** 本次是否已发起且仍在等待结果。 */
 	private static boolean active;
+	/** 请求已发出、尚未收到任何终态回应；用于点击去重，不参与绘制。 */
+	private static boolean requestPending;
 	/** 窗口总刻数（开始包中服务端夹取后的秒数 × 20）。 */
 	private static int totalTicks;
 	/** 服务端报的窗口已过刻数。 */
@@ -21,12 +23,23 @@ public final class ScanProgress {
 	private ScanProgress() {
 	}
 
+	/** 请求包已发出：在收到 START 或任一终态前，重复点击一律忽略。 */
+	public static void requestSent() {
+		requestPending = true;
+	}
+
+	/** 是否还有请求在等回应（含已发出但未收到 START 的窗口）。 */
+	public static boolean pending() {
+		return requestPending;
+	}
+
 	/**
 	 * 收到 START：窗口总刻数 = 服务端报的秒数 × 20。用服务端那份秒数（请求里的数可能被它夹取），
 	 * 否则圈的分母与真实窗口不符。
 	 */
 	public static void start(int seconds) {
 		active = true;
+		requestPending = false;
 		totalTicks = Math.max(1, seconds * MsptSampler.TICKS_PER_SECOND);
 		elapsedTicks = 0;
 	}
@@ -38,9 +51,10 @@ public final class ScanProgress {
 		}
 	}
 
-	/** 收到 DONE / DENIED / BUSY / COOLDOWN 或连接断开：本次等待结束，圈收掉。 */
+	/** 收到 DONE / DENIED / BUSY / COOLDOWN / MISMATCH 或连接断开：本次请求结束，圈收掉。 */
 	public static void stop() {
 		active = false;
+		requestPending = false;
 		totalTicks = 0;
 		elapsedTicks = 0;
 	}

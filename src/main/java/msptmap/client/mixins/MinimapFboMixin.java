@@ -1,5 +1,7 @@
 package msptmap.client.mixins;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import msptmap.client.ClientConfig;
 import msptmap.client.MinimapOverlay;
 import msptmap.util.Ids;
 import net.minecraft.resources.ResourceKey;
@@ -16,12 +18,13 @@ import xaero.common.minimap.render.MinimapFBORenderer;
 import xaero.common.misc.OptimizedMath;
 import xaero.hud.minimap.module.MinimapSession;
 //? if >=1.21.11 {
-import com.mojang.blaze3d.vertex.PoseStack;
 import xaero.lib.XaeroLib;
 import xaero.lib.client.graphics.XaeroBufferProvider;
 //?} else {
+/*import xaero.common.graphics.CustomVertexConsumers;
+*///?}
+//? if <1.21.8 {
 /*import net.minecraft.client.gui.GuiGraphics;
-import xaero.common.graphics.CustomVertexConsumers;
 *///?}
 
 /**
@@ -34,9 +37,14 @@ import xaero.common.graphics.CustomVertexConsumers;
 @Mixin(value = MinimapFBORenderer.class, remap = false)
 public abstract class MinimapFboMixin {
 	/**
-	 * 两代目标的第二参数与末尾 buffer 来源不同（1.21.11 起为 PoseStack / XaeroBufferProvider，此前为
-	 * GuiGraphics / CustomVertexConsumers），故注入方法各写一份。玩家坐标的取整与 Xaero 自身一致
-	 * （{@link OptimizedMath#myFloor}），保证与区块纹理对齐。
+	 * 目标方法签名按 Xaero 的三代分档：
+	 * <ul>
+	 *   <li>1.21.11 起：第二参数 {@code PoseStack}、buffer 为 {@code XaeroBufferProvider}；</li>
+	 *   <li>1.21.8–1.21.10：第二参数 {@code PoseStack}、buffer 为 {@code CustomVertexConsumers}；</li>
+	 *   <li>1.21.4 及以前：第二参数 {@code GuiGraphics}（其 {@code pose()} 是 PoseStack）、
+	 *       buffer 为 {@code CustomVertexConsumers}。</li>
+	 * </ul>
+	 * 玩家坐标的取整与 Xaero 自身一致（{@link OptimizedMath#myFloor}），保证与区块纹理对齐。
 	 */
 	//? if >=1.21.11 {
 	@Inject(method = "renderChunksToFBO",
@@ -48,11 +56,31 @@ public abstract class MinimapFboMixin {
 			Vec3 renderPos, ResourceKey<Level> dimension, double arg1, int arg2, float arg3, int arg4,
 			boolean arg5, boolean arg6, int arg7, double arg8, double arg9, boolean arg10,
 			XaeroBufferProvider consumers, CallbackInfo ci) {
+		if (!ClientConfig.minimapHeatmap) {
+			return;
+		}
 		MinimapOverlay.draw(poseStack.last().pose(),
 				XaeroLib.INSTANCE.getClient().getBufferProvider().getBuffer(CustomRenderTypes.MAP_CHUNK_OVERLAY),
 				OptimizedMath.myFloor(renderPos.x), OptimizedMath.myFloor(renderPos.z), Ids.id(dimension));
 	}
-	//?} else {
+	//?} else if >=1.21.8 {
+	/*@Inject(method = "renderChunksToFBO",
+			at = @At(value = "FIELD",
+					target = "Lxaero/hud/minimap/common/config/option/MinimapProfiledConfigOptions;CHUNK_GRID:Lxaero/lib/common/config/option/RangeConfigOption;",
+					opcode = Opcodes.GETSTATIC, shift = At.Shift.BEFORE),
+			remap = false)
+	private void msptmap$drawHeatmap(MinimapSession session, PoseStack poseStack, MinimapProcessor processor,
+			Vec3 renderPos, ResourceKey<Level> dimension, double arg1, int arg2, float arg3, int arg4,
+			boolean arg5, boolean arg6, int arg7, double arg8, double arg9, boolean arg10,
+			CustomVertexConsumers consumers, CallbackInfo ci) {
+		if (!ClientConfig.minimapHeatmap) {
+			return;
+		}
+		MinimapOverlay.draw(poseStack.last().pose(),
+				consumers.getBetterPVPRenderTypeBuffers().getBuffer(CustomRenderTypes.MAP_CHUNK_OVERLAY),
+				OptimizedMath.myFloor(renderPos.x), OptimizedMath.myFloor(renderPos.z), Ids.id(dimension));
+	}
+	*///?} else {
 	/*@Inject(method = "renderChunksToFBO",
 			at = @At(value = "FIELD",
 					target = "Lxaero/hud/minimap/common/config/option/MinimapProfiledConfigOptions;CHUNK_GRID:Lxaero/lib/common/config/option/RangeConfigOption;",
@@ -62,6 +90,9 @@ public abstract class MinimapFboMixin {
 			Vec3 renderPos, ResourceKey<Level> dimension, double arg1, int arg2, float arg3, int arg4,
 			boolean arg5, boolean arg6, int arg7, double arg8, double arg9, boolean arg10,
 			CustomVertexConsumers consumers, CallbackInfo ci) {
+		if (!ClientConfig.minimapHeatmap) {
+			return;
+		}
 		MinimapOverlay.draw(graphics.pose().last().pose(),
 				consumers.getBetterPVPRenderTypeBuffers().getBuffer(CustomRenderTypes.MAP_CHUNK_OVERLAY),
 				OptimizedMath.myFloor(renderPos.x), OptimizedMath.myFloor(renderPos.z), Ids.id(dimension));

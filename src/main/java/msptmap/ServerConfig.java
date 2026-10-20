@@ -60,7 +60,7 @@ public final class ServerConfig {
 	public static Audience audience;
 
 	static {
-		// 默认值仅在 resetToDefaults() 中定义：首次启动与恢复出厂共用同一份
+		// 默认值仅在 resetToDefaults() 中定义：首次启动与读盘复位共用同一份
 		resetToDefaults();
 	}
 
@@ -127,7 +127,7 @@ public final class ServerConfig {
 	}
 
 	private static Access readAccess(Properties properties, String key, Access fallback) {
-		String value = properties.getProperty(key);
+		String value = trimmed(properties, key);
 		if ("ops".equalsIgnoreCase(value)) {
 			return Access.OPS;
 		}
@@ -138,7 +138,7 @@ public final class ServerConfig {
 	}
 
 	private static Audience readAudience(Properties properties, String key, Audience fallback) {
-		String value = properties.getProperty(key);
+		String value = trimmed(properties, key);
 		if ("op".equalsIgnoreCase(value)) {
 			return Audience.OP;
 		}
@@ -146,5 +146,11 @@ public final class ServerConfig {
 			return Audience.ALL;
 		}
 		return fallback;
+	}
+
+	/** 取配置值并去掉首尾空白；缺失时返回 null。 */
+	private static String trimmed(Properties properties, String key) {
+		String value = properties.getProperty(key);
+		return value == null ? null : value.trim();
 	}
 }

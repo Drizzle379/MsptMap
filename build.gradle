@@ -102,7 +102,4 @@ tasks.withType(JavaCompile).configureEach {
 	it.options.release = project.java_release as Integer
 }
 
-java {
-	sourceCompatibility = JavaVersion.toVersion(project.java_release)
-	targetCompatibility = JavaVersion.toVersion(project.java_release)
-}
+// 字节码版本由上面的 options.release 决定，无需再设 sourceCompatibility/targetCompatibility

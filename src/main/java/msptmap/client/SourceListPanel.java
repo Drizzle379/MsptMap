@@ -31,9 +31,7 @@ public final class SourceListPanel {
 	static int[] size(int panelY) {
 		List<Component> rows = ScanSummary.sourceRows();
 		int shown = PanelScroll.shownRows(rows.size(), panelY, MAX_ROWS);
-		int[] full = MapPanel.size(rows);
-		int[] window = MapPanel.size(rows.subList(0, shown));
-		return new int[]{full[0], window[1]};
+		return new int[]{MapPanel.width(rows), MapPanel.height(shown)};
 	}
 
 	/**

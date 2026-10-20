@@ -23,8 +23,8 @@ import java.util.function.Consumer;
  * ②「先量后摆」的列布局——子类给出各列的宽度与行计划，本类求和、居中、逐行摆放；
  * ③通用构件（整行勾选框）。
  *
- * <p>绘制顺序：框架为 extractBackground → extractRenderState → 绘制控件，故文字在 super 之后画，
- * 会压在控件底层——标签只写在控件旁的空白处，不重叠。
+ * <p>绘制顺序：框架为 extractBackground → extractRenderState → 绘制控件，故文字在 super 之后提交，
+ * 会覆盖在控件上层——标签只写在控件旁的空白处，不重叠。
  */
 abstract class ConfigScreenBase extends Screen {
 	/** 滑块与按钮的标准高度。 */
@@ -41,6 +41,8 @@ abstract class ConfigScreenBase extends Screen {
 	protected static final int MARGIN = 20;
 	/** 底部按钮的标准宽度。 */
 	protected static final int BUTTON_WIDTH = 100;
+	/** 1.20.4 及以前没有公开的 Checkbox 盒子尺寸接口，宽度按「盒子 20 + 间距 4」估计。 */
+	protected static final int CHECKBOX_BOX_ESTIMATE = 24;
 	private static final int TEXT_COLOR = 0xFFFFFFFF;
 
 	/** 上一级界面；null = 无上一级，关闭后直接回游戏（仅主界面会出现）。 */
@@ -206,8 +208,7 @@ abstract class ConfigScreenBase extends Screen {
 				.build();
 		//?} else {
 		/*// 1.20.2 及以前没有 Builder：构造器直接收位置与宽度，值变化由 MsptCheckbox 上报。
-		// 宽度 = 盒子 20 + 间距 4 + 文字
-		Checkbox checkbox = new MsptCheckbox(x, y, font.width(label) + 24, label, selected, apply);
+		Checkbox checkbox = new MsptCheckbox(x, y, font.width(label) + CHECKBOX_BOX_ESTIMATE, label, selected, apply);
 		*///?}
 		// 提示需自行挂载：Builder 的 setTooltip 仅在标签长到要折三行以上时（overflowsRowLimit）
 		// 才生效，而这些标签都是一行，走 Builder 会被丢弃。

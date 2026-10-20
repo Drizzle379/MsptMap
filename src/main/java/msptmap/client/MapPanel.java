@@ -19,7 +19,7 @@ import java.util.List;
  */
 public final class MapPanel {
 	/** 面板四周的内边距。 */
-	private static final int PADDING = 3;
+	static final int PADDING = 3;
 	/** 深色半透明底：地图颜色杂乱，需垫底方能看清文字。 */
 	private static final int BACKGROUND = 0xC0000000;
 	/** 可点击行悬停时的行底：在深底上叠加一层淡白，提示可点击。 */
@@ -29,18 +29,33 @@ public final class MapPanel {
 	private MapPanel() {
 	}
 
+	/** 行距：字形高度 + 1 px 间隔。 */
+	static int lineHeight() {
+		return Minecraft.getInstance().font.lineHeight + 1;
+	}
+
+	/** 面板宽度：最长行 + 两侧内边距。 */
+	static int width(List<Component> lines) {
+		Font font = Minecraft.getInstance().font;
+		int textWidth = 0;
+		for (Component line : lines) {
+			textWidth = Math.max(textWidth, font.width(line));
+		}
+		return textWidth + PADDING * 2;
+	}
+
+	/** 面板高度：行数 × 行距 + 上下内边距。 */
+	static int height(int rows) {
+		return rows * lineHeight() + PADDING * 2;
+	}
+
 	/**
 	 * 面板尺寸 {@code {宽, 高}}：宽 = 最长行 + 两侧内边距，高 = 行数 × 行距 + 上下内边距。
 	 *
 	 * <p>单独拆出：调用方先算位置再绘制，两处都要尺寸。
 	 */
 	public static int[] size(List<Component> lines) {
-		Font font = Minecraft.getInstance().font;
-		int textWidth = 0;
-		for (Component line : lines) {
-			textWidth = Math.max(textWidth, font.width(line));
-		}
-		return new int[]{textWidth + PADDING * 2, lines.size() * (font.lineHeight + 1) + PADDING * 2};
+		return new int[]{width(lines), height(lines.size())};
 	}
 
 	/**
@@ -48,7 +63,7 @@ public final class MapPanel {
 	 * 第 {@code row} 行文字落在同一水平线（见 {@link ScanSummary#foldRowTop}）。
 	 */
 	public static int rowTop(int y, int row) {
-		return y + row * (Minecraft.getInstance().font.lineHeight + 1);
+		return y + row * lineHeight();
 	}
 
 	/**
@@ -56,7 +71,7 @@ public final class MapPanel {
 	 * y + PADDING 起、每行 lineHeight 高。
 	 */
 	public static int rowAt(int mouseX, int mouseY, int x, int y, int[] size) {
-		int lineHeight = Minecraft.getInstance().font.lineHeight + 1;
+		int lineHeight = lineHeight();
 		if (mouseX < x || mouseX >= x + size[0] || mouseY < y + PADDING || mouseY >= y + size[1] - PADDING) {
 			return -1;
 		}
@@ -82,7 +97,7 @@ public final class MapPanel {
 	*///?}
 		graphics.fill(x, y, x + size[0], y + size[1], BACKGROUND);
 		Font font = Minecraft.getInstance().font;
-		int lineHeight = font.lineHeight + 1;
+		int lineHeight = lineHeight();
 		// 行的样式（颜色、斜体等）已内嵌在组件里，此处不再区分
 		for (int i = 0; i < lines.size(); i++) {
 			int lineY = y + PADDING + i * lineHeight;

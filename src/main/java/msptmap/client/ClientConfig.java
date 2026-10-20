@@ -9,7 +9,6 @@ import net.fabricmc.loader.api.FabricLoader;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.BooleanSupplier;
@@ -37,6 +36,7 @@ public final class ClientConfig {
 	public static final double MIN_RED_AT = 0.05;
 	public static final double MAX_RED_AT = 5.0;
 	public static final double MIN_FILL_ALPHA = 0.05;
+	public static final double MAX_FILL_ALPHA = 1.0;
 
 	/** 文件名。-client 后缀用于与服务端那份区分。 */
 	private static final String FILE_NAME = "msptmap-client.properties";
@@ -100,46 +100,46 @@ public final class ClientConfig {
 	/** 各类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
 	public static final boolean[] tooltipCategories = new boolean[TickCategory.COUNT];
 
-	static {
-		// 默认值只在 resetToDefaults() 中写一次：首次启动与「恢复默认」共用同一份
-		resetToDefaults();
-	}
-
 	private ClientConfig() {
 	}
 
 	/**
-	 * 全部配置项。读盘、写盘与夹取都遍历这一份清单，加一项只改 {@link #options()}。
+	 * 全部配置项。读盘、写盘、夹取与恢复默认都遍历这一份清单，加一项只改 {@link #options()}。
 	 *
 	 * <p>lambda 只捕获字段引用、不读值，故静态初始化的先后无碍。
 	 */
 	static final List<Option> OPTIONS = options();
 
-	/** 配置项清单：键名与配置文件里的一一对应，顺序即写盘顺序。 */
+	static {
+		// 默认值由各项描述符携带：首次启动与「恢复默认」共用同一份
+		resetToDefaults();
+	}
+
+	/** 配置项清单：键名、默认值、区间与配置文件里的一一对应，顺序即写盘顺序。 */
 	private static List<Option> options() {
 		List<Option> options = new ArrayList<>();
-		options.add(new IntValue("scan.seconds", MIN_SECONDS, MAX_SECONDS,
+		options.add(new IntValue("scan.seconds", 2, MIN_SECONDS, MAX_SECONDS,
 				() -> scanSeconds, value -> scanSeconds = value));
-		options.add(new DecimalValue("color.redAt", MIN_RED_AT, MAX_RED_AT,
+		options.add(new DecimalValue("color.redAt", HeatColors.DEFAULT_RED_POINT, MIN_RED_AT, MAX_RED_AT,
 				() -> redAt, value -> redAt = value));
-		options.add(new Flag("color.relative", () -> relativeColor, value -> relativeColor = value));
-		options.add(new DecimalValue("color.fillAlpha", MIN_FILL_ALPHA, 1.0,
+		options.add(new Flag("color.relative", false, () -> relativeColor, value -> relativeColor = value));
+		options.add(new DecimalValue("color.fillAlpha", 0.35, MIN_FILL_ALPHA, MAX_FILL_ALPHA,
 				() -> fillAlpha, value -> fillAlpha = value));
-		options.add(new Flag("minimap.enabled", () -> minimapHeatmap, value -> minimapHeatmap = value));
-		options.add(new Flag("color.showWeakGray", () -> showWeakGray, value -> showWeakGray = value));
-		options.add(new Flag("color.weakTimedColor", () -> weakTimedColor, value -> weakTimedColor = value));
-		options.add(new Flag("summary.expanded", () -> summaryExpanded, value -> summaryExpanded = value));
-		options.add(new Flag("summary.colored", () -> summaryColored, value -> summaryColored = value));
-		options.add(new Flag("tooltip.coords", () -> tooltipCoords, value -> tooltipCoords = value));
-		options.add(new Flag("tooltip.levels", () -> tooltipLevels, value -> tooltipLevels = value));
-		options.add(new Flag("tooltip.total", () -> tooltipTotal, value -> tooltipTotal = value));
-		options.add(new Flag("tooltip.entities", () -> tooltipEntities, value -> tooltipEntities = value));
-		options.add(new Flag("tooltip.ticketLoad", () -> tooltipTicketLoad, value -> tooltipTicketLoad = value));
-		options.add(new Flag("tooltip.ticketSim", () -> tooltipTicketSim, value -> tooltipTicketSim = value));
-		options.add(new Flag("tooltip.abbreviate", () -> tooltipAbbreviate, value -> tooltipAbbreviate = value));
-		options.add(new Flag("tooltip.unit", () -> tooltipMsptUnit, value -> tooltipMsptUnit = value));
+		options.add(new Flag("minimap.enabled", false, () -> minimapHeatmap, value -> minimapHeatmap = value));
+		options.add(new Flag("color.showWeakGray", true, () -> showWeakGray, value -> showWeakGray = value));
+		options.add(new Flag("color.weakTimedColor", false, () -> weakTimedColor, value -> weakTimedColor = value));
+		options.add(new Flag("summary.expanded", true, () -> summaryExpanded, value -> summaryExpanded = value));
+		options.add(new Flag("summary.colored", true, () -> summaryColored, value -> summaryColored = value));
+		options.add(new Flag("tooltip.coords", true, () -> tooltipCoords, value -> tooltipCoords = value));
+		options.add(new Flag("tooltip.levels", true, () -> tooltipLevels, value -> tooltipLevels = value));
+		options.add(new Flag("tooltip.total", true, () -> tooltipTotal, value -> tooltipTotal = value));
+		options.add(new Flag("tooltip.entities", true, () -> tooltipEntities, value -> tooltipEntities = value));
+		options.add(new Flag("tooltip.ticketLoad", true, () -> tooltipTicketLoad, value -> tooltipTicketLoad = value));
+		options.add(new Flag("tooltip.ticketSim", true, () -> tooltipTicketSim, value -> tooltipTicketSim = value));
+		options.add(new Flag("tooltip.abbreviate", false, () -> tooltipAbbreviate, value -> tooltipAbbreviate = value));
+		options.add(new Flag("tooltip.unit", false, () -> tooltipMsptUnit, value -> tooltipMsptUnit = value));
 		for (TickCategory category : TickCategory.values()) {
-			options.add(new Flag("tooltip.category." + category.name(),
+			options.add(new Flag("tooltip.category." + category.name(), true,
 					() -> tooltipCategories[category.ordinal()],
 					value -> tooltipCategories[category.ordinal()] = value));
 		}
@@ -148,24 +148,9 @@ public final class ClientConfig {
 
 	/** 恢复全部出厂默认（设置界面的「恢复默认」按钮同样走这里）。 */
 	public static void resetToDefaults() {
-		scanSeconds = 2;
-		redAt = HeatColors.DEFAULT_RED_POINT;
-		relativeColor = false;
-		fillAlpha = 0.35;
-		minimapHeatmap = false;
-		showWeakGray = true;
-		weakTimedColor = false;
-		summaryExpanded = true;
-		summaryColored = true;
-		tooltipCoords = true;
-		tooltipLevels = true;
-		tooltipTotal = true;
-		tooltipEntities = true;
-		tooltipTicketLoad = true;
-		tooltipTicketSim = true;
-		tooltipAbbreviate = false;
-		tooltipMsptUnit = false;
-		Arrays.fill(tooltipCategories, true);
+		for (Option option : OPTIONS) {
+			option.reset();
+		}
 	}
 
 	/** 从 config/msptmap-client.properties 读取；文件缺失或损坏则用默认值，绝不因设置崩游戏。 */
@@ -288,15 +273,20 @@ public final class ClientConfig {
 
 		/** 夹回合法区间。 */
 		abstract void clamp();
+
+		/** 写回出厂默认值。 */
+		abstract void reset();
 	}
 
 	/** 布尔项：只认 true / false 两个词。 */
 	static final class Flag extends Option {
+		final boolean defaultValue;
 		final BooleanSupplier reader;
 		final Consumer<Boolean> writer;
 
-		Flag(String key, BooleanSupplier reader, Consumer<Boolean> writer) {
+		Flag(String key, boolean defaultValue, BooleanSupplier reader, Consumer<Boolean> writer) {
 			super(key);
+			this.defaultValue = defaultValue;
 			this.reader = reader;
 			this.writer = writer;
 		}
@@ -315,17 +305,24 @@ public final class ClientConfig {
 		void clamp() {
 			// 布尔值不存在越界
 		}
+
+		@Override
+		void reset() {
+			writer.accept(defaultValue);
+		}
 	}
 
 	/** 整数项：区间供 {@link Clamp} 夹取读盘值。 */
 	static final class IntValue extends Option {
+		final int defaultValue;
 		final int min;
 		final int max;
 		final IntSupplier reader;
 		final IntConsumer writer;
 
-		IntValue(String key, int min, int max, IntSupplier reader, IntConsumer writer) {
+		IntValue(String key, int defaultValue, int min, int max, IntSupplier reader, IntConsumer writer) {
 			super(key);
+			this.defaultValue = defaultValue;
 			this.min = min;
 			this.max = max;
 			this.reader = reader;
@@ -346,17 +343,25 @@ public final class ClientConfig {
 		void clamp() {
 			writer.accept(Clamp.of(reader.getAsInt(), min, max));
 		}
+
+		@Override
+		void reset() {
+			writer.accept(defaultValue);
+		}
 	}
 
 	/** 小数项：区间供 {@link Clamp} 夹取读盘值，值一律两位小数。 */
 	static final class DecimalValue extends Option {
+		final double defaultValue;
 		final double min;
 		final double max;
 		final DoubleSupplier reader;
 		final DoubleConsumer writer;
 
-		DecimalValue(String key, double min, double max, DoubleSupplier reader, DoubleConsumer writer) {
+		DecimalValue(String key, double defaultValue, double min, double max,
+				DoubleSupplier reader, DoubleConsumer writer) {
 			super(key);
+			this.defaultValue = defaultValue;
 			this.min = min;
 			this.max = max;
 			this.reader = reader;
@@ -376,6 +381,11 @@ public final class ClientConfig {
 		@Override
 		void clamp() {
 			writer.accept(PropertiesFile.clamp(reader.getAsDouble(), min, max, 2));
+		}
+
+		@Override
+		void reset() {
+			writer.accept(defaultValue);
 		}
 	}
 }

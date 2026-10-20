@@ -40,7 +40,7 @@ public abstract class BoundTickingBlockEntityMixin {
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void msptmapStartTick(CallbackInfo ci) {
 		// 只认服务端：客户端也有同一套 ticker（ClientLevel），若走到 begin() 即为渲染线程读取服务端
-		// 主线程写入的采样状态，这是唯一的跨线程读点，客户端一律记 0
+		// 主线程写入的采样状态；两个入口（本类与 LevelMixin）都只在服务端取时间，客户端一律记 0
 		msptmapStart = blockEntity.getLevel() instanceof ServerLevel ? MsptSampler.begin() : 0L;
 	}
 

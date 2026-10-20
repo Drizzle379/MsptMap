@@ -25,7 +25,7 @@ public final class SnapshotCodec {
 	 * 采样器实例，不复制。
 	 *
 	 * <p>{@code entities} 为生成快照时该区块的实体数，与窗口内是否计时无关。耗时与次数全为 0
-	 * 表示该区块仅被加载（见 MsptSampler.addLoadedChunks），客户端据此绘制淡灰色。
+	 * 表示该区块仅被加载（见 SnapshotBuilder.addLoadedChunks），客户端据此绘制淡灰色。
 	 *
 	 * <p>{@code loadTicket}/{@code simTicket} 是两条链各自的加载来源，由
 	 * {@link msptmap.sampler.TicketSources} 编码（类型序号 + 距离 + 存疑位）；两条链独立，源头可能不同。
@@ -41,14 +41,6 @@ public final class SnapshotCodec {
 	/** 一个维度的一批区块。维度用全名字符串（如 {@code minecraft:overworld}）标识，与资源位置的更名无关。 */
 	public record DimensionData(String dimension, List<ChunkData> chunks) {
 	}
-
-	/**
-	 * 「仅加载」区块共用的全零数组：仅在此处持有，以只读方式交给 ChunkData。单次扫描中这类区块
-	 * 可达数万个，逐个分配两个数组并无必要。
-	 */
-	public static final long[] ZERO_NANOS = new long[TickCategory.COUNT];
-
-	public static final int[] ZERO_COUNTS = new int[TickCategory.COUNT];
 
 	/** 单个区块编码后的最小字节数：坐标为小 varint、七组计数全为 0 时约 21 字节，取 20 作为保守下限。 */
 	private static final int MIN_CHUNK_BYTES = 20;

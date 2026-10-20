@@ -58,6 +58,7 @@ public class MsptMapClient implements ClientModInitializer {
 			ClientSnapshot.clear();
 			ScanProgress.stop();
 			MapFocus.clear();
+			Screens.clearPending();
 		});
 
 		// 命令里排队的切屏（见 Screens.showLater）在此消费：命令跑完那一刻屏幕还没稳定
@@ -90,9 +91,9 @@ public class MsptMapClient implements ClientModInitializer {
 
 	/** 地图上扫描按钮的入口。包发不出去（服务端未装本模组）时在聊天栏说明原因。 */
 	public static void onButtonPress() {
-		if (ScanProgress.active()) {
-			// 上一次还没出结果：再发包只会被服务端回「被其他玩家占用」，而占用者其实是自己；
-			// 圈还在转，玩家看得见状态，这里静默忽略即可
+		if (ScanProgress.active() || ScanProgress.pending()) {
+			// 上一次请求尚未出结果（含已发出、START 未到的窗口）：再发包只会被服务端回
+			// 「被其他玩家占用」，而占用者其实是自己；圈已出现或请求在途，静默忽略即可
 			MsptMapMod.LOGGER.info("上一次分析还没结束，本次点击忽略");
 			return;
 		}
@@ -101,7 +102,9 @@ public class MsptMapClient implements ClientModInitializer {
 			Chat.say(NO_MOD_KEY);
 			return;
 		}
-		// 包已发出，先说「分析中…」；服务端是否答应（拒绝 / 被占用）随后另说
+		// 包已发出，先占住请求槽：START 到达前重复点击不再发包
+		ScanProgress.requestSent();
+		// 先说「分析中…」；服务端是否答应（拒绝 / 被占用）随后另说
 		Chat.say(STARTING_KEY);
 		if (worldPausesWithMapOpen()) {
 			// 请求已发出，但世界正处于暂停（见 worldPausesWithMapOpen）：玩家观感是「点了没反应」，
@@ -142,7 +145,10 @@ public class MsptMapClient implements ClientModInitializer {
 	 * 地图上立即可见，聊天栏不必再说；按了没反应（本来就是空的）也能在日志里查到。
 	 */
 	public static void onClearPress() {
-		MsptMapMod.LOGGER.info("清屏：丢掉 {} 个维度的热力图", ClientSnapshot.clear());
+		int dropped = ClientSnapshot.clear();
+		// 连同面板状态一并复位：清屏后重新扫描不应沿用旧的滚动位置与展开态
+		ScanSummary.resetSourcesPanel();
+		MsptMapMod.LOGGER.info("清屏：丢掉 {} 个维度的热力图", dropped);
 	}
 
 	/**

@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 /**
  * 读取该维度当前加载的区块、各自的等级，以及加载票表。
  *
- * <p>开放访问器是因为这两张表在 ChunkMap 中均为 private，而公开的两条遍历
+ * <p>开放访问器是因为这些表在 ChunkMap 中均为 private，而公开的两条遍历
  * （{@code forEachReadyToSendChunk} / {@code forEachBlockTickingChunk}）分别要求「已就绪待发送」
  * 与「31 级以内」，均会漏掉远离玩家的加载点（珍珠加载器即此类）。等级写在
  * {@link ChunkHolder#getTicketLevel()} 上，与 {@code getChunkLevel(key, false)} 读到的是同一个值。

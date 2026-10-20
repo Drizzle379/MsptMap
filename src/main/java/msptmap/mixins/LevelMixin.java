@@ -39,7 +39,8 @@ public abstract class LevelMixin implements NeighborTiming {
 	@Override
 	public void msptmapUpdateBegin() {
 		if (this.msptmapUpdateNestingCount == 0) {
-			this.msptmapUpdateStartNanos = MsptSampler.begin();
+			// 客户端也走本入口：只在服务端读取采样状态，避免渲染线程读服务端主线程的字段
+			this.msptmapUpdateStartNanos = (Object) this instanceof ServerLevel ? MsptSampler.begin() : 0L;
 		}
 		this.msptmapUpdateNestingCount++;
 	}

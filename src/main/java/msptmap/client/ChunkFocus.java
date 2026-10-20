@@ -118,6 +118,7 @@ public final class ChunkFocus {
 		}
 		host.setCameraDestination(pendingFocus);
 		pendingFocus = null;
+		pendingDimension = null;
 	}
 
 	/** 从地图已加载的维度里按 ID 找目标；没有则 null。按 ID 字符串反查，避开各版本构造维度键的差异。 */

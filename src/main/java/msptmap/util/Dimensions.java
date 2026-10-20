@@ -41,7 +41,17 @@ public final class Dimensions {
 	 * 原版语言键 {@code dimension.<命名空间>.<路径>}（点号形式，同 {@code Util.makeDescriptionId}）：
 	 * 任何客户端均可渲染。
 	 */
-	public static String vanillaKey(String dimensionId) {
+	private static String vanillaKey(String dimensionId) {
 		return "dimension." + dimensionId.replace(':', '.');
+	}
+
+	/** 维度排序档次：主世界 / 下界 / 末地 0..2，其余 3（与来源列表的显示顺序一致）。 */
+	public static int rank(String dimensionId) {
+		return switch (dimensionId) {
+			case "minecraft:overworld" -> 0;
+			case "minecraft:the_nether" -> 1;
+			case "minecraft:the_end" -> 2;
+			default -> 3;
+		};
 	}
 }
