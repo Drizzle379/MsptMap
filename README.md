@@ -1,3 +1,5 @@
+> 插件版处于测试阶段，欢迎前来测试：[MsptMap-Plugin v1.0.1-alpha](https://github.com/Drizzle379/MsptMap-Plugin/releases/tag/v1.0.1-alpha)
+
 <div align="center">
 
 <img src="src/main/resources/assets/msptmap/icon.png" alt="MsptMap" width="128">
