@@ -233,6 +233,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 		scannedAt = scanned;
 		selected = null;
+		pendingScroll = null;
 		showHint();
 		reloadRows();
 		resetList();
