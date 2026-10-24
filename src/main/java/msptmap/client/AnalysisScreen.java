@@ -371,6 +371,17 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		showDetail(row);
 	}
 
+	/** 双击行：关闭本界面并在世界地图上定位该区块（未装世界地图时只提示）。 */
+	private void locate(Row row) {
+		if (!MsptMapClient.canLocate()) {
+			Chat.say(MsptMapClient.NO_XAERO_KEY);
+			return;
+		}
+		// 先回到 parent：parent 本身就是地图时，openIfClosed 才不会另开一份
+		onClose();
+		MsptMapClient.locate(row.dimension(), row.x(), row.z());
+	}
+
 	private void showHint() {
 		detail.clearChildren();
 		detail.child(UIComponents.label(Component.translatable("msptmap.analysis.detail.hint"))
@@ -621,11 +632,14 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 		@Override
 		public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
-			if (click.button() == 0) {
-				select(this.row);
-				return true;
+			if (click.button() != 0) {
+				return false;
 			}
-			return false;
+			select(this.row);
+			if (doubled) {
+				locate(this.row);
+			}
+			return true;
 		}
 	}
 

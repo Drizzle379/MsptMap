@@ -183,14 +183,24 @@ public class MsptMapClient implements ClientModInitializer {
 	 * <p>参数由聊天告警的行拼出（维度 ID 为字符串参数，故命令里带引号）；客户端本地执行，不发往服务端。
 	 */
 	private static int locate(FabricClientCommandSource source, String dimension, int chunkX, int chunkZ) {
-		if (!FabricLoader.getInstance().isModLoaded("xaeroworldmap")) {
+		if (!canLocate()) {
 			// 未装世界地图：没有可定位的画布。引用的类在此守卫之后才加载
 			source.sendError(Component.translatable(NO_XAERO_KEY));
 			return 0;
 		}
+		locate(dimension, chunkX, chunkZ);
+		return 1;
+	}
+
+	/** 是否装了 Xaero 世界地图；未装时 {@link #locate(String, int, int)} 引用的类不可加载。 */
+	public static boolean canLocate() {
+		return FabricLoader.getInstance().isModLoaded("xaeroworldmap");
+	}
+
+	/** 从界面定位：记下目标并确保地图已打开，随后由地图的帧循环完成定位（见 {@link MapFocus}）。 */
+	public static void locate(String dimension, int chunkX, int chunkZ) {
 		MapFocus.request(dimension, chunkX, chunkZ);
 		XaeroMapOpen.openIfClosed();
-		return 1;
 	}
 
 	/**
