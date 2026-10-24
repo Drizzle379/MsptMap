@@ -33,7 +33,7 @@ public final class ClientSnapshot {
 	 * {@link msptmap.sampler.TicketCode}），供悬停详情写出「 · 玩家加载中心」一类的后缀。
 	 */
 	public record Chunk(int x1, int z1, int x2, int z2, float mspt, int loadLevel, int computeLevel, int entities,
-		int loadTicket, int simTicket, boolean timed, long[] nanos) {
+		int loadTicket, int simTicket, boolean timed, long[] nanos, int[] counts) {
 	}
 
 	/** 最重榜的容量（「卡顿区块 TOP5」的 5）。 */
@@ -88,6 +88,9 @@ public final class ClientSnapshot {
 	/** 总览的合计（三个维度一并累加）；未扫描、已清屏时为 null。 */
 	private static Totals totals;
 
+	/** 收到这份结果的现实时间（客户端时钟）；未扫描、已清屏时为 0。 */
+	private static long scannedAtMillis;
+
 	private ClientSnapshot() {
 	}
 
@@ -135,7 +138,8 @@ public final class ClientSnapshot {
 						chunk.loadTicket(),
 						chunk.simTicket(),
 						timedHere,
-						chunk.nanos());
+						chunk.nanos(),
+						chunk.counts());
 				chunkCount++;
 				if (timedHere) {
 					timedCount++;
@@ -161,6 +165,7 @@ public final class ClientSnapshot {
 		sourceList.sort(SOURCE_ORDER);
 		totals = new Totals(chunkCount, timedCount, entityCount, sourceList, heaviest,
 				totalNanos, categoryNanos, window, tickNanos);
+		scannedAtMillis = System.currentTimeMillis();
 	}
 
 	/**
@@ -176,6 +181,7 @@ public final class ClientSnapshot {
 		byDimension.clear();
 		heaviestByDimension.clear();
 		totals = null;
+		scannedAtMillis = 0L;
 		return dropped;
 	}
 
@@ -187,6 +193,11 @@ public final class ClientSnapshot {
 	/** 总览的合计；未扫描、已清屏时为 null。 */
 	public static Totals totals() {
 		return totals;
+	}
+
+	/** 收到这份结果的现实时间（毫秒时间戳）；未扫描、已清屏时为 0。 */
+	public static long scannedAtMillis() {
+		return scannedAtMillis;
 	}
 
 	/**

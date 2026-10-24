@@ -1,0 +1,75 @@
+package msptmap.vendor.owo.mixin.ui;
+
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
+import msptmap.vendor.owo.ui.base.BaseOwoContainerScreen;
+import msptmap.vendor.owo.util.pond.OwoSlotExtension;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.Slot;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+@Mixin(AbstractContainerScreen.class)
+public abstract class AbstractContainerScreenMixin extends Screen {
+
+    @Unique
+    private static boolean inOwoScreen = false;
+
+    protected AbstractContainerScreenMixin(Component title) {
+        super(title);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    @Inject(method = "extractRenderState", at = @At("HEAD"))
+    private void captureOwoState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
+        inOwoScreen = (Object) this instanceof BaseOwoContainerScreen<?, ?>;
+    }
+
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    private void resetOwoState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        inOwoScreen = false;
+    }
+
+    @Inject(method = "extractSlot", at = @At("HEAD"))
+    private void injectSlotScissors(GuiGraphicsExtractor context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        if (!inOwoScreen) return;
+
+        var scissorArea = ((OwoSlotExtension) slot).owo$getScissorArea();
+        if (scissorArea == null) return;
+
+        context.scissorStack.push(scissorArea);
+    }
+
+    @Inject(method = "extractSlot", at = @At("RETURN"))
+    private void clearSlotScissors(GuiGraphicsExtractor context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        if (!inOwoScreen) return;
+
+        var scissorArea = ((OwoSlotExtension) slot).owo$getScissorArea();
+        if (scissorArea == null) return;
+
+        context.scissorStack.pop();
+    }
+
+    @ModifyExpressionValue(method = "mouseClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDII)Z"))
+    private boolean doNoThrow(boolean original, @Local(name = "slot") Slot slot) {
+        return (((Object) this instanceof BaseOwoContainerScreen<?, ?>) && slot != null) ? false : original;
+    }
+
+    @Inject(method = "keyPressed", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;checkHotbarKeyPressed(Lnet/minecraft/client/input/KeyEvent;)Z"), cancellable = true)
+    private void closeIt(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
+        if (!((Object) this instanceof BaseOwoContainerScreen<?, ?>)) return;
+
+        if (input.isEscape() && this.shouldCloseOnEsc()) {
+            this.onClose();
+            cir.setReturnValue(true);
+        }
+    }
+}

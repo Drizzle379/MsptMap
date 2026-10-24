@@ -19,6 +19,8 @@ repositories {
 	}
 	// Mod Menu（编译时需要，运行时不打包：装了才有「模组菜单 → 设置」入口）
 	maven { url = 'https://maven.terraformersmc.com/releases/' }
+	// owo 内置 UI 的序列化依赖 endec（只随 26.2 的包打进去）
+	maven { url = 'https://maven.wispforest.io/releases/' }
 }
 
 dependencies {
@@ -56,6 +58,17 @@ dependencies {
 	// ① @Local 属 MixinExtras 功能，版本须与编译所用的那一版一致；
 	// ② Mixin 0.17.4 写出的注解形式，Fabric Loader 里带的 0.5.4 认不了。
 	include(implementation("io.github.llamalad7:mixinextras-fabric:0.5.5"))
+
+	// 内置 owo-ui 的序列化依赖；只进 26.2 的包（源码在 src/owo262，其他版本不编译）。
+	// Maven 上的 endec 主 jar 不含 format/gson、format/bytebuf 两个模块，故连同 owo 自带的
+	// 三个嵌套 jar 一起放入 libs/owo。
+	if (project.minecraft_version == '26.2') {
+		def owoLibs = files("$rootDir/libs/owo/endec-0.1.12.jar",
+				"$rootDir/libs/owo/gson-0.1.7.jar", "$rootDir/libs/owo/netty-0.1.6.jar")
+		implementation owoLibs
+		// UIModelLoader 解析 JSON5；运行期由 Fabric Loader 提供
+		compileOnly "blue.endless:jankson:1.2.2"
+	}
 }
 
 group = project.maven_group
@@ -78,22 +91,49 @@ processResources {
 	def mixinCompatLevel = "JAVA_" + javaRelease
 	def fabricApiVersion = project.fabric_api_version
 	def minecraftRange = project.minecraft_range
+	// 26.2 的内置 owo 需要放宽 GUI 访问级别；其他版本用一个空 AW 保持元数据自洽
+	def accessWidener = project.minecraft_version == '26.2'
+			? 'msptmap_owo.accesswidener' : 'msptmap.accesswidener'
+	// owo 的 mixin 配置只在 26.2 打包：其他版本不能引用不存在的配置，
+	// 26.2 直接写成必需的字符串条目（旧 Loader 不认识 {config, required} 对象）
+	def owoMixinEntry = project.minecraft_version == '26.2'
+			? ",\n\t\t\"msptmap.owo.mixins.json\"" : ''
 	inputs.property "version", modVersion
 	inputs.property "loader_version", loaderVersion
 	inputs.property "java_release", javaRelease
 	inputs.property "mixin_compat_level", mixinCompatLevel
 	inputs.property "fabric_api_version", fabricApiVersion
 	inputs.property "minecraft_range", minecraftRange
+	inputs.property "access_widener", accessWidener
+	inputs.property "owo_mixin_entry", owoMixinEntry
 	filesMatching("fabric.mod.json") {
 		expand "version": modVersion,
 				"loader_version": loaderVersion,
 				"java_release": javaRelease,
 				"fabric_api_version": fabricApiVersion,
-				"minecraft_range": minecraftRange
+				"minecraft_range": minecraftRange,
+				"access_widener": accessWidener,
+				"owo_mixin_entry": owoMixinEntry
 	}
-	// 两个 mixins.json 的 ${mixin_compat_level} 占位符（分开填，语义与 fabric.mod.json 的元数据不同）
-	filesMatching(["msptmap.mixins.json", "msptmap.client.mixins.json"]) {
+	// 三个 mixins.json 的 ${mixin_compat_level} 占位符（分开填，语义与 fabric.mod.json 的元数据不同）
+	filesMatching(["msptmap.mixins.json", "msptmap.client.mixins.json", "msptmap.owo.mixins.json"]) {
 		expand "mixin_compat_level": mixinCompatLevel
+	}
+	// 内置 owo 的 mixin 类只在 26.2 编译；其他版本的 jar 不携带这份配置
+	if (project.minecraft_version != '26.2') {
+		exclude 'msptmap.owo.mixins.json'
+	}
+}
+
+// 内置 owo-ui 的源码与资源只参与 26.2 的构建；其他版本不包含这些目录。
+if (project.minecraft_version == '26.2') {
+	sourceSets.main.java.srcDir(rootProject.file('src/owo262/java'))
+	sourceSets.main.resources.srcDir(rootProject.file('src/owo262/resources'))
+	// owo 依赖 access widener 放宽原版 GUI 的访问级别（工具提示、控件尺寸等），
+	// 并通过 mixin 把 UIComponent 接口注入原版控件（Button/Checkbox 等直接充当组件）
+	loom {
+		accessWidenerPath = rootProject.file('src/owo262/resources/msptmap_owo.accesswidener')
+		interfaceInjection.enableDependencyInterfaceInjection = true
 	}
 }
 

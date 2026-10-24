@@ -9,6 +9,7 @@
 	],
 	"license": "MIT",
 	"icon": "assets/msptmap/icon.png",
+	"accessWidener": "${access_widener}",
 	"contact": {
 		"homepage": "https://github.com/Drizzle379/MsptMap",
 		"sources": "https://github.com/Drizzle379/MsptMap",
@@ -28,7 +29,18 @@
 	},
 	"mixins": [
 		"msptmap.mixins.json",
-		"msptmap.client.mixins.json"
+		"msptmap.client.mixins.json"${owo_mixin_entry}
+	],
+	"jars": [
+		{
+			"file": "META-INF/jars/endec-0.1.12.jar"
+		},
+		{
+			"file": "META-INF/jars/gson-0.1.7.jar"
+		},
+		{
+			"file": "META-INF/jars/netty-0.1.6.jar"
+		}
 	],
 	"depends": {
 		"fabricloader": ">=${loader_version}",

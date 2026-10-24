@@ -1,0 +1,111 @@
+package msptmap.vendor.owo.ui.renderstate;
+
+import com.mojang.blaze3d.platform.Lighting;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.gui.render.pip.PictureInPictureRenderer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.block.BlockModelRenderState;
+import net.minecraft.client.renderer.block.model.BlockDisplayContext;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
+
+public record BlockElementRenderState(
+    BlockState state,
+    @Nullable BlockEntityRenderState entity,
+    ScreenRectangle bounds,
+    ScreenRectangle scissorArea
+) implements PictureInPictureRenderState {
+
+    @Override
+    public int x0() {
+        return this.bounds.left();
+    }
+
+    @Override
+    public int x1() {
+        return this.bounds.right();
+    }
+
+    @Override
+    public int y0() {
+        return this.bounds.top();
+    }
+
+    @Override
+    public int y1() {
+        return this.bounds.bottom();
+    }
+
+    @Override
+    public float scale() {
+        return 1;
+    }
+
+    @Override
+    public @Nullable ScreenRectangle scissorArea() {
+        return this.scissorArea;
+    }
+
+    @Override
+    public @Nullable ScreenRectangle bounds() {
+        return this.scissorArea != null ? this.scissorArea.intersection(this.bounds) : this.bounds;
+    }
+
+    public static class Renderer extends PictureInPictureRenderer<BlockElementRenderState> {
+
+        @Override
+        public Class<BlockElementRenderState> getRenderStateClass() {
+            return BlockElementRenderState.class;
+        }
+
+        @Override
+        @SuppressWarnings("NonAsciiCharacters")
+        protected void renderToTexture(BlockElementRenderState state, PoseStack matrices, SubmitNodeCollector collector) {
+            Minecraft.getInstance().gameRenderer.lighting().setupFor(Lighting.Entry.ENTITY_IN_UI);
+
+            var width = state.bounds.width();
+            var height = state.bounds.height();
+
+            matrices.translate(0, -height / 2f, 100);
+            matrices.scale(40 * width / 64f, -40 * height / 64f, -40);
+
+            matrices.mulPose(Axis.XP.rotationDegrees(30));
+            matrices.mulPose(Axis.YP.rotationDegrees(45 + 180));
+
+            matrices.translate(-.5, -.5, -.5);
+
+            if (state.state.getRenderShape() != RenderShape.INVISIBLE) {
+                var blockModelRenderState = new BlockModelRenderState();
+                Minecraft.getInstance().getModelManager().getBlockModelSet().get(state.state).update(
+                    blockModelRenderState,
+                    state.state,
+                    BlockDisplayContext.create(),
+                    67
+                );
+
+                blockModelRenderState.submit(matrices, collector, LightCoordsUtil.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
+            }
+
+            if (state.entity != null) {
+                var медведь = Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(state.entity);
+                if (медведь != null) {
+                    медведь.submit(state.entity, matrices, collector, new CameraRenderState());
+                }
+            }
+        }
+
+        @Override
+        protected String getTextureLabel() {
+            return "owo-ui_block";
+        }
+    }
+}

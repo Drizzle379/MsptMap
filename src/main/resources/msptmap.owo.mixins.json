@@ -1,0 +1,39 @@
+{
+  "required": false,
+  "package": "msptmap.vendor.owo.mixin",
+  "compatibilityLevel": "${mixin_compat_level}",
+  "client": [
+    "serialization.CachedRegistryInfoGetterAccessor",
+    "serialization.DelegatingOpsAccessor",
+    "serialization.RegistryOpsAccessor",
+    "ui.AbstractContainerScreenMixin",
+    "ui.ChatScreenMixin",
+    "ui.CommandEncoderAccessor",
+    "ui.CubeMapMixin",
+    "ui.GuiMixin",
+    "ui.GuiRendererMixin",
+    "ui.MinecraftMixin",
+    "ui.ScreenMixin",
+    "ui.SlotAccessor",
+    "ui.SlotMixin",
+    "ui.access.AbstractWidgetAccessor",
+    "ui.access.BaseOwoHandledScreenAccessor",
+    "ui.access.BlockEntityAccessor",
+    "ui.access.ButtonAccessor",
+    "ui.access.CheckboxAccessor",
+    "ui.access.EditBoxAccessor",
+    "ui.access.EntityRendererAccessor",
+    "ui.access.GuiGraphicsExtractorAccessor",
+    "ui.access.MultiLineEditBoxAccessor",
+    "ui.access.MultilineTextFieldAccessor",
+    "ui.access.RenderSystemAccessor",
+    "ui.access.StagedVertexBufferDrawAccessor",
+    "ui.layers.AbstractContainerScreenAccessor",
+    "ui.layers.KeyboardHandlerMixin",
+    "ui.layers.MouseHandlerMixin",
+    "ui.layers.ScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

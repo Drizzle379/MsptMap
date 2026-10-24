@@ -49,6 +49,12 @@ public class MsptMapClient implements ClientModInitializer {
 		// 设置需在画第一帧前读入：地图上色与悬停详情读的就是这些静态字段
 		ClientConfig.load();
 
+		//? if >=26.2 {
+		// 综合分析界面：键位默认不绑定，玩家可在「控制 → 按键绑定」里自设
+		AnalysisEntry.register();
+		ClientTickEvents.END_CLIENT_TICK.register(client -> AnalysisEntry.tick());
+		//?}
+
 		// 退出游戏时补一次落盘：设置界面只在 onClose 里存，用窗口关闭按钮退出或崩溃时改动会丢
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ClientConfig.save());
 

@@ -53,6 +53,9 @@ public final class MapScreenHook implements ChunkFocus.Host {
 	private static final int CLEAR_BUTTON_Y = SCAN_BUTTON_Y + SCAN_BUTTON_SIZE;
 	private static final int CONFIG_BUTTON_Y = CLEAR_BUTTON_Y + SCAN_BUTTON_SIZE;
 
+	/** 综合分析按钮：接在设置按钮下方（仅 26.2+）。 */
+	private static final int ANALYSIS_BUTTON_Y = CONFIG_BUTTON_Y + SCAN_BUTTON_SIZE;
+
 	/**
 	 * 总览折叠钮：面积为扫描按钮的 1/4，位于列上方空位的右下角，右缘与列右缘对齐。钮底与扫描
 	 * 按钮上沿留 4 px（单侧留白的 2 倍），使折叠钮图标与扫描图标之间的视觉间距（含投影）与
@@ -244,6 +247,14 @@ public final class MapScreenHook implements ChunkFocus.Host {
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
 				button -> MsptMapClient.onConfigPress(map),
 				new Tooltip(Component.translatable("msptmap.button.config")), 256, 256));
+		//? if >=26.2 {
+		// 综合分析：接在设置按钮下方，关闭后回到地图
+		map.addButton(new GuiTexturedButton(SCAN_BUTTON_X, ANALYSIS_BUTTON_Y,
+				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,
+				Ids.of(MsptMapMod.MOD_ID, "textures/gui/analysis.png"),
+				button -> AnalysisEntry.open(map),
+				new Tooltip(Component.translatable("msptmap.button.analysis")), 256, 256));
+		//?}
 		//?} else {
 		/*map.addButton(new GuiTexturedButton(SCAN_BUTTON_X, SCAN_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,

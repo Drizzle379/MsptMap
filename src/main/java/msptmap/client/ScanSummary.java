@@ -131,18 +131,12 @@ public final class ScanSummary {
 		long totalNanos = totals.totalNanos();
 		long tickNanos = totals.tickNanos();
 		Component totalLabel = Component.translatable("msptmap.summary.total");
-		Component totalValue = ClientConfig.summaryColored
-				? TickText.colored(TickText.ms(totalNanos, windowTicks),
-						rangeColor(mspt(totalNanos, windowTicks), TOTAL_GREEN_MS, TOTAL_RED_MS))
-				: Component.literal(TickText.ms(totalNanos, windowTicks));
-		Component tickValue = ClientConfig.summaryColored
-				? TickText.colored(TickText.ms(tickNanos, windowTicks),
-						rangeColor(mspt(tickNanos, windowTicks), TOTAL_GREEN_MS, TOTAL_RED_MS))
-				: Component.literal(TickText.ms(tickNanos, windowTicks));
+		Component totalShown = totalValue(totalNanos, windowTicks);
+		Component tickShown = totalValue(tickNanos, windowTicks);
 		lines.add(tickNanos > 0L
-				? Component.translatable("msptmap.summary.total_line", totalLabel, totalValue, tickValue,
+				? Component.translatable("msptmap.summary.total_line", totalLabel, totalShown, tickShown,
 						Decimals.format1(Math.min(100.0, totalNanos * 100.0 / tickNanos)))
-				: Component.translatable("msptmap.tooltip.plain_line", totalLabel, totalValue));
+				: Component.translatable("msptmap.tooltip.plain_line", totalLabel, totalShown));
 		// 七类明细：整体缩进、类别名附注灰；着色开启时梯度色只给数值（压暗一档），星号与斜体照旧
 		for (TickCategory category : TickText.ORDER) {
 			long nanos = totals.categoryNanos()[category.ordinal()];
@@ -162,9 +156,7 @@ public final class ScanSummary {
 			for (ClientSnapshot.Heavy heavy : heaviest) {
 				String value = TickText.ms(heavy.totalNanos(), windowTicks);
 				Component shown = ClientConfig.summaryColored
-						? TickText.colored(value, HeatColors.soften(HeatColors.rgb(
-								mspt(heavy.totalNanos(), windowTicks),
-								HeatStyle.redPoint(ClientSnapshot.heaviestMspt(heavy.dimension())))))
+						? TickText.colored(value, chunkColor(mspt(heavy.totalNanos(), windowTicks), heavy.dimension()))
 						: Component.literal(value);
 				lines.add(TickText.secondary(Component.translatable("msptmap.summary.line", shown,
 						Component.translatable(Dimensions.key(heavy.dimension())),
@@ -172,6 +164,22 @@ public final class ScanSummary {
 			}
 		}
 		return new Built(lines, heaviest, topFirstRow, sources, sourceRows, sourceFirstRow, sourceShown, foldRow);
+	}
+
+	/**
+	 * 「总卡顿」类数值（区块合计、整 tick）的着色，与总览同口径；分析界面的顶部状态栏复用。
+	 * 关闭「总览着色」时返回无色文本。
+	 */
+	static Component totalValue(long nanos, int windowTicks) {
+		String value = TickText.ms(nanos, windowTicks);
+		return ClientConfig.summaryColored
+				? TickText.colored(value, rangeColor(mspt(nanos, windowTicks), TOTAL_GREEN_MS, TOTAL_RED_MS))
+				: Component.literal(value);
+	}
+
+	/** 区块耗时的着色：与地图红点同源，再压暗一档；总览 TOP 行与分析列表共用。 */
+	static int chunkColor(float mspt, String dimension) {
+		return HeatColors.soften(HeatColors.rgb(mspt, HeatStyle.redPoint(ClientSnapshot.heaviestMspt(dimension))));
 	}
 
 	/**
