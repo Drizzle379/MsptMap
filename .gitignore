@@ -1,4 +1,4 @@
-# Gradle / Loom 产物
+# Gradle / Loom
 build/
 .gradle/
 run/
@@ -11,7 +11,7 @@ run/
 .project
 .settings/
 
-# 系统
+# System
 Thumbs.db
 .DS_Store
 
@@ -20,7 +20,7 @@ hs_err_*.log
 *.hprof
 *.jfr
 
-# 本地留存、不进仓库
+# 本地留存
 .minecraft*/
 testlibs/
 CLAUDE.md

@@ -74,6 +74,9 @@
 > [!IMPORTANT]
 > 采样在**服务端**进行，故两侧均需安装本模组。
 
+> [!NOTE]
+> **Paper 等服务端**：可用 [MsptMap-Plugin](https://github.com/Drizzle379/MsptMap-Plugin) 代替服务端模组，客户端仍安装本模组。插件按服务端版本分为 1.21.6 – 1.21.10、1.21.11 与 26.x 三个包，放入 `plugins/` 并在启动命令的 `-jar` 之前添加 `-javaagent`；平台兼容性与已知限制见插件仓库。Folia 不支持。
+
 
 ## 🎮 用法
 

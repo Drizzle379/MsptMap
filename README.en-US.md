@@ -74,6 +74,9 @@ Download the latest build from [Modrinth](https://modrinth.com/mod/msptmap) or t
 > [!IMPORTANT]
 > Sampling is performed on the **server**, so the mod is required on both sides.
 
+> [!NOTE]
+> **Paper-based servers**: [MsptMap-Plugin](https://github.com/Drizzle379/MsptMap-Plugin) can replace the server-side mod; the client still installs this mod. It ships one jar each for 1.21.6 – 1.21.10, 1.21.11 and 26.x — place it in `plugins/` and add `-javaagent` before `-jar`. See the plugin repository for platform support and known limitations. Folia is not supported.
+
 
 ## 🎮 Usage
 
