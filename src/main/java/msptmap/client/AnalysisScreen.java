@@ -1,6 +1,7 @@
 package msptmap.client;
 
 //? if >=26.2 {
+import msptmap.MsptMapMod;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketCode;
@@ -20,6 +21,7 @@ import msptmap.vendor.owo.ui.core.HorizontalAlignment;
 import msptmap.vendor.owo.ui.core.Insets;
 import msptmap.vendor.owo.ui.core.OwoUIAdapter;
 import msptmap.vendor.owo.ui.core.OwoUIGraphics;
+import msptmap.vendor.owo.ui.core.PositionedRectangle;
 import msptmap.vendor.owo.ui.core.Sizing;
 import msptmap.vendor.owo.ui.core.Surface;
 import msptmap.vendor.owo.ui.core.UIComponent;
@@ -58,7 +60,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int LOAD_STEP = 50;
 
 	/** 各列宽度的权重：实际列宽在 {@link #computeColumnWidths} 里按列表可用宽度等比分配。 */
-	private static final int[] COLUMN_WEIGHTS = {75, 52, 30, 50, 50, 50};
+	private static final int[] COLUMN_WEIGHTS = {75, 52, 30, 50, 50};
 	private static final int COLUMN_GAP = 3;
 	private static final int SCROLLBAR_WIDTH = 8;
 	/** 数据行左右内边距之和（见 {@link RowComponent} 的 padding）。 */
@@ -67,6 +69,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int ICON_SIZE = 8;
 	/** 坐标列的最小宽度：图标 + 间隙 + 约 9 个字符的 [x,z]。 */
 	private static final int COORD_MIN_WIDTH = 64;
+	/** 表头排序三角：7×4，纹理上段为升序、中段为降序、下段透明供未排序列占位。 */
+	private static final int SORT_ARROW_WIDTH = 7;
+	private static final int SORT_ARROW_HEIGHT = 4;
 
 	private static final DateTimeFormatter SCAN_TIME = DateTimeFormatter.ofPattern("MM/dd HH:mm:ss");
 
@@ -84,7 +89,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private final int targetZ;
 	private final List<Row> allRows = new ArrayList<>();
 	private final List<Row> visibleRows = new ArrayList<>();
-	/** 六列的像素宽；build 时按窗口大小算好，表头与数据行共用。 */
+	/** 各列的像素宽；build 时按窗口大小算好，表头与数据行共用。 */
 	private final int[] columns = new int[COLUMN_WEIGHTS.length];
 
 	private FlowLayout list;
@@ -288,17 +293,17 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		FlowLayout header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(14)).gap(COLUMN_GAP);
 		header.padding(Insets.both(2, 0));
 		header.verticalAlignment(VerticalAlignment.CENTER);
-		header.child(new HeaderButton("msptmap.analysis.column.x", Sort.X, columns[0]));
-		header.child(new HeaderButton("msptmap.analysis.column.mspt", Sort.MSPT, columns[1]));
-		header.child(new HeaderButton("msptmap.analysis.column.entities_short", Sort.ENTITIES, columns[2]));
-		header.child(new HeaderButton("msptmap.analysis.column.load_level", Sort.LEVEL, columns[3]));
-		header.child(new HeaderButton("msptmap.analysis.column.compute_level", Sort.COMPUTE_LEVEL, columns[4]));
-		header.child(new HeaderButton("msptmap.analysis.column.dimension", Sort.DIMENSION, columns[5]));
+		// 坐标列的列名让出左侧图标宽度，中心与图标右侧的 [x,z] 文字对齐
+		header.child(new HeaderButton("msptmap.analysis.column.x", Sort.X, columns[0], ICON_SIZE + 2));
+		header.child(new HeaderButton("msptmap.analysis.column.mspt", Sort.MSPT, columns[1], 0));
+		header.child(new HeaderButton("msptmap.analysis.column.entities_short", Sort.ENTITIES, columns[2], 0));
+		header.child(new HeaderButton("msptmap.analysis.column.load_level", Sort.LEVEL, columns[3], 0));
+		header.child(new HeaderButton("msptmap.analysis.column.compute_level", Sort.COMPUTE_LEVEL, columns[4], 0));
 		return header;
 	}
 
 	/**
-	 * 按列表实际可用宽度等比分配六列：可用宽 = 列表列宽 - 滚动条 - 行内边距 - 列间隙。
+	 * 按列表实际可用宽度等比分配五列：可用宽 = 列表列宽 - 滚动条 - 行内边距 - 列间隙。
 	 * 最后一列吸收取整误差，列宽总和不会超出可用宽。
 	 */
 	private void computeColumnWidths(int windowWidth) {
@@ -445,7 +450,6 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			case X -> Comparator.comparingInt(Row::x).thenComparingInt(Row::z);
 			case LEVEL -> Comparator.comparingInt(Row::loadLevel);
 			case COMPUTE_LEVEL -> Comparator.comparingInt(Row::computeLevel);
-			case DIMENSION -> Comparator.comparing(Row::dimension).thenComparingInt(Row::x);
 		};
 		return ascending ? by : by.reversed();
 	}
@@ -538,8 +542,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		ENTITIES,
 		X,
 		LEVEL,
-		COMPUTE_LEVEL,
-		DIMENSION
+		COMPUTE_LEVEL
 	}
 
 	private record Row(String dimension, int x, int z, float mspt, int entities, int loadLevel, int computeLevel,
@@ -590,24 +593,35 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 	}
 
-	/** 表头列：点击任意一列按该列排序，再点同一列切换升降序；箭头显示当前方向。 */
+	/**
+	 * 表头列：点击任意一列按该列排序，再点同一列切换升降序。
+	 * 列名与排序三角作为一组居中；三角采样贴图的上/中/透明段，未排序列占位宽度不变。
+	 */
 	private final class HeaderButton extends FlowLayout {
-		private final Component base;
 		private final Sort column;
 		private final LabelComponent label;
+		private final TextureComponent arrow;
 		private @Nullable Boolean styledActive;
 		private boolean styledAscending;
 
-		private HeaderButton(String key, Sort column, int width) {
+		private HeaderButton(String key, Sort column, int width, int leading) {
 			super(Sizing.fixed(width), Sizing.fill(100), Algorithm.HORIZONTAL);
-			this.base = Component.translatable(key);
 			this.column = column;
+			this.horizontalAlignment(HorizontalAlignment.CENTER);
 			this.verticalAlignment(VerticalAlignment.CENTER);
+			this.gap(2);
 			this.padding(Insets.both(2, 0));
 			this.cursorStyle(CursorStyle.HAND);
-			this.label = UIComponents.label(this.base).shadow(false);
+			// 左侧占位与右侧三角等宽，使列名中心落在列中线上；leading 用于坐标列让出图标
+			this.child(UIContainers.horizontalFlow(
+					Sizing.fixed(SORT_ARROW_WIDTH + leading), Sizing.fixed(1)));
+			this.label = UIComponents.label(Component.translatable(key)).shadow(false);
 			this.label.verticalTextAlignment(VerticalAlignment.CENTER);
 			this.child(this.label);
+			this.arrow = UIComponents.texture(Ids.of(MsptMapMod.MOD_ID, "textures/gui/sort.png"),
+					0, 0, SORT_ARROW_WIDTH, SORT_ARROW_HEIGHT,
+					SORT_ARROW_WIDTH, SORT_ARROW_HEIGHT * 3);
+			this.child(this.arrow);
 			this.mouseDown().subscribe((click, doubled) -> {
 				if (click.button() != 0) {
 					return false;
@@ -627,9 +641,10 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			}
 			this.styledActive = active;
 			this.styledAscending = asc;
-			Component text = active ? Component.empty().append(this.base).append(asc ? " ▲" : " ▼") : this.base;
-			this.label.text(text);
 			this.label.color(Color.ofArgb(active ? TEXT : TEXT_DIM));
+			this.arrow.visibleArea(PositionedRectangle.of(0,
+					active ? (asc ? 0 : SORT_ARROW_HEIGHT) : SORT_ARROW_HEIGHT * 2,
+					SORT_ARROW_WIDTH, SORT_ARROW_HEIGHT));
 		}
 
 		@Override
@@ -733,7 +748,6 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			child(cell(Component.translatable("msptmap.analysis.column.entities", row.entities()).getString(), columns[2], TEXT_DIM));
 			child(cell(Integer.toString(row.loadLevel()), columns[3], TEXT_DIM));
 			child(cell(Integer.toString(row.computeLevel()), columns[4], TEXT_DIM));
-			child(cell(Component.translatable(Dimensions.key(row.dimension())), columns[5], TEXT_DIM));
 		}
 
 		/** 选中行浅灰底，其余恢复斑马纹。 */
@@ -779,7 +793,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			LabelComponent label = UIComponents.label(text).shadow(false)
 					.color(Color.ofArgb(color));
 			label.horizontalSizing(Sizing.fixed(width));
-			label.horizontalTextAlignment(HorizontalAlignment.LEFT);
+			label.horizontalTextAlignment(HorizontalAlignment.CENTER);
 			label.verticalTextAlignment(VerticalAlignment.CENTER);
 			return label;
 		}

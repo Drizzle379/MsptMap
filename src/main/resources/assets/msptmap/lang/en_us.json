@@ -133,7 +133,6 @@
   "msptmap.analysis.column.entities_short": "Ent",
   "msptmap.analysis.column.load_level": "Load",
   "msptmap.analysis.column.compute_level": "Compute",
-  "msptmap.analysis.column.dimension": "Dim",
   "msptmap.analysis.column.entities": "%s",
   "msptmap.analysis.detail.hint": "Select a chunk to inspect it",
   "msptmap.analysis.detail.missing": "Chunk (%s, %s) was not included in this scan",
