@@ -22,6 +22,7 @@ import msptmap.vendor.owo.ui.core.Sizing;
 import msptmap.vendor.owo.ui.core.Surface;
 import msptmap.vendor.owo.ui.core.VerticalAlignment;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -88,6 +89,8 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private boolean ascending = false;
 	private int loaded = LOAD_STEP;
 	private @Nullable Row selected;
+	/** 界面上次见到的扫描时间；扫描完成后据此刷新列表。 */
+	private long scannedAt;
 
 	public AnalysisScreen(@Nullable Screen parent) {
 		super(Component.translatable("msptmap.analysis.title"));
@@ -147,6 +150,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		for (String dim : DIMENSIONS) {
 			tabBar.child(new TabButton(Component.translatable(Dimensions.key(dim)), dim));
 		}
+		// 扫描按钮靠右：与维度标签同一行，发起一次全区扫描
+		tabBar.child(UIComponents.spacer());
+		tabBar.child(new ActionButton(Component.translatable("msptmap.analysis.scan"), MsptMapClient::onButtonPress));
 		content.child(tabBar);
 
 		// 主体：左侧列表 + 右侧详情
@@ -174,9 +180,31 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		body.child(detailScroll);
 		content.child(body);
 
+		scannedAt = ClientSnapshot.scannedAtMillis();
 		reloadRows();
 		rebuild();
 		showHint();
+	}
+
+	@Override
+	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+		if (!invalid) {
+			refreshAfterScan();
+		}
+	}
+
+	/** 扫描结果整体替换，旧的选中行与滚动位置不再有意义，回到顶部。 */
+	private void refreshAfterScan() {
+		long scanned = ClientSnapshot.scannedAtMillis();
+		if (scanned == scannedAt) {
+			return;
+		}
+		scannedAt = scanned;
+		selected = null;
+		showHint();
+		reloadRows();
+		resetList();
 	}
 
 	private FlowLayout listHeader() {
@@ -526,6 +554,29 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		public void draw(OwoUIGraphics graphics, int mouseX, int mouseY, float partialTicks, float delta) {
 			updateStyle();
 			super.draw(graphics, mouseX, mouseY, partialTicks, delta);
+		}
+	}
+
+	/** 标签栏右侧的动作按钮：外观与维度标签一致，无选中态，点击后执行动作。 */
+	private final class ActionButton extends FlowLayout {
+		private ActionButton(Component title, Runnable action) {
+			super(Sizing.content(), Sizing.fill(100), Algorithm.HORIZONTAL);
+			this.verticalAlignment(VerticalAlignment.CENTER);
+			this.horizontalAlignment(HorizontalAlignment.CENTER);
+			this.padding(Insets.both(8, 0));
+			this.cursorStyle(CursorStyle.HAND);
+			this.surface(Surface.outline(BORDER));
+			LabelComponent label = UIComponents.label(title).shadow(false).color(Color.ofArgb(TEXT_DIM));
+			label.verticalTextAlignment(VerticalAlignment.CENTER);
+			this.child(label);
+			this.mouseDown().subscribe((click, doubled) -> {
+				if (click.button() != 0) {
+					return false;
+				}
+				playClick();
+				action.run();
+				return true;
+			});
 		}
 	}
 

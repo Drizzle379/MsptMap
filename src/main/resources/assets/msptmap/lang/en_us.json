@@ -126,6 +126,7 @@
   "msptmap.analysis.overview_single": "MSPT %s   Chunks %s[%s]   Sources %s  %ss",
   "msptmap.analysis.overview.empty": "No scan data",
   "msptmap.analysis.dimension.all": "All",
+  "msptmap.analysis.scan": "Scan",
   "msptmap.analysis.empty": "No scanned chunks",
   "msptmap.analysis.column.x": "X, Z",
   "msptmap.analysis.column.mspt": "mspt",

@@ -126,6 +126,7 @@
   "msptmap.analysis.overview_single": "MSPT %s   区块数 %s[%s]   加载源 %s  %ss",
   "msptmap.analysis.overview.empty": "尚无扫描数据",
   "msptmap.analysis.dimension.all": "全部",
+  "msptmap.analysis.scan": "扫描",
   "msptmap.analysis.empty": "没有扫描到的区块",
   "msptmap.analysis.column.x": "坐标",
   "msptmap.analysis.column.mspt": "mspt",
