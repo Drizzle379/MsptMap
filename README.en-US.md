@@ -1,4 +1,4 @@
-> 插件版处于测试阶段，欢迎前来测试：[MsptMap-Plugin v1.0.1-alpha](https://github.com/Drizzle379/MsptMap-Plugin/releases/tag/v1.0.1-alpha)
+> The plugin version is in testing — try it here: [MsptMap-Plugin](https://github.com/Drizzle379/MsptMap-Plugin/releases) [![Plugin Release](https://img.shields.io/github/v/release/Drizzle379/MsptMap-Plugin?include_prereleases&style=flat-square&label=Release&color=8957e5)](https://github.com/Drizzle379/MsptMap-Plugin/releases)
 
 <div align="center">
 
