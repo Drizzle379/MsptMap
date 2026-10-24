@@ -1,0 +1,11 @@
+{
+  "required": false,
+  "package": "msptmap.client.mixins",
+  "compatibilityLevel": "${mixin_compat_level}",
+  "client": [
+    "GuiRightClickMenuMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

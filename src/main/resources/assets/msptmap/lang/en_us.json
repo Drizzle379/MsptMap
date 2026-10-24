@@ -136,6 +136,8 @@
   "msptmap.analysis.column.dimension": "Dim",
   "msptmap.analysis.column.entities": "%s",
   "msptmap.analysis.detail.hint": "Select a chunk to inspect it",
+  "msptmap.analysis.detail.missing": "Chunk (%s, %s) was not included in this scan",
+  "msptmap.analysis.menu.show": "Show in chunk analysis",
   "msptmap.analysis.detail.title": "%s (%s, %s)",
   "msptmap.analysis.detail.mspt": "Total",
   "msptmap.analysis.detail.entities": "Entities",

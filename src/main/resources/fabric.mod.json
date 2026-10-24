@@ -29,7 +29,7 @@
 	},
 	"mixins": [
 		"msptmap.mixins.json",
-		"msptmap.client.mixins.json"${owo_mixin_entry}
+		"msptmap.client.mixins.json"${extra_mixin_entry}
 	],
 	"jars": [
 		{

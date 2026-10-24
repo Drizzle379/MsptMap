@@ -94,10 +94,10 @@ processResources {
 	// 26.2 的内置 owo 需要放宽 GUI 访问级别；其他版本用一个空 AW 保持元数据自洽
 	def accessWidener = project.minecraft_version == '26.2'
 			? 'msptmap_owo.accesswidener' : 'msptmap.accesswidener'
-	// owo 的 mixin 配置只在 26.2 打包：其他版本不能引用不存在的配置，
+	// owo 与分析界面的 mixin 配置只在 26.2 打包：其他版本不能引用不存在的配置，
 	// 26.2 直接写成必需的字符串条目（旧 Loader 不认识 {config, required} 对象）
-	def owoMixinEntry = project.minecraft_version == '26.2'
-			? ",\n\t\t\"msptmap.owo.mixins.json\"" : ''
+	def extraMixinEntry = project.minecraft_version == '26.2'
+			? ",\n\t\t\"msptmap.owo.mixins.json\",\n\t\t\"msptmap.analysis.mixins.json\"" : ''
 	inputs.property "version", modVersion
 	inputs.property "loader_version", loaderVersion
 	inputs.property "java_release", javaRelease
@@ -105,7 +105,7 @@ processResources {
 	inputs.property "fabric_api_version", fabricApiVersion
 	inputs.property "minecraft_range", minecraftRange
 	inputs.property "access_widener", accessWidener
-	inputs.property "owo_mixin_entry", owoMixinEntry
+	inputs.property "extra_mixin_entry", extraMixinEntry
 	filesMatching("fabric.mod.json") {
 		expand "version": modVersion,
 				"loader_version": loaderVersion,
@@ -113,10 +113,11 @@ processResources {
 				"fabric_api_version": fabricApiVersion,
 				"minecraft_range": minecraftRange,
 				"access_widener": accessWidener,
-				"owo_mixin_entry": owoMixinEntry
+				"extra_mixin_entry": extraMixinEntry
 	}
-	// 三个 mixins.json 的 ${mixin_compat_level} 占位符（分开填，语义与 fabric.mod.json 的元数据不同）
-	filesMatching(["msptmap.mixins.json", "msptmap.client.mixins.json", "msptmap.owo.mixins.json"]) {
+	// 四个 mixins.json 的 ${mixin_compat_level} 占位符（分开填，语义与 fabric.mod.json 的元数据不同）
+	filesMatching(["msptmap.mixins.json", "msptmap.client.mixins.json", "msptmap.owo.mixins.json",
+			"msptmap.analysis.mixins.json"]) {
 		expand "mixin_compat_level": mixinCompatLevel
 	}
 	// 内置 owo 的 mixin 类只在 26.2 编译；其他版本的 jar 不携带这份配置
@@ -125,10 +126,12 @@ processResources {
 	}
 }
 
-// 内置 owo-ui 的源码与资源只参与 26.2 的构建；其他版本不包含这些目录。
+// 内置 owo-ui 与区块分析界面的源码、资源只参与 26.2 的构建；其他版本不包含这些目录。
 if (project.minecraft_version == '26.2') {
 	sourceSets.main.java.srcDir(rootProject.file('src/owo262/java'))
 	sourceSets.main.resources.srcDir(rootProject.file('src/owo262/resources'))
+	sourceSets.main.java.srcDir(rootProject.file('src/analysis262/java'))
+	sourceSets.main.resources.srcDir(rootProject.file('src/analysis262/resources'))
 	// owo 依赖 access widener 放宽原版 GUI 的访问级别（工具提示、控件尺寸等），
 	// 并通过 mixin 把 UIComponent 接口注入原版控件（Button/Checkbox 等直接充当组件）
 	loom {

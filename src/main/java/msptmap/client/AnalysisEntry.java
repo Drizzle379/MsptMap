@@ -50,5 +50,10 @@ public final class AnalysisEntry {
 	public static void open(@Nullable Screen parent) {
 		Screens.show(Minecraft.getInstance(), new AnalysisScreen(parent));
 	}
+
+	/** 从地图右键进入：以指定维度与区块为初始目标（dimension 为 null 时按坐标查找）。 */
+	public static void open(@Nullable Screen parent, @Nullable String dimension, int chunkX, int chunkZ) {
+		Screens.show(Minecraft.getInstance(), new AnalysisScreen(parent, dimension, chunkX, chunkZ));
+	}
 }
 //?}

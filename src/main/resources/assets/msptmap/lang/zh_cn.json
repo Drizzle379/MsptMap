@@ -136,6 +136,8 @@
   "msptmap.analysis.column.dimension": "维度",
   "msptmap.analysis.column.entities": "%s",
   "msptmap.analysis.detail.hint": "选择一个区块查看明细",
+  "msptmap.analysis.detail.missing": "本次扫描没有区块 (%s, %s)",
+  "msptmap.analysis.menu.show": "在区块分析界面中显示",
   "msptmap.analysis.detail.title": "%s (%s, %s)",
   "msptmap.analysis.detail.mspt": "合计",
   "msptmap.analysis.detail.entities": "实体",

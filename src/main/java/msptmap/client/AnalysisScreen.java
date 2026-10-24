@@ -78,6 +78,10 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			"minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
 
 	private final Screen parent;
+	/** 从地图右键进入时的目标区块；无目标时维度为 null。 */
+	private final @Nullable String targetDimension;
+	private final int targetX;
+	private final int targetZ;
 	private final List<Row> allRows = new ArrayList<>();
 	private final List<Row> visibleRows = new ArrayList<>();
 	/** 六列的像素宽；build 时按窗口大小算好，表头与数据行共用。 */
@@ -96,12 +100,22 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private boolean ascending = false;
 	private int loaded = LOAD_STEP;
 	private @Nullable Row selected;
+	/** 首帧布局完成后需要滚动到可见处的目标行。 */
+	private @Nullable Row pendingScroll;
 	/** 界面上次见到的扫描时间；扫描完成后据此刷新列表。 */
 	private long scannedAt;
 
 	public AnalysisScreen(@Nullable Screen parent) {
+		this(parent, null, 0, 0);
+	}
+
+	/** @param dimension 目标区块所在维度；null 表示按坐标在全部维度中查找 */
+	public AnalysisScreen(@Nullable Screen parent, @Nullable String dimension, int chunkX, int chunkZ) {
 		super(Component.translatable("msptmap.analysis.title"));
 		this.parent = parent;
+		this.targetDimension = dimension;
+		this.targetX = chunkX;
+		this.targetZ = chunkZ;
 	}
 
 	@Override
@@ -120,6 +134,10 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		// 内容区宽 = 窗口宽 - outline 左右 padding(2) - content 左右 padding(6)
 		contentWidth = windowWidth - 8;
 		computeColumnWidths(windowWidth);
+		// 从地图右键进入时先切到目标维度，标签高亮与列表筛选据此保持一致
+		if (targetDimension != null && DIMENSIONS.contains(targetDimension)) {
+			dimension = targetDimension;
+		}
 
 		root.padding(Insets.of(2));
 		root.horizontalAlignment(HorizontalAlignment.CENTER);
@@ -190,15 +208,21 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		scannedAt = ClientSnapshot.scannedAtMillis();
 		reloadRows();
 		rebuild();
-		showHint();
+		if (targetDimension == null) {
+			showHint();
+		} else {
+			showTarget();
+		}
 	}
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-		if (!invalid) {
-			refreshAfterScan();
+		if (invalid) {
+			return;
 		}
+		refreshAfterScan();
+		scrollToTarget();
 	}
 
 	/** 扫描结果整体替换，旧的选中行与滚动位置不再有意义，回到顶部。 */
@@ -212,6 +236,51 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		showHint();
 		reloadRows();
 		resetList();
+	}
+
+	/** 选中从地图带来的目标区块；本次快照没有该区块时在详情区说明。 */
+	private void showTarget() {
+		for (Row row : visibleRows) {
+			if (row.x() == targetX && row.z() == targetZ && row.dimension().equals(targetDimension)) {
+				revealRow(row);
+				return;
+			}
+		}
+		detail.clearChildren();
+		detail.child(UIComponents.label(Component.translatable("msptmap.analysis.detail.missing",
+				targetX, targetZ)).color(Color.ofArgb(TEXT_DIM)).shadow(false));
+	}
+
+	/** 加载到目标行、选中并记下待滚动行（布局完成后由 scrollToTarget 执行）。 */
+	private void revealRow(Row row) {
+		int index = visibleRows.indexOf(row);
+		if (index >= loaded) {
+			loaded = Math.min(visibleRows.size(), (index / LOAD_STEP + 1) * LOAD_STEP);
+			rebuild();
+		}
+		selected = row;
+		for (UIComponent child : list.children()) {
+			if (child instanceof RowComponent component) {
+				component.setSelected(component.row == row);
+			}
+		}
+		showDetail(row);
+		pendingScroll = row;
+	}
+
+	/** 首帧布局完成后把目标行滚到可见处。 */
+	private void scrollToTarget() {
+		Row target = pendingScroll;
+		if (target == null) {
+			return;
+		}
+		pendingScroll = null;
+		for (UIComponent child : list.children()) {
+			if (child instanceof RowComponent component && component.row == target) {
+				listScroll.scrollTo(component);
+				return;
+			}
+		}
 	}
 
 	private FlowLayout listHeader() {
