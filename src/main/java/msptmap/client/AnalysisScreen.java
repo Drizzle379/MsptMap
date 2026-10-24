@@ -22,6 +22,7 @@ import msptmap.vendor.owo.ui.core.OwoUIAdapter;
 import msptmap.vendor.owo.ui.core.OwoUIGraphics;
 import msptmap.vendor.owo.ui.core.Sizing;
 import msptmap.vendor.owo.ui.core.Surface;
+import msptmap.vendor.owo.ui.core.UIComponent;
 import msptmap.vendor.owo.ui.core.VerticalAlignment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -83,7 +84,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private final int[] columns = new int[COLUMN_WEIGHTS.length];
 
 	private FlowLayout list;
-	private ScrollContainer<FlowLayout> listScroll;
+	private IncrementalScroll listScroll;
 	private FlowLayout detail;
 	private LabelComponent overview;
 	private LabelComponent scanTime;
@@ -349,6 +350,10 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		if (loaded == 0 && !visibleRows.isEmpty()) {
 			loaded = Math.min(LOAD_STEP, visibleRows.size());
 		}
+		// clearChildren 会把列表高度瞬时算成 0，滚动容器随之把偏移钳到顶部；重建后按原偏移恢复
+		if (listScroll != null) {
+			listScroll.keepScroll();
+		}
 		list.clearChildren();
 		for (int i = 0; i < loaded; i++) {
 			list.child(new RowComponent(visibleRows.get(i), i));
@@ -356,6 +361,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		if (visibleRows.isEmpty()) {
 			list.child(UIComponents.label(Component.translatable("msptmap.analysis.empty"))
 					.color(Color.ofArgb(TEXT_DIM)).shadow(false));
+		}
+		if (listScroll != null) {
+			listScroll.restoreScroll();
 		}
 		updateOverview();
 	}
@@ -384,7 +392,12 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 	private void select(Row row) {
 		selected = row;
-		rebuild();
+		// 只换行底色：重建列表会触发滚动容器的偏移钳制，表现为点击后弹回顶部
+		for (UIComponent child : list.children()) {
+			if (child instanceof RowComponent component) {
+				component.setSelected(component.row == row);
+			}
+		}
 		showDetail(row);
 	}
 
@@ -474,6 +487,27 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				Runnable onLoadMore) {
 			super(ScrollDirection.VERTICAL, horizontalSizing, verticalSizing, child);
 			this.onLoadMore = onLoadMore;
+		}
+
+		/** 清空重建前记下偏移；restoreScroll 在重建后恢复。 */
+		private double savedScroll = -1;
+
+		void keepScroll() {
+			savedScroll = this.scrollOffset;
+		}
+
+		/**
+		 * 重建行后恢复原有偏移：clearChildren 会让子项高度瞬时归零，
+		 * ScrollContainer.layout 随即把 scrollOffset 钳到顶部。
+		 */
+		void restoreScroll() {
+			double offset = savedScroll;
+			savedScroll = -1;
+			if (offset <= 0 || this.maxScroll <= 0) {
+				return;
+			}
+			this.scrollOffset = Math.min(offset, this.maxScroll);
+			this.currentScrollPosition = this.scrollOffset;
 		}
 
 		@Override
@@ -610,18 +644,16 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 	private final class RowComponent extends FlowLayout {
 		private final Row row;
+		private final int index;
 
 		private RowComponent(Row row, int index) {
 			super(Sizing.fill(100), Sizing.fixed(13), Algorithm.HORIZONTAL);
 			this.row = row;
+			this.index = index;
 			this.gap(COLUMN_GAP);
 			this.padding(Insets.both(2, 0));
 			this.verticalAlignment(VerticalAlignment.CENTER);
-			if (row == selected) {
-				this.surface(Surface.flat(0x40FFFFFF));
-			} else if (index % 2 == 1) {
-				this.surface(Surface.flat(0x10FFFFFF));
-			}
+			this.setSelected(row == selected);
 			child(coordCell(row));
 			// mspt 列与地图热力、总览 TOP 行同源着色（相对模式 / 红色阈值一并生效）
 			String msptText = Decimals.format3(row.mspt());
@@ -632,6 +664,17 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			child(cell(Integer.toString(row.loadLevel()), columns[3], TEXT_DIM));
 			child(cell(Integer.toString(row.computeLevel()), columns[4], TEXT_DIM));
 			child(cell(Component.translatable(Dimensions.key(row.dimension())), columns[5], TEXT_DIM));
+		}
+
+		/** 选中行浅灰底，其余恢复斑马纹。 */
+		private void setSelected(boolean selected) {
+			if (selected) {
+				this.surface(Surface.flat(0x40FFFFFF));
+			} else if (this.index % 2 == 1) {
+				this.surface(Surface.flat(0x10FFFFFF));
+			} else {
+				this.surface(Surface.flat(0x00000000));
+			}
 		}
 
 		/** 坐标列：维度方块图标在左、[x,z] 在右；图标不参与排序。 */
