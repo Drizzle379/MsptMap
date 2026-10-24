@@ -6,52 +6,52 @@
 
 # MsptMap
 
-**A per-chunk MSPT heatmap for [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map).**
-Identifies the specific chunks responsible for server-side lag.
+**在 [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map)上，绘制区块 mspt 热力图。**
+定位造成服务端卡顿的具体区块。
 
 [![Modrinth](https://img.shields.io/badge/Modrinth-msptmap-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/msptmap)
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.20--26.3-62b47a?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTQgMmgxNmEyIDIgMCAwIDEgMiAydjE2YTIgMiAwIDAgMS0yIDJINGEyIDIgMCAwIDEtMi0yVjRhMiAyIDAgMCAxIDItMm0yIDR2NGg0djJIOHY2aDJ2LTJoNHYyaDJ2LTZoLTJ2LTJoNFY2aC00djRoLTRWNnoiLz48L3N2Zz4%3D)](#supported-versions)
-[![Fabric Loader](https://img.shields.io/badge/Fabric_Loader-0.19.3%2B-dbd0b4?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI%2BPHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNOCAxdjFIN3YySDZ2MUg1djFINHYxSDN2MUgydjFIMXYyaDF2MWgxdjFoMXYxaDF2MWgydi0xaDF2LTJoMXYtMWgxdi0xaDFWOWgyVjhoMVY2aC0xVjVoLTFWNGgtMVYzaC0xVjJIOVYxeiIvPjwvc3ZnPg%3D%3D)](#-requirements)
-[![Java](https://img.shields.io/badge/Java-17--25-e76f00?style=flat-square&logo=openjdk&logoColor=white)](#supported-versions)
-[![Environment](https://img.shields.io/badge/Environment-client_%2B_server-4c8eda?style=flat-square)](#-installation)
-[![License](https://img.shields.io/github/license/Drizzle379/MsptMap?style=flat-square&label=License&color=3da639)](#-license)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.20--26.3-62b47a?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTQgMmgxNmEyIDIgMCAwIDEgMiAydjE2YTIgMiAwIDAgMS0yIDJINGEyIDIgMCAwIDEtMi0yVjRhMiAyIDAgMCAxIDItMm0yIDR2NGg0djJIOHY2aDJ2LTJoNHYyaDJ2LTZoLTJ2LTJoNFY2aC00djRoLTRWNnoiLz48L3N2Zz4%3D)](#支持版本)
+[![Fabric Loader](https://img.shields.io/badge/Fabric_Loader-0.19.3%2B-dbd0b4?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI%2BPHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNOCAxdjFIN3YySDZ2MUg1djFINHYxSDN2MUgydjFIMXYyaDF2MWgxdjFoMXYxaDF2MWgydi0xaDF2LTJoMXYtMWgxdi0xaDFWOWgyVjhoMVY2aC0xVjVoLTFWNGgtMVYzaC0xVjJIOVYxeiIvPjwvc3ZnPg%3D%3D)](#-环境要求)
+[![Java](https://img.shields.io/badge/Java-17--25-e76f00?style=flat-square&logo=openjdk&logoColor=white)](#支持版本)
+[![Environment](https://img.shields.io/badge/Environment-client_%2B_server-4c8eda?style=flat-square)](#-安装)
+[![License](https://img.shields.io/github/license/Drizzle379/MsptMap?style=flat-square&label=License&color=3da639)](#-许可)
 [![Release](https://img.shields.io/github/v/release/Drizzle379/MsptMap?style=flat-square&label=Release&sort=semver&color=8957e5)](https://github.com/Drizzle379/MsptMap/releases)
 [![Downloads](https://img.shields.io/github/downloads/Drizzle379/MsptMap/total?style=flat-square&label=Downloads&color=1f6feb)](https://github.com/Drizzle379/MsptMap/releases)
 [![Stars](https://img.shields.io/github/stars/Drizzle379/MsptMap?style=flat-square&label=Stars&color=e3b341)](https://github.com/Drizzle379/MsptMap)
 
-**English** · [简体中文](README.zh-CN.md)
+**简体中文** · [English](README.en-US.md)
 
-[Features](#-features) · [Requirements](#-requirements) · [Installation](#-installation) · [Usage](#-usage) · [Commands](#-commands) · [Monitoring](#-monitoring) · [Configuration](#-configuration) · [How it works](#-how-it-works) · [Building](#-building)
+[功能](#-功能) · [环境要求](#-环境要求) · [安装](#-安装) · [用法](#-用法) · [指令](#-指令) · [监控](#-监控) · [设置](#-设置) · [工作原理](#-工作原理) · [构建](#-构建)
 
 </div>
 
 ---
 
-## ✨ Features
+## ✨ 功能
 
 | | |
 | :--- | :--- |
-| 🌡️ **Per-chunk heatmap** | Chunks are coloured green → yellow → red according to the tick time they consume. Weakly-loaded chunks are shown in pale grey; those that perform measurable work can be coloured in the settings. The heatmap can also be shown on the Xaero minimap. |
-| 🧩 **Seven tick categories** | Random ticks, scheduled ticks, block updates, block events, block entities, entities and mob spawning are measured independently; the tooltip identifies the category to which the cost belongs. |
-| 🏷️ **Load source lookup** | The load ticket behind each chunk is resolved: `player_loading`, `forced`, `portal`, `ender_pearl`, `dragon`, and others. Chunks that hold a ticket are outlined in blue, and the tooltip reports the ticket name together with the `@x,z` coordinates of the chunk on which the ticket resides. |
-| 📊 **Scan overview** | A single panel reports total mspt, entity count, load sources and the five most costly chunks, aggregated across **all three dimensions**, whereas the map itself displays one dimension at a time. |
-| 🖱️ **Click to locate** | Selecting an entry in the overview moves the map to the corresponding chunk. A fold row expands the complete source list. When the overview or that list is taller than the screen, a scroll bar appears on its right edge and the mouse wheel scrolls it. |
-| 📡 **Optional monitoring** | Off by default. When enabled, the server watches MSPT and, on sustained overload, scans on its own and alerts the online operators with a clickable list of the five most costly chunks. |
+| 🌡️ **区块级热力图** | 按区块所占用的刻耗时着色，由绿经黄至红。弱加载区块着淡灰色；可在设置中让其中有耗时的区块照常染色。热力图亦可同步显示于 Xaero 小地图。 |
+| 🧩 **七类耗时分别计量** | 随机刻、计划刻、方块更新、方块事件、方块实体、实体与刷怪各自独立计量；悬停详情指出耗时所属的类别。 |
+| 🏷️ **加载来源反查** | 反查各区块的加载票来源：`玩家加载`、`强制加载`、`传送门`、`末影珍珠`、`末影龙` 等。持有加载票的区块以蓝框标出，悬停详情给出票名及其所在区块的 `@x,z` 坐标。 |
+| 📊 **扫描总览** | 单一面板汇总总卡顿、实体数、加载源与卡顿区块 TOP5，且按**三个维度合计**；地图本身一次仅显示一个维度。 |
+| 🖱️ **点击定位** | 点击总览中的条目可将地图定位至对应区块；折叠行可展开完整的加载源列表。总览框与完整列表高于屏幕时右缘出现滚动条，滚轮翻动。 |
+| 📡 **常态化监控** | 默认关闭。开启后服务端持续监测 MSPT，持续超标即自动扫描，并把卡顿最重的五个区块以可点击的告警发给在线管理员。 |
 
-## 📦 Requirements
+## 📦 环境要求
 
-| Dependency | Required | Notes |
+| 依赖 | 必需性 | 说明 |
 | :--- | :--- | :--- |
-| **Minecraft** | Yes | See [supported versions](#supported-versions) |
-| **Fabric Loader** | Yes | ≥ 0.19.3 |
-| [Fabric API](https://modrinth.com/mod/fabric-api) | Yes | |
-| [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map) | Client only | Verified on Xaero 1.44.2 / 1.46.0 / 1.46.4 (most versions use 1.46.0); other versions are not guaranteed to hook successfully |
-| [Xaero's Minimap](https://modrinth.com/mod/xaeros-minimap) | Optional | When **Minimap heatmap** is checked, heat colours are drawn on the minimap as well. |
-| [Mod Menu](https://modrinth.com/mod/modmenu) | Recommended | Provides a shortcut to the settings screen |
+| **Minecraft** | 必需 | 可用版本见[下表](#支持版本) |
+| **Fabric Loader** | 必需 | ≥ 0.19.3 |
+| [Fabric API](https://modrinth.com/mod/fabric-api) | 必需 | |
+| [Xaero 的世界地图](https://modrinth.com/mod/xaeros-world-map) | 仅客户端 | 已在 Xaero 1.44.2 / 1.46.0 / 1.46.4 上验证（多数版本使用 1.46.0），其余版本不保证挂载成功 |
+| [Xaero 的小地图](https://modrinth.com/mod/xaeros-minimap) | 可选 | 勾选「小地图显示热力图」后，热力色同步绘制于小地图。|
+| [Mod Menu](https://modrinth.com/mod/modmenu) | 建议安装 | 提供设置界面的快捷入口 |
 
-### Supported versions
+### 支持版本
 
-| Minecraft | Build directory | Runtime Java | Fabric API floor |
+| Minecraft | 构建目录 | 运行期 Java | Fabric API 下限 |
 | :--- | :--- | :--- | :--- |
 | 1.20 – 1.20.2 | `versions/1.20.1` | 17 | `0.83.0+1.20` |
 | 1.20.3 – 1.20.4 | `versions/1.20.4` | 17 | `0.91.1+1.20.3` |
@@ -65,137 +65,137 @@ Identifies the specific chunks responsible for server-side lag.
 | 26.3 | `versions/26.3` | 25 | `0.160.5+26.3` |
 
 > [!NOTE]
-> 1.20.5, 1.20.6, 1.21.5 and 1.21.9 are not supported.
+> 1.20.5、1.20.6、1.21.5、1.21.9 暂不支持。
 
-## 🚀 Installation
+## 🚀 安装
 
-Download the latest build from [Modrinth](https://modrinth.com/mod/msptmap) or the [releases page](https://github.com/Drizzle379/MsptMap/releases), then place the jar in the `mods/` directory.
+从 [Modrinth](https://modrinth.com/mod/msptmap) 或 [Releases 页](https://github.com/Drizzle379/MsptMap/releases) 下载最新构建，再将 jar 放入 `mods/` 目录。
 
 > [!IMPORTANT]
-> Sampling is performed on the **server**, so the mod is required on both sides.
+> 采样在**服务端**进行，故两侧均需安装本模组。
 
 
-## 🎮 Usage
+## 🎮 用法
 
-1. Open the world map and select the **scan** button in the upper-left corner
-2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are pale grey
-3. Hovering over a chunk displays its coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown
-4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; the source list can be expanded when there are many sources
-5. The ✕ button clears the heatmap
+1. 打开世界地图，点击左上角的**扫描**按钮以开始扫描
+2. 采样完成后，地图按区块的卡顿程度着色：绿 → 黄 → 红；弱加载区块为淡灰色
+3. 悬停任意区块可查看详情：坐标、加载等级、加载票、实体数、合计 mspt 与各类耗时明细
+4. **扫描总览**显示在扫描按钮旁，给出合计、加载源与卡顿区块 TOP5。点击某一行可将地图定位至该区块；加载源数量多时可展开显示
+5. 点击 ✕ 按钮清空热力图
 
-### Interpreting load tickets
+### 加载票说明
 
-The load ticket identifies the ticket that keeps the chunk loaded; the `@x,z` suffix gives the coordinates of the chunk on which the ticket resides; a chunk outlined in blue holds a ticket.
-(In fact, every chunk around a player holds a ticket; for brevity, only the ticket of the chunk the player is in is shown.)
+加载票指明该区块被保持加载的票据，其后的 `@x,z` 为票所在区块的坐标；以蓝框标出的区块即持有加载票。
+（事实上，玩家周围每个区块均持票，显示简洁，只显示玩家所在区块的加载票）
 
 <details>
-<summary>All ticket names</summary>
+<summary>全部票名</summary>
 
-| Ticket | Reason the chunk remains loaded |
+| 票名 | 保持加载的原因 |
 | :--- | :--- |
-| `player_loading` | A player |
-| `player_simulation` | A player |
-| `forced` | Force-loaded by the `/forceload` command |
-| `portal` | An entity passes through a portal |
-| `ender_pearl` | While an ender pearl has not landed |
-| `player_spawn` | The chunk is the world spawn point (named `start` up to 1.21.10) |
-| `spawn_search` | A spawn point search is in progress (1.21.11 and later) |
-| `dragon` | The ender dragon fight holds the chunk |
-| `unknown` | Vanilla's fallback ticket type, or a custom ticket from another mod |
+| `玩家加载` | 玩家 |
+| `玩家模拟` | 玩家 |
+| `强制加载` | 被 `/forceload` 指令强制加载 |
+| `传送门` | 实体经过传送门 |
+| `末影珍珠` | 末影珍珠未落地时 |
+| `世界出生点` | 该区块为世界出生点（1.21.10 及以前名为 `start`） |
+| `出生点搜索` | 正在执行出生点搜索（1.21.11 起） |
+| `末影龙` | 末影龙战斗占用 |
+| `未知` | 原版的兜底票类型或其他模组的自创加载票 |
 
 > [!NOTE]
-> Games through 1.21.4 have no queryable ticket table; the ticket name and its `@x,z` are therefore not displayed there, and only the load level is shown.
+> 1.21.4 及以前的游戏没有可查询的票表，故不显示票名与 `@x,z`，仅显示加载等级。
 </details>
 
 
 > [!TIP]
-> **Single-player:** the world is paused while the map is open; after selecting scan, close the map and wait.
+> **单人游戏**：地图打开时世界暂停；点击扫描按钮后须关闭地图再等待。
 
-## 🕹️ Commands
+## 🕹️ 指令
 
-| Command | Side | Effect |
+| 指令 | 端 | 作用 |
 | :--- | :--- | :--- |
-| `/msptmap scan [seconds]` | Server | Runs a scan and logs the result to the server console. Omit `seconds` to use the default of 2 seconds; range 1 – 60. |
-| `/msptmap access <ops\|all>` | Both | Who may start a scan: operators only (default) or every player. |
-| `/msptmap monitor` | Both | Prints the monitoring state and its settings. |
-| `/msptmap monitor <on\|off>` | Both | Master switch for monitoring, off by default; turning it off also discards the current window and the cooldown. |
-| `/msptmap monitor threshold <mspt>` | Both | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
-| `/msptmap monitor cooldown <minutes>` | Both | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
-| `/msptmap monitor audience <op\|all>` | Both | Who is alerted: online operators only (default `op`), or every online player. |
+| `/msptmap scan [秒数]` | 服务端 | 发起扫描，结果只写入服务端日志；省略秒数则使用默认的 2 秒，范围 1 ~ 60。 |
+| `/msptmap access <ops\|all>` | 两端 | 谁能发起扫描：仅 OP（默认）或所有玩家。 |
+| `/msptmap monitor` | 两端 | 打印监控状态与各项设置。 |
+| `/msptmap monitor <on\|off>` | 两端 | 监控总开关，默认关闭；关闭时一并丢弃当前窗口与冷却。 |
+| `/msptmap monitor threshold <mspt>` | 两端 | 触发阈值，1.0 ~ 1000.0（默认 `40.0`）。 |
+| `/msptmap monitor cooldown <分钟>` | 两端 | 触发后多长时间内不再扫描，1 ~ 1440（默认 `5`）。 |
+| `/msptmap monitor audience <op\|all>` | 两端 | 告警发给谁：仅在线 OP（默认 `op`），或所有在线玩家。 |
 
-Scanning is limited to vanilla permission level 2 (operators) by default; `/msptmap access <ops\|all>` opens it to every player or restores the default. The `access` and `monitor` subcommands are always restricted to operators.
+扫描默认限原版权限等级 2（OP）；`/msptmap access <ops\|all>` 可放开给所有玩家，或恢复默认。`access` 与 `monitor` 两条子命令本身始终限 OP。
 
-## 📡 Monitoring
+## 📡 监控
 
-Off by default. When enabled, once the server sees MSPT rise above the threshold, the five most costly chunks are sent to the online operators as a chat alert; selecting a row opens the world map at that chunk.
+默认关闭。开启后，服务端检测到 mspt 超过阈值，就把卡顿最重的五个区块作为聊天告警发给在线管理员；点击其中一行可将世界地图打开并定位到该区块。
 
-Monitoring is an operator command, switched with `/msptmap monitor <on\|off>`; its settings are stored in `config/msptmap-server.properties` — see [Commands](#-commands).
+监控是管理员命令，用 `/msptmap monitor <on\|off>` 开关，其设置保存在 `config/msptmap-server.properties`（各项见[指令](#-指令)）。
 
-## 🔧 Configuration
+## 🔧 设置
 
-Open **Mod Menu → Settings**, or select the **settings** button on the map. Settings are stored in `config/msptmap-client.properties`; the file can also be edited by hand.
+打开 **Mod Menu → 设置**，或点击地图上的**设置**按钮。设置保存在 `config/msptmap-client.properties`，也可直接手改文件。
 
 <details>
-<summary>All settings</summary>
+<summary>全部设置项</summary>
 
-| Group | Setting | Effect |
+| 分组 | 设置项 | 作用 |
 | :--- | :--- | :--- |
-| Scan | **Seconds** | Length of the sampling window, in seconds (converted to game ticks) |
-| Colors | **Relative mode** | Colours are scaled to the most costly chunk **in the current scan**, so that relatively costly chunks remain distinguishable under light overall load. When disabled, the fixed red threshold below is applied instead. |
-| Colors | **Red threshold** | A chunk costing at least this value, in ms/tick, is displayed in the deepest red; below it, colour transitions continuously from green through yellow to red. Not applied, and not adjustable, while relative mode is enabled. |
-| Colors | **Opacity** | Opacity of the heat fill, 0.05 – 1.00. Lower values reveal more of the underlying map. |
-| Colors | **Show weak-loaded chunks** | Displays chunks at load level ≥ 32 in pale grey; these chunks do not take heat colours. |
-| Colors | **Color weak chunks when timed** | Weak-loaded chunks that performed measurable work during the window are coloured by cost. Off by default; available only while **Show weak-loaded chunks** is checked. |
-| Colors | **Minimap heatmap** | Shows heat colours on the Xaero minimap as well. Off by default. |
-| Hover details | **Coordinates** / **Levels** / **Entities** | Determines which lines appear in the hover tooltip. |
-| Hover details | **Load ticket** / **Compute ticket** | Appends the ticket source to the load-level / compute-level line. |
-| Hover details | **Show abbreviations** | Displays category names as two-letter codes: `RT ST BU EV BE EN SP`. |
-| Hover details | **Show mspt unit** | Appends `mspt` to each category line. The total line displays its unit unconditionally. |
-| Hover details | **Total** | Shows the total mspt line. |
-| Hover details | **Color summary values** | Colors the scan overview's values by the heat gradient. On by default. |
-| Hover details | **Category lines** | Seven checkboxes (random tick, scheduled tick, block update, block event, block entity, entity, mob spawning) control which category lines appear. |
+| 扫描 | **秒数** | 采样窗口长度，单位为秒（按游戏刻换算） |
+| 颜色 | **采用相对模式** | 颜色按**本次扫描**中的相对大小判定：最重的区块显示为红色，其余区块与之比较——整体负载较低时，相对卡顿的区块仍可分辨。取消勾选则一律按下方固定的红色阈值判定。 |
+| 颜色 | **红色阈值** | 区块耗时达到此值（ms/tick）即显示为最高等级红色；低于此值的区块，颜色由绿经黄连续过渡到红。勾选相对模式时此项不参与判定，且不可调整。 |
+| 颜色 | **不透明度** | 热力色填充的不透明度，0.05 ~ 1.00；数值越小，透出的底图越清晰。 |
+| 颜色 | **显示弱加载区块** | 以淡灰显示加载等级 32 及以上的区块；这些区块不参与热力着色。 |
+| 颜色 | **弱加载区块计时时染色** | 弱加载区块在采样窗口内产生过耗时时，仍按热力色着色。默认关闭；仅勾选「显示弱加载区块」时可用。 |
+| 颜色 | **小地图显示热力图** | 在 Xaero 小地图上同步显示热力色。默认关闭。 |
+| 悬停详情 | **坐标** / **等级** / **实体数** | 决定哪些行出现在悬停详情中。 |
+| 悬停详情 | **加载票** / **计算票** | 在加载等级 / 计算等级行后附带票的来源。 |
+| 悬停详情 | **显示为缩写** | 类别名显示为二字母缩写：`RT ST BU EV BE EN SP`。 |
+| 悬停详情 | **显示单位（mspt）** | 每类明细行后附 `mspt`；合计行的单位固定显示，不受此项影响。 |
+| 悬停详情 | **合计** | 显示合计 mspt 行。 |
+| 悬停详情 | **总览着色** | 扫描总览的数值按热力梯度着色。默认开启。 |
+| 悬停详情 | **类别明细** | 七个勾选框（随机刻、计划刻、方块更新、方块事件、方块实体、实体、刷怪）分别控制各类明细行是否显示。 |
 
-**Reset defaults** restores all of the above to their default values.
+**恢复默认** 可将以上各项恢复为默认值。
 </details>
 
-## 🧭 How it works
+## 🧭 工作原理
 
 ```mermaid
 flowchart LR
-    A["Client<br/>map button"] -->|scan request| B["Server<br/>MsptSampler"]
-    B --> C["per-chunk timing<br/>7 tick categories"]
-    C -->|scan result| D["Client<br/>heatmap + overview"]
+    A["客户端<br/>地图按钮"] -->|扫描请求| B["服务端<br/>MsptSampler"]
+    B --> C["逐区块计时<br/>七类工作"]
+    C -->|扫描结果| D["客户端<br/>热力图 + 总览"]
 ```
 
-The server samples the time spent on seven kinds of tick work and sends the result to the client that initiated the scan, which then colours the map chunk by chunk.
+服务端采样七类工作的耗时，并将结果发送给发起扫描的客户端，由客户端按区块着色。
 
-| Category | Measured at |
+| 类别 | 计量位置 |
 | :--- | :--- |
-| Random tick | `ServerLevel.tickChunk` |
-| Scheduled tick | `ServerLevel.tickBlock` / `tickFluid` |
-| Block update | NC updates (`ServerLevel`), PP update (`Level.neighborShapeChanged`) |
-| Block event | `ServerLevel.doBlockEvent` |
-| Block entity | `LevelChunk$BoundTickingBlockEntity.tick` |
-| Entity | `ServerLevel.tickNonPassenger`, plus the per-tick synchronisation (`ChunkMap$TrackedEntity.updatePlayers` / `ServerEntity.sendChanges`) |
-| Mob spawning | `NaturalSpawner.spawnForChunk` |
+| 随机刻 | `ServerLevel.tickChunk` |
+| 计划刻 | `ServerLevel.tickBlock` / `tickFluid` |
+| 方块更新 | NC更新`ServerLevel` ，PP更新`Level.neighborShapeChanged` |
+| 方块事件 | `ServerLevel.doBlockEvent` |
+| 方块实体 | `LevelChunk$BoundTickingBlockEntity.tick` |
+| 实体 | `ServerLevel.tickNonPassenger`，以及每 tick 的同步（`ChunkMap$TrackedEntity.updatePlayers` / `ServerEntity.sendChanges`） |
+| 刷怪 | `NaturalSpawner.spawnForChunk` |
 
 > [!IMPORTANT]
-> Block updates are measured but excluded from the total: their cost is already contained within the category that triggered them.
+> 方块更新会被计量，但不计入合计：其耗时已包含在触发它的类别中。
 >
-> For technical reasons the timings above are not strictly accurate — they may equal or slightly understate the real cost — and serve as a reference only.
+> 受技术所限，上表各类计时并不严格准确（可能等于或略小于实际耗时），仅供参考。
 
-## 🔨 Building
+## 🔨 构建
 
-Requires **JDK 25**.
+需要 **JDK 25**。
 
 ```shell
-./gradlew build    # gradlew.bat on Windows
+./gradlew build    # Windows 使用 gradlew.bat
 ```
 
-## 📄 License
+## 📄 许可
 
 [MIT](LICENSE) © 2026 Drizzle379
 
-<sub>Bug reports and feature requests: [open an issue](https://github.com/Drizzle379/MsptMap/issues) · Author: [Bilibili](https://space.bilibili.com/433418393)</sub>
+<sub>问题反馈与功能建议：[提交 issue](https://github.com/Drizzle379/MsptMap/issues) · 作者：[Bilibili](https://space.bilibili.com/433418393)</sub>
 
-<div align="right"><a href="#msptmap">↑ back to top</a></div>
+<div align="right"><a href="#msptmap">↑ 回到顶部</a></div>

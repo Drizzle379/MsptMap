@@ -1,0 +1,201 @@
+> 插件版处于测试阶段，欢迎前来测试：[MsptMap-Plugin v1.0.1-alpha](https://github.com/Drizzle379/MsptMap-Plugin/releases/tag/v1.0.1-alpha)
+
+<div align="center">
+
+<img src="src/main/resources/assets/msptmap/icon.png" alt="MsptMap" width="128">
+
+# MsptMap
+
+**A per-chunk MSPT heatmap for [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map).**
+Identifies the specific chunks responsible for server-side lag.
+
+[![Modrinth](https://img.shields.io/badge/Modrinth-msptmap-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/msptmap)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.20--26.3-62b47a?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTQgMmgxNmEyIDIgMCAwIDEgMiAydjE2YTIgMiAwIDAgMS0yIDJINGEyIDIgMCAwIDEtMi0yVjRhMiAyIDAgMCAxIDItMm0yIDR2NGg0djJIOHY2aDJ2LTJoNHYyaDJ2LTZoLTJ2LTJoNFY2aC00djRoLTRWNnoiLz48L3N2Zz4%3D)](#supported-versions)
+[![Fabric Loader](https://img.shields.io/badge/Fabric_Loader-0.19.3%2B-dbd0b4?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI%2BPHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNOCAxdjFIN3YySDZ2MUg1djFINHYxSDN2MUgydjFIMXYyaDF2MWgxdjFoMXYxaDF2MWgydi0xaDF2LTJoMXYtMWgxdi0xaDFWOWgyVjhoMVY2aC0xVjVoLTFWNGgtMVYzaC0xVjJIOVYxeiIvPjwvc3ZnPg%3D%3D)](#-requirements)
+[![Java](https://img.shields.io/badge/Java-17--25-e76f00?style=flat-square&logo=openjdk&logoColor=white)](#supported-versions)
+[![Environment](https://img.shields.io/badge/Environment-client_%2B_server-4c8eda?style=flat-square)](#-installation)
+[![License](https://img.shields.io/github/license/Drizzle379/MsptMap?style=flat-square&label=License&color=3da639)](#-license)
+[![Release](https://img.shields.io/github/v/release/Drizzle379/MsptMap?style=flat-square&label=Release&sort=semver&color=8957e5)](https://github.com/Drizzle379/MsptMap/releases)
+[![Downloads](https://img.shields.io/github/downloads/Drizzle379/MsptMap/total?style=flat-square&label=Downloads&color=1f6feb)](https://github.com/Drizzle379/MsptMap/releases)
+[![Stars](https://img.shields.io/github/stars/Drizzle379/MsptMap?style=flat-square&label=Stars&color=e3b341)](https://github.com/Drizzle379/MsptMap)
+
+**English** · [简体中文](README.md)
+
+[Features](#-features) · [Requirements](#-requirements) · [Installation](#-installation) · [Usage](#-usage) · [Commands](#-commands) · [Monitoring](#-monitoring) · [Configuration](#-configuration) · [How it works](#-how-it-works) · [Building](#-building)
+
+</div>
+
+---
+
+## ✨ Features
+
+| | |
+| :--- | :--- |
+| 🌡️ **Per-chunk heatmap** | Chunks are coloured green → yellow → red according to the tick time they consume. Weakly-loaded chunks are shown in pale grey; those that perform measurable work can be coloured in the settings. The heatmap can also be shown on the Xaero minimap. |
+| 🧩 **Seven tick categories** | Random ticks, scheduled ticks, block updates, block events, block entities, entities and mob spawning are measured independently; the tooltip identifies the category to which the cost belongs. |
+| 🏷️ **Load source lookup** | The load ticket behind each chunk is resolved: `player_loading`, `forced`, `portal`, `ender_pearl`, `dragon`, and others. Chunks that hold a ticket are outlined in blue, and the tooltip reports the ticket name together with the `@x,z` coordinates of the chunk on which the ticket resides. |
+| 📊 **Scan overview** | A single panel reports total mspt, entity count, load sources and the five most costly chunks, aggregated across **all three dimensions**, whereas the map itself displays one dimension at a time. |
+| 🖱️ **Click to locate** | Selecting an entry in the overview moves the map to the corresponding chunk. A fold row expands the complete source list. When the overview or that list is taller than the screen, a scroll bar appears on its right edge and the mouse wheel scrolls it. |
+| 📡 **Optional monitoring** | Off by default. When enabled, the server watches MSPT and, on sustained overload, scans on its own and alerts the online operators with a clickable list of the five most costly chunks. |
+
+## 📦 Requirements
+
+| Dependency | Required | Notes |
+| :--- | :--- | :--- |
+| **Minecraft** | Yes | See [supported versions](#supported-versions) |
+| **Fabric Loader** | Yes | ≥ 0.19.3 |
+| [Fabric API](https://modrinth.com/mod/fabric-api) | Yes | |
+| [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map) | Client only | Verified on Xaero 1.44.2 / 1.46.0 / 1.46.4 (most versions use 1.46.0); other versions are not guaranteed to hook successfully |
+| [Xaero's Minimap](https://modrinth.com/mod/xaeros-minimap) | Optional | When **Minimap heatmap** is checked, heat colours are drawn on the minimap as well. |
+| [Mod Menu](https://modrinth.com/mod/modmenu) | Recommended | Provides a shortcut to the settings screen |
+
+### Supported versions
+
+| Minecraft | Build directory | Runtime Java | Fabric API floor |
+| :--- | :--- | :--- | :--- |
+| 1.20 – 1.20.2 | `versions/1.20.1` | 17 | `0.83.0+1.20` |
+| 1.20.3 – 1.20.4 | `versions/1.20.4` | 17 | `0.91.1+1.20.3` |
+| 1.21 – 1.21.1 | `versions/1.21.1` | 21 | `0.100.1+1.21` |
+| 1.21.2 – 1.21.4 | `versions/1.21.4` | 21 | `0.106.1+1.21.2` |
+| 1.21.6 – 1.21.8 | `versions/1.21.8` | 21 | `0.127.0+1.21.6` |
+| 1.21.10 | `versions/1.21.10` | 21 | `0.138.4+1.21.10` |
+| 1.21.11 | `versions/1.21.11` | 21 | `0.141.2+1.21.11` |
+| 26.1 – 26.1.2 | `versions/26.1.2` | 25 | `0.144.0+26.1` |
+| 26.2 | `versions/26.2` | 25 | `0.155.0+26.2` |
+| 26.3 | `versions/26.3` | 25 | `0.160.5+26.3` |
+
+> [!NOTE]
+> 1.20.5, 1.20.6, 1.21.5 and 1.21.9 are not supported.
+
+## 🚀 Installation
+
+Download the latest build from [Modrinth](https://modrinth.com/mod/msptmap) or the [releases page](https://github.com/Drizzle379/MsptMap/releases), then place the jar in the `mods/` directory.
+
+> [!IMPORTANT]
+> Sampling is performed on the **server**, so the mod is required on both sides.
+
+
+## 🎮 Usage
+
+1. Open the world map and select the **scan** button in the upper-left corner
+2. Once sampling completes, chunks are coloured according to their tick cost: green → yellow → red; weakly-loaded chunks are pale grey
+3. Hovering over a chunk displays its coordinates, load level, load ticket, entity count, total mspt and a per-category breakdown
+4. The **scan overview** appears next to the scan button, reporting totals, load sources and the five most costly chunks. Selecting a row moves the map to that chunk; the source list can be expanded when there are many sources
+5. The ✕ button clears the heatmap
+
+### Interpreting load tickets
+
+The load ticket identifies the ticket that keeps the chunk loaded; the `@x,z` suffix gives the coordinates of the chunk on which the ticket resides; a chunk outlined in blue holds a ticket.
+(In fact, every chunk around a player holds a ticket; for brevity, only the ticket of the chunk the player is in is shown.)
+
+<details>
+<summary>All ticket names</summary>
+
+| Ticket | Reason the chunk remains loaded |
+| :--- | :--- |
+| `player_loading` | A player |
+| `player_simulation` | A player |
+| `forced` | Force-loaded by the `/forceload` command |
+| `portal` | An entity passes through a portal |
+| `ender_pearl` | While an ender pearl has not landed |
+| `player_spawn` | The chunk is the world spawn point (named `start` up to 1.21.10) |
+| `spawn_search` | A spawn point search is in progress (1.21.11 and later) |
+| `dragon` | The ender dragon fight holds the chunk |
+| `unknown` | Vanilla's fallback ticket type, or a custom ticket from another mod |
+
+> [!NOTE]
+> Games through 1.21.4 have no queryable ticket table; the ticket name and its `@x,z` are therefore not displayed there, and only the load level is shown.
+</details>
+
+
+> [!TIP]
+> **Single-player:** the world is paused while the map is open; after selecting scan, close the map and wait.
+
+## 🕹️ Commands
+
+| Command | Side | Effect |
+| :--- | :--- | :--- |
+| `/msptmap scan [seconds]` | Server | Runs a scan and logs the result to the server console. Omit `seconds` to use the default of 2 seconds; range 1 – 60. |
+| `/msptmap access <ops\|all>` | Both | Who may start a scan: operators only (default) or every player. |
+| `/msptmap monitor` | Both | Prints the monitoring state and its settings. |
+| `/msptmap monitor <on\|off>` | Both | Master switch for monitoring, off by default; turning it off also discards the current window and the cooldown. |
+| `/msptmap monitor threshold <mspt>` | Both | Threshold to trigger on, 1.0 – 1000.0 (default `40.0`). |
+| `/msptmap monitor cooldown <minutes>` | Both | Span after a trigger in which no further scan starts, 1 – 1440 (default `5`). |
+| `/msptmap monitor audience <op\|all>` | Both | Who is alerted: online operators only (default `op`), or every online player. |
+
+Scanning is limited to vanilla permission level 2 (operators) by default; `/msptmap access <ops\|all>` opens it to every player or restores the default. The `access` and `monitor` subcommands are always restricted to operators.
+
+## 📡 Monitoring
+
+Off by default. When enabled, once the server sees MSPT rise above the threshold, the five most costly chunks are sent to the online operators as a chat alert; selecting a row opens the world map at that chunk.
+
+Monitoring is an operator command, switched with `/msptmap monitor <on\|off>`; its settings are stored in `config/msptmap-server.properties` — see [Commands](#-commands).
+
+## 🔧 Configuration
+
+Open **Mod Menu → Settings**, or select the **settings** button on the map. Settings are stored in `config/msptmap-client.properties`; the file can also be edited by hand.
+
+<details>
+<summary>All settings</summary>
+
+| Group | Setting | Effect |
+| :--- | :--- | :--- |
+| Scan | **Seconds** | Length of the sampling window, in seconds (converted to game ticks) |
+| Colors | **Relative mode** | Colours are scaled to the most costly chunk **in the current scan**, so that relatively costly chunks remain distinguishable under light overall load. When disabled, the fixed red threshold below is applied instead. |
+| Colors | **Red threshold** | A chunk costing at least this value, in ms/tick, is displayed in the deepest red; below it, colour transitions continuously from green through yellow to red. Not applied, and not adjustable, while relative mode is enabled. |
+| Colors | **Opacity** | Opacity of the heat fill, 0.05 – 1.00. Lower values reveal more of the underlying map. |
+| Colors | **Show weak-loaded chunks** | Displays chunks at load level ≥ 32 in pale grey; these chunks do not take heat colours. |
+| Colors | **Color weak chunks when timed** | Weak-loaded chunks that performed measurable work during the window are coloured by cost. Off by default; available only while **Show weak-loaded chunks** is checked. |
+| Colors | **Minimap heatmap** | Shows heat colours on the Xaero minimap as well. Off by default. |
+| Hover details | **Coordinates** / **Levels** / **Entities** | Determines which lines appear in the hover tooltip. |
+| Hover details | **Load ticket** / **Compute ticket** | Appends the ticket source to the load-level / compute-level line. |
+| Hover details | **Show abbreviations** | Displays category names as two-letter codes: `RT ST BU EV BE EN SP`. |
+| Hover details | **Show mspt unit** | Appends `mspt` to each category line. The total line displays its unit unconditionally. |
+| Hover details | **Total** | Shows the total mspt line. |
+| Hover details | **Color summary values** | Colors the scan overview's values by the heat gradient. On by default. |
+| Hover details | **Category lines** | Seven checkboxes (random tick, scheduled tick, block update, block event, block entity, entity, mob spawning) control which category lines appear. |
+
+**Reset defaults** restores all of the above to their default values.
+</details>
+
+## 🧭 How it works
+
+```mermaid
+flowchart LR
+    A["Client<br/>map button"] -->|scan request| B["Server<br/>MsptSampler"]
+    B --> C["per-chunk timing<br/>7 tick categories"]
+    C -->|scan result| D["Client<br/>heatmap + overview"]
+```
+
+The server samples the time spent on seven kinds of tick work and sends the result to the client that initiated the scan, which then colours the map chunk by chunk.
+
+| Category | Measured at |
+| :--- | :--- |
+| Random tick | `ServerLevel.tickChunk` |
+| Scheduled tick | `ServerLevel.tickBlock` / `tickFluid` |
+| Block update | NC updates (`ServerLevel`), PP update (`Level.neighborShapeChanged`) |
+| Block event | `ServerLevel.doBlockEvent` |
+| Block entity | `LevelChunk$BoundTickingBlockEntity.tick` |
+| Entity | `ServerLevel.tickNonPassenger`, plus the per-tick synchronisation (`ChunkMap$TrackedEntity.updatePlayers` / `ServerEntity.sendChanges`) |
+| Mob spawning | `NaturalSpawner.spawnForChunk` |
+
+> [!IMPORTANT]
+> Block updates are measured but excluded from the total: their cost is already contained within the category that triggered them.
+>
+> For technical reasons the timings above are not strictly accurate — they may equal or slightly understate the real cost — and serve as a reference only.
+
+## 🔨 Building
+
+Requires **JDK 25**.
+
+```shell
+./gradlew build    # gradlew.bat on Windows
+```
+
+## 📄 License
+
+[MIT](LICENSE) © 2026 Drizzle379
+
+<sub>Bug reports and feature requests: [open an issue](https://github.com/Drizzle379/MsptMap/issues) · Author: [Bilibili](https://space.bilibili.com/433418393)</sub>
+
+<div align="right"><a href="#msptmap">↑ back to top</a></div>
