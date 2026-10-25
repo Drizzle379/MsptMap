@@ -1,5 +1,6 @@
 package msptmap.client;
 
+import msptmap.util.Decimals;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
@@ -10,10 +11,10 @@ import java.util.List;
 /**
  * 设置主界面。两个入口：模组菜单（{@link ModMenuIntegration}）与地图上的设置按钮。
  *
- * <p>照 Xaero 世界地图的分层做法：本界面只放三个板块的入口按钮（如设置条目般整行），点击进入各自
+ * <p>照 Xaero 世界地图的分层做法：本界面放三个板块的入口按钮（如设置条目般整行），点击进入各自
  * 子页（{@link ScanConfigScreen} / {@link ColorConfigScreen} / {@link TooltipConfigScreen}），
  * 子页由「返回」或 Esc 回到本界面。此前所有选项挤在一页，常见 GUI 缩放下底部按钮会出屏；
- * 拆开后每页高度均低于 GUI 高度下限 240。
+ * 拆开后每页高度均低于 GUI 高度下限 240。热力图不透明度是常用项，直接放在本界面。
  *
  * <p>落盘只有一处：{@link #onClose()}。子页里的改动都立刻写入内存字段（地图下一帧即按新值绘制），
  * 回到本界面再「完成」或 Esc 时统一保存——没有取消按钮。
@@ -30,13 +31,21 @@ public class MsptMapConfigScreen extends ConfigScreenBase {
 
 	@Override
 	protected List<Column> planColumns() {
+		int labelWidth = font.width(Component.translatable("msptmap.config.opacity")) + 8;
 		return List.of(new Column(ENTRY_WIDTH, List.of(
 				new Row(ENTRY_ROW, (x, y) -> addEntry(x, y, "msptmap.config.group.scan",
 						() -> showScreen(new ScanConfigScreen(this)))),
 				new Row(ENTRY_ROW, (x, y) -> addEntry(x, y, "msptmap.config.group.colors",
 						() -> showScreen(new ColorConfigScreen(this)))),
 				new Row(ENTRY_ROW, (x, y) -> addEntry(x, y, "msptmap.config.group.tooltip",
-						() -> showScreen(new TooltipConfigScreen(this)))))));
+						() -> showScreen(new TooltipConfigScreen(this)))),
+				new Row(ROW, (x, y) -> {
+					addRowLabel(Component.translatable("msptmap.config.opacity"), x, y);
+					addSlider(x + labelWidth, y, ENTRY_WIDTH - labelWidth, ClientConfig.MIN_FILL_ALPHA,
+							ClientConfig.MAX_FILL_ALPHA, ClientConfig.fillAlpha, Decimals::format2,
+							value -> ClientConfig.fillAlpha = value,
+							Component.translatable("msptmap.config.opacity_tooltip"));
+				}))));
 	}
 
 	/** 一个板块的入口按钮：点击进入对应子页。 */

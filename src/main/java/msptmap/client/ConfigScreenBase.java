@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 /*import net.minecraft.client.gui.GuiGraphics;
 *///?}
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.Tooltip;
@@ -14,6 +15,8 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.DoubleConsumer;
+import java.util.function.DoubleFunction;
 
 /**
  * 设置界面的公共骨架：主界面（{@link MsptMapConfigScreen}）与三个子页
@@ -190,6 +193,53 @@ abstract class ConfigScreenBase extends Screen {
 	@Override
 	public void onClose() {
 		goBack();
+	}
+
+	/** 0~1 的滑块：位置换算与写回见 {@link ConfigSlider}；自动挂上悬停说明。 */
+	protected ConfigSlider addSlider(int x, int y, int sliderWidth, double min, double max, double value,
+			DoubleFunction<String> format, DoubleConsumer apply, Component tooltip) {
+		ConfigSlider slider = new ConfigSlider(x, y, sliderWidth, min, max, value, format, apply);
+		slider.setTooltip(Tooltip.create(tooltip));
+		addRenderableWidget(slider);
+		return slider;
+	}
+
+	/**
+	 * 0~1 的滑块：位置 → 区间 [min, max] 内的值（两位小数）。
+	 *
+	 * <p>显示文本与写回的值都走 {@link #current()}，两者不会不一致。
+	 */
+	protected static class ConfigSlider extends AbstractSliderButton {
+		private final double min;
+		private final double max;
+		private final DoubleFunction<String> format;
+		private final DoubleConsumer apply;
+
+		ConfigSlider(int x, int y, int sliderWidth, double min, double max, double value,
+				DoubleFunction<String> format, DoubleConsumer apply) {
+			super(x, y, sliderWidth, WIDGET_HEIGHT, Component.empty(), ClientConfig.toSlider(value, min, max));
+			this.min = min;
+			this.max = max;
+			this.format = format;
+			this.apply = apply;
+			// 父类构造器只存位置、不调 updateMessage，故文字需自行填一次
+			updateMessage();
+		}
+
+		/** 滑块当前代表的值。 */
+		private double current() {
+			return ClientConfig.fromSlider(value, min, max);
+		}
+
+		@Override
+		protected void updateMessage() {
+			setMessage(Component.literal(format.apply(current())));
+		}
+
+		@Override
+		protected void applyValue() {
+			apply.accept(current());
+		}
 	}
 
 	/** 不带悬停说明的勾选框（子页的开关：勾的是什么看标签即可）。 */
