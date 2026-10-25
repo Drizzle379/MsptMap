@@ -293,12 +293,11 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		FlowLayout header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(14)).gap(COLUMN_GAP);
 		header.padding(Insets.both(2, 0));
 		header.verticalAlignment(VerticalAlignment.CENTER);
-		// 坐标列的列名让出左侧图标宽度，中心与图标右侧的 [x,z] 文字对齐
-		header.child(new HeaderButton("msptmap.analysis.column.x", Sort.X, columns[0], ICON_SIZE + 2));
-		header.child(new HeaderButton("msptmap.analysis.column.mspt", Sort.MSPT, columns[1], 0));
-		header.child(new HeaderButton("msptmap.analysis.column.entities_short", Sort.ENTITIES, columns[2], 0));
-		header.child(new HeaderButton("msptmap.analysis.column.load_level", Sort.LEVEL, columns[3], 0));
-		header.child(new HeaderButton("msptmap.analysis.column.compute_level", Sort.COMPUTE_LEVEL, columns[4], 0));
+		header.child(new HeaderButton("msptmap.analysis.column.x", Sort.X, columns[0]));
+		header.child(new HeaderButton("msptmap.analysis.column.mspt", Sort.MSPT, columns[1]));
+		header.child(new HeaderButton("msptmap.analysis.column.entities_short", Sort.ENTITIES, columns[2]));
+		header.child(new HeaderButton("msptmap.analysis.column.load_level", Sort.LEVEL, columns[3]));
+		header.child(new HeaderButton("msptmap.analysis.column.compute_level", Sort.COMPUTE_LEVEL, columns[4]));
 		return header;
 	}
 
@@ -604,7 +603,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		private @Nullable Boolean styledActive;
 		private boolean styledAscending;
 
-		private HeaderButton(String key, Sort column, int width, int leading) {
+		private HeaderButton(String key, Sort column, int width) {
 			super(Sizing.fixed(width), Sizing.fill(100), Algorithm.HORIZONTAL);
 			this.column = column;
 			this.horizontalAlignment(HorizontalAlignment.CENTER);
@@ -612,9 +611,8 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			this.gap(2);
 			this.padding(Insets.both(2, 0));
 			this.cursorStyle(CursorStyle.HAND);
-			// 左侧占位与右侧三角等宽，使列名中心落在列中线上；leading 用于坐标列让出图标
-			this.child(UIContainers.horizontalFlow(
-					Sizing.fixed(SORT_ARROW_WIDTH + leading), Sizing.fixed(1)));
+			// 左侧占位与右侧三角等宽，使列名中心落在列中线上
+			this.child(UIContainers.horizontalFlow(Sizing.fixed(SORT_ARROW_WIDTH), Sizing.fixed(1)));
 			this.label = UIComponents.label(Component.translatable(key)).shadow(false);
 			this.label.verticalTextAlignment(VerticalAlignment.CENTER);
 			this.child(this.label);
@@ -761,13 +759,19 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			}
 		}
 
-		/** 坐标列：维度方块图标在左、[x,z] 在右；图标不参与排序。 */
+		/** 坐标列：图标紧贴 [x,z]，整组在列内居中；图标不参与排序。 */
 		private FlowLayout coordCell(Row row) {
-			FlowLayout rowLayout = UIContainers.horizontalFlow(Sizing.fixed(columns[0]), Sizing.content()).gap(2);
+			FlowLayout rowLayout = UIContainers.horizontalFlow(Sizing.fixed(columns[0]), Sizing.content());
+			rowLayout.horizontalAlignment(HorizontalAlignment.CENTER);
 			rowLayout.verticalAlignment(VerticalAlignment.CENTER);
-			rowLayout.child(dimensionIcon(row.dimension()));
-			rowLayout.child(cell("[" + row.x() + "," + row.z() + "]",
-					Math.max(1, columns[0] - ICON_SIZE - 2), TEXT));
+			FlowLayout content = UIContainers.horizontalFlow(Sizing.content(), Sizing.content()).gap(2);
+			content.verticalAlignment(VerticalAlignment.CENTER);
+			content.child(dimensionIcon(row.dimension()));
+			LabelComponent coord = UIComponents.label(Component.literal("[" + row.x() + "," + row.z() + "]"))
+					.shadow(false).color(Color.ofArgb(TEXT));
+			coord.verticalTextAlignment(VerticalAlignment.CENTER);
+			content.child(coord);
+			rowLayout.child(content);
 			return rowLayout;
 		}
 
