@@ -1,7 +1,6 @@
 package msptmap.client;
 
 //? if >=26.2 {
-import msptmap.MsptMapMod;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketCode;
@@ -21,7 +20,6 @@ import msptmap.vendor.owo.ui.core.HorizontalAlignment;
 import msptmap.vendor.owo.ui.core.Insets;
 import msptmap.vendor.owo.ui.core.OwoUIAdapter;
 import msptmap.vendor.owo.ui.core.OwoUIGraphics;
-import msptmap.vendor.owo.ui.core.PositionedRectangle;
 import msptmap.vendor.owo.ui.core.Sizing;
 import msptmap.vendor.owo.ui.core.Surface;
 import msptmap.vendor.owo.ui.core.UIComponent;
@@ -73,9 +71,6 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int ICON_SIZE = 8;
 	/** 坐标列的最小宽度：图标 + 间隙 + 约 9 个字符的 [x,z]。 */
 	private static final int COORD_MIN_WIDTH = 64;
-	/** 表头排序三角：7×4，纹理上段为升序、中段为降序、下段透明供未排序列占位。 */
-	private static final int SORT_ARROW_WIDTH = 7;
-	private static final int SORT_ARROW_HEIGHT = 4;
 	/** 右键菜单：两项固定，每项高 13、项间 1 像素分割线，四周留 4 像素。 */
 	private static final int MENU_ITEM_HEIGHT = 13;
 	private static final int MENU_SEPARATOR = 1;
@@ -110,8 +105,6 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private int contentWidth;
 
 	private String dimension = "*";
-	private Sort sort = Sort.MSPT;
-	private boolean ascending = false;
 	private int loaded = LOAD_STEP;
 	private @Nullable Row selected;
 	/** 首帧布局完成后需要滚动到可见处的目标行。 */
@@ -494,12 +487,22 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		FlowLayout header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(14)).gap(COLUMN_GAP);
 		header.padding(Insets.both(2, 0));
 		header.verticalAlignment(VerticalAlignment.CENTER);
-		header.child(new HeaderButton("msptmap.analysis.column.x", Sort.X, columns[0], HorizontalAlignment.LEFT));
-		header.child(new HeaderButton("msptmap.analysis.column.mspt", Sort.MSPT, columns[1]));
-		header.child(new HeaderButton("msptmap.analysis.column.entities_short", Sort.ENTITIES, columns[2]));
-		header.child(new HeaderButton("msptmap.analysis.column.load_level", Sort.LEVEL, columns[3]));
-		header.child(new HeaderButton("msptmap.analysis.column.compute_level", Sort.COMPUTE_LEVEL, columns[4]));
+		header.child(headerCell("msptmap.analysis.column.x", columns[0], HorizontalAlignment.LEFT));
+		header.child(headerCell("msptmap.analysis.column.mspt", columns[1], HorizontalAlignment.CENTER));
+		header.child(headerCell("msptmap.analysis.column.entities_short", columns[2], HorizontalAlignment.CENTER));
+		header.child(headerCell("msptmap.analysis.column.load_level", columns[3], HorizontalAlignment.CENTER));
+		header.child(headerCell("msptmap.analysis.column.compute_level", columns[4], HorizontalAlignment.CENTER));
 		return header;
+	}
+
+	/** 表头单元格：只显示列名，不参与排序。 */
+	private LabelComponent headerCell(String key, int width, HorizontalAlignment alignment) {
+		LabelComponent label = UIComponents.label(Component.translatable(key)).shadow(false)
+				.color(Color.ofArgb(TEXT_DIM));
+		label.horizontalSizing(Sizing.fixed(width));
+		label.horizontalTextAlignment(alignment);
+		label.verticalTextAlignment(VerticalAlignment.CENTER);
+		return label;
 	}
 
 	/**
@@ -619,7 +622,8 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			}
 			visibleRows.add(row);
 		}
-		visibleRows.sort(comparator());
+		// 固定按 mspt 从大到小，最重的区块总在顶部
+		visibleRows.sort(Comparator.comparingDouble(Row::mspt).reversed());
 
 		loaded = Math.min(loaded, Math.max(0, visibleRows.size()));
 		if (loaded == 0 && !visibleRows.isEmpty()) {
@@ -641,27 +645,6 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			listScroll.restoreScroll();
 		}
 		updateOverview();
-	}
-
-	private Comparator<Row> comparator() {
-		Comparator<Row> by = switch (sort) {
-			case MSPT -> Comparator.comparingDouble(Row::mspt);
-			case ENTITIES -> Comparator.comparingInt(Row::entities);
-			case X -> Comparator.comparingInt(Row::x).thenComparingInt(Row::z);
-			case LEVEL -> Comparator.comparingInt(Row::loadLevel);
-			case COMPUTE_LEVEL -> Comparator.comparingInt(Row::computeLevel);
-		};
-		return ascending ? by : by.reversed();
-	}
-
-	private void setSort(Sort next) {
-		if (this.sort == next) {
-			ascending = !ascending;
-		} else {
-			sort = next;
-			ascending = false;
-		}
-		resetList();
 	}
 
 	private void select(Row row) {
@@ -737,14 +720,6 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		Screens.show(Minecraft.getInstance(), parent);
 	}
 
-	private enum Sort {
-		MSPT,
-		ENTITIES,
-		X,
-		LEVEL,
-		COMPUTE_LEVEL
-	}
-
 	private record Row(String dimension, int x, int z, float mspt, int entities, int loadLevel, int computeLevel,
 			int loadTicket, int simTicket, long[] nanos) {
 	}
@@ -790,72 +765,6 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				this.onLoadMore.run();
 			}
 			return handled;
-		}
-	}
-
-	/**
-	 * 表头列：点击任意一列按该列排序，再点同一列切换升降序。
-	 * 列名与排序三角作为一组按 alignment 摆放；三角采样贴图的上/中/透明段，未排序列占位宽度不变。
-	 */
-	private final class HeaderButton extends FlowLayout {
-		private final Sort column;
-		private final LabelComponent label;
-		private final TextureComponent arrow;
-		private @Nullable Boolean styledActive;
-		private boolean styledAscending;
-
-		private HeaderButton(String key, Sort column, int width) {
-			this(key, column, width, HorizontalAlignment.CENTER);
-		}
-
-		private HeaderButton(String key, Sort column, int width, HorizontalAlignment alignment) {
-			super(Sizing.fixed(width), Sizing.fill(100), Algorithm.HORIZONTAL);
-			this.column = column;
-			this.horizontalAlignment(alignment);
-			this.verticalAlignment(VerticalAlignment.CENTER);
-			this.gap(2);
-			this.padding(Insets.both(2, 0));
-			this.cursorStyle(CursorStyle.HAND);
-			if (alignment == HorizontalAlignment.CENTER) {
-				// 左侧占位与右侧三角等宽，使列名中心落在列中线上
-				this.child(UIContainers.horizontalFlow(Sizing.fixed(SORT_ARROW_WIDTH), Sizing.fixed(1)));
-			}
-			this.label = UIComponents.label(Component.translatable(key)).shadow(false);
-			this.label.verticalTextAlignment(VerticalAlignment.CENTER);
-			this.child(this.label);
-			this.arrow = UIComponents.texture(Ids.of(MsptMapMod.MOD_ID, "textures/gui/sort.png"),
-					0, 0, SORT_ARROW_WIDTH, SORT_ARROW_HEIGHT,
-					SORT_ARROW_WIDTH, SORT_ARROW_HEIGHT * 3);
-			this.child(this.arrow);
-			this.mouseDown().subscribe((click, doubled) -> {
-				if (click.button() != 0) {
-					return false;
-				}
-				playClick();
-				setSort(this.column);
-				return true;
-			});
-			updateStyle();
-		}
-
-		private void updateStyle() {
-			boolean active = AnalysisScreen.this.sort == this.column;
-			boolean asc = AnalysisScreen.this.ascending;
-			if (this.styledActive != null && this.styledActive == active && this.styledAscending == asc) {
-				return;
-			}
-			this.styledActive = active;
-			this.styledAscending = asc;
-			this.label.color(Color.ofArgb(active ? TEXT : TEXT_DIM));
-			this.arrow.visibleArea(PositionedRectangle.of(0,
-					active ? (asc ? 0 : SORT_ARROW_HEIGHT) : SORT_ARROW_HEIGHT * 2,
-					SORT_ARROW_WIDTH, SORT_ARROW_HEIGHT));
-		}
-
-		@Override
-		public void draw(OwoUIGraphics graphics, int mouseX, int mouseY, float partialTicks, float delta) {
-			updateStyle();
-			super.draw(graphics, mouseX, mouseY, partialTicks, delta);
 		}
 	}
 
