@@ -9,14 +9,15 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * 「颜色」子页：热力配色的五个选项（相对模式、红色阈值、弱加载变灰、弱加载计时时染色、
- * 小地图同步）。
+ * 「颜色」子页：热力配色的六个选项（相对模式、红色阈值、不透明度、弱加载变灰、
+ * 弱加载计时时染色、小地图同步）。
  */
 class ColorConfigScreen extends ConfigScreenBase {
 	/** 行标签的最小宽度；英文标签更长时按实际宽度扩展。 */
 	private static final int MIN_LABEL_WIDTH = 84;
 	/** 行标签的语言键；最长者的宽度决定控件起始 x。 */
-	private static final List<String> ROW_LABELS = List.of("msptmap.config.red_at");
+	private static final List<String> ROW_LABELS = List.of("msptmap.config.red_at",
+			"msptmap.config.opacity");
 	/** 滑块的最大宽度（窗口过窄时压窄）。 */
 	private static final int CONTROL_WIDTH = 150;
 	private static final int MIN_CONTROL_WIDTH = 60;
@@ -53,6 +54,14 @@ class ColorConfigScreen extends ConfigScreenBase {
 							Component.translatable("msptmap.config.red_at_tooltip"));
 					// 勾选相对模式时红点由数据决定，该滑块不参与，直接禁用
 					redSlider.active = !ClientConfig.relativeColor;
+				}),
+				new Row(ROW, (x, y) -> {
+					addRowLabel(Component.translatable("msptmap.config.opacity"), x, y);
+					addSlider(x + labelWidth, y, control,
+							ClientConfig.MIN_FILL_ALPHA, ClientConfig.MAX_FILL_ALPHA, ClientConfig.fillAlpha,
+							Decimals::format2,
+							value -> ClientConfig.fillAlpha = value,
+							Component.translatable("msptmap.config.opacity_tooltip"));
 				}),
 				new Row(ROW, (x, y) -> addCheckbox(x, y, Component.translatable("msptmap.config.weak"),
 						ClientConfig.showWeakGray,

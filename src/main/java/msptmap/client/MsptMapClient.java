@@ -3,6 +3,8 @@ package msptmap.client;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import msptmap.MsptMapMod;
+import msptmap.net.ChunkDetailRequestPayload;
+import msptmap.net.ChunkDetailResultPayload;
 import msptmap.net.ScanRequestPayload;
 import msptmap.net.ScanResultPayload;
 import net.fabricmc.api.ClientModInitializer;
@@ -62,6 +64,7 @@ public class MsptMapClient implements ClientModInitializer {
 		// 不清则进入同一维度的另一世界仍显示旧颜色，扫描中的进度圈也会一直挂在按钮上。
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			ClientSnapshot.clear();
+			ClientChunkDetail.clear();
 			ScanProgress.stop();
 			MapFocus.clear();
 			Screens.clearPending();
@@ -73,10 +76,14 @@ public class MsptMapClient implements ClientModInitializer {
 		//? if >=1.20.5 {
 		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE,
 				(payload, context) -> ScanResultHandler.handle(payload));
+		ClientPlayNetworking.registerGlobalReceiver(ChunkDetailResultPayload.TYPE,
+				(payload, context) -> ChunkDetailResultHandler.handle(payload));
 		//?} else {
 		/*// 1.20.4 及以前：handler 为三参数（包、客户端、回包器）
 		ClientPlayNetworking.registerGlobalReceiver(ScanResultPayload.TYPE,
 				(payload, client, sender) -> ScanResultHandler.handle(payload));
+		ClientPlayNetworking.registerGlobalReceiver(ChunkDetailResultPayload.TYPE,
+				(payload, client, sender) -> ChunkDetailResultHandler.handle(payload));
 		*///?}
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
@@ -201,6 +208,27 @@ public class MsptMapClient implements ClientModInitializer {
 	public static void locate(String dimension, int chunkX, int chunkZ) {
 		MapFocus.request(dimension, chunkX, chunkZ);
 		XaeroMapOpen.openIfClosed();
+	}
+
+	/**
+	 * 服务端是否支持区块详情包。未升级的旧服务端（1.0.0 以来都没有这个包）返回 false，
+	 * 界面据此在右下角说明，且不发请求。
+	 */
+	public static boolean canRequestDetail() {
+		return ClientPlayNetworking.canSend(ChunkDetailRequestPayload.TYPE);
+	}
+
+	/**
+	 * 请求某区块的详情；false = 服务端不认识该包，未发出。
+	 *
+	 * 与扫描不同，详情只影响综合界面里的显示，发不出去无需在聊天栏提示。
+	 */
+	public static boolean requestDetail(String dimension, int chunkX, int chunkZ) {
+		if (!canRequestDetail()) {
+			return false;
+		}
+		ClientPlayNetworking.send(ChunkDetailRequestPayload.request(dimension, chunkX, chunkZ));
+		return true;
 	}
 
 	/**

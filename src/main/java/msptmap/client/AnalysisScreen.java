@@ -1,6 +1,7 @@
 package msptmap.client;
 
 //? if >=26.2 {
+import msptmap.net.ChunkDetailResultPayload;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
 import msptmap.sampler.TicketCode;
@@ -48,11 +49,11 @@ import java.util.List;
 /**
  * 综合分析界面。窗口沿用 CarpetGUI 的视觉语言：深色半透明内容区、灰色细边框、扁平按钮与顶部标签栏。
  *
- * <p>列表分批加载：先显示 50 行，滚到底部再追加 50 行，滚动条随内容变长而缩短。
- * 点击表头任意一列按该列排序，再点同一列切换升降序。界面只在 26.2 及以上编译。
+ * <p>布局自左向右为区块列表、详情、加载票与实体。列表分批加载：先显示 50 行，滚到底部再追加
+ * 50 行，滚动条随内容变长而缩短。界面只在 26.2 及以上编译。
  */
 public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
-	/** 设计尺寸；比 CarpetGUI 的 420×200 略高，但保持紧凑。 */
+	/** 设计尺寸；窗口过窄时各栏内容横向滚动。 */
 	private static final int DESIGN_WIDTH = 420;
 	private static final int DESIGN_HEIGHT = 240;
 	private static final double SCALE_MIN = 0.7;
@@ -60,11 +61,17 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 	/** 每次追加的行数。 */
 	private static final int LOAD_STEP = 50;
+	/** 右栏加载票默认显示的条目数，超过即折叠。 */
+	private static final int TICKET_LIST_ROWS = 4;
 
 	/** 各列宽度的权重：实际列宽在 {@link #computeColumnWidths} 里按列表可用宽度等比分配。 */
-	private static final int[] COLUMN_WEIGHTS = {100, 52, 30, 92};
-	private static final int COLUMN_GAP = 3;
+	private static final int[] COLUMN_WEIGHTS = {70, 52, 30, 92};
+	private static final int COLUMN_GAP = 2;
 	private static final int SCROLLBAR_WIDTH = 8;
+	/** 详情/信息栏内容左右内边距之和（见两栏的 Insets.of(3)）。 */
+	private static final int PANE_PADDING = 6;
+	/** 窗口宽与内容区宽之差（outline 与 content 的左右 padding）。 */
+	private static final int WINDOW_INSET = 8;
 	/** 数据行左右内边距之和（见 {@link RowComponent} 的 padding）。 */
 	private static final int ROW_PADDING_HORIZONTAL = 4;
 	/** 维度方块图标的边长。 */
@@ -99,12 +106,24 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private FlowLayout list;
 	private IncrementalScroll listScroll;
 	private FlowLayout detail;
+	private PaneScroll detailScroll;
+	/** 详情右侧：加载票与实体组成。 */
+	private FlowLayout info;
+	private PaneScroll infoScroll;
+	/** 票列表是否展开；换行选择时复位。 */
+	private boolean ticketsExpanded;
+	/** 界面上次见到的详情版本，用于判断是否需要重绘。 */
+	private long detailVersion;
 	private LabelComponent overview;
 	private LabelComponent scanTime;
 	/** 状态栏可用宽度，用于判断右侧的时间是否放得下。 */
 	private int contentWidth;
-	/** 详情区的可用宽度，用于截断首行的区块名称。 */
-	private int detailWidth;
+	/** 内容过宽时按需拉宽的窗口宽度（GUI 像素）；只增不减，避免来回跳动。 */
+	private int requiredWindowWidth;
+	/** 本次 build 实际采用的窗口宽度。 */
+	private int builtWindowWidth;
+	/** 已安排下一帧重建界面。 */
+	private boolean relayoutPending;
 
 	private String dimension = "*";
 	private int loaded = LOAD_STEP;
@@ -145,12 +164,12 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
 		double scale = Math.min((double) (screenWidth - 4) / DESIGN_WIDTH, (double) (screenHeight - 4) / DESIGN_HEIGHT);
 		scale = Math.max(SCALE_MIN, Math.min(scale, SCALE_MAX));
-		int windowWidth = (int) (DESIGN_WIDTH * scale);
+		// 内容放不下时把窗口拉宽到所需宽度；高度仍按设计尺寸缩放
+		int windowWidth = Math.max((int) (DESIGN_WIDTH * scale), requiredWindowWidth);
 		int windowHeight = (int) (DESIGN_HEIGHT * scale);
+		builtWindowWidth = windowWidth;
 		// 内容区宽 = 窗口宽 - outline 左右 padding(2) - content 左右 padding(6)
-		contentWidth = windowWidth - 8;
-		// 详情区宽 = body 的 31%，减去滚动条与详情内边距（左右各 3）
-		detailWidth = Math.round(0.31f * contentWidth) - SCROLLBAR_WIDTH - 6;
+		contentWidth = windowWidth - WINDOW_INSET;
 		computeColumnWidths(windowWidth);
 		// 从地图右键进入时先切到目标维度，标签高亮与列表筛选据此保持一致
 		if (targetDimension != null && DIMENSIONS.contains(targetDimension)) {
@@ -198,10 +217,10 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		tabBar.child(new ActionButton(Component.translatable("msptmap.analysis.scan"), MsptMapClient::onButtonPress));
 		content.child(tabBar);
 
-		// 主体：左侧列表 + 右侧详情
+		// 主体：左列表 + 中详情 + 右票与实体
 		FlowLayout body = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.expand()).gap(3);
 
-		FlowLayout listColumn = UIContainers.verticalFlow(Sizing.fill(68), Sizing.fill(100)).gap(1);
+		FlowLayout listColumn = UIContainers.verticalFlow(Sizing.fill(41), Sizing.fill(100)).gap(1);
 		listColumn.child(listHeader());
 		list = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content());
 		// expand 而非 fill(100)：垂直 flow 中 fill 是整高，会把表头那 15px 挤到容器外
@@ -212,22 +231,39 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		listColumn.child(listScroll);
 		body.child(listColumn);
 
-		detail = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content()).gap(2);
+		detail = UIContainers.verticalFlow(Sizing.content(), Sizing.content()).gap(2);
 		detail.padding(Insets.of(3));
-		// 68% + 31% + gap 3px 不会超过 100%，详情框右缘不再被 body 裁掉
-		ScrollContainer<FlowLayout> detailScroll = UIContainers.verticalScroll(
-				Sizing.fill(31), Sizing.fill(100), detail);
+		FlowLayout detailColumn = UIContainers.verticalFlow(Sizing.fill(26), Sizing.fill(100)).gap(1);
+		detailScroll = new PaneScroll(Sizing.fill(100), Sizing.fill(100), detail);
 		detailScroll.scrollbar(ScrollContainer.Scrollbar.flat(Color.ofArgb(0x66FFFFFF)));
 		detailScroll.scrollbarThiccness(SCROLLBAR_WIDTH);
-		detailScroll.surface(Surface.flat(0x33000000).and(Surface.outline(0x550F0F0F)));
-		body.child(detailScroll);
+		detailColumn.child(detailScroll);
+		body.child(detailColumn);
+
+		info = UIContainers.verticalFlow(Sizing.content(), Sizing.content()).gap(2);
+		info.padding(Insets.of(3));
+		FlowLayout infoColumn = UIContainers.verticalFlow(Sizing.fill(31), Sizing.fill(100)).gap(1);
+		infoScroll = new PaneScroll(Sizing.fill(100), Sizing.fill(100), info);
+		infoScroll.scrollbar(ScrollContainer.Scrollbar.flat(Color.ofArgb(0x66FFFFFF)));
+		infoScroll.scrollbarThiccness(SCROLLBAR_WIDTH);
+		infoColumn.child(infoScroll);
+		if (!MsptMapClient.canRequestDetail()) {
+			// 旧服务端没有详情包：提示固定在信息栏底部右侧，不随内容滚动
+			infoColumn.child(oldServerHint());
+		}
+		body.child(infoColumn);
 		content.child(body);
 
 		scannedAt = ClientSnapshot.scannedAtMillis();
 		reloadRows();
 		rebuild();
 		if (targetDimension == null) {
-			showHint();
+			// 拉宽重建后恢复原来的选中行；首次打开则显示提示
+			if (selected != null && visibleRows.contains(selected)) {
+				revealRow(selected);
+			} else {
+				showHint();
+			}
 		} else {
 			showTarget();
 		}
@@ -239,6 +275,11 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		menuRow = null;
 		renameBox = null;
 		renameRow = null;
+		if (relayoutPending) {
+			// 丢弃旧控件树，让父类按新的窗口宽度重新 build
+			relayoutPending = false;
+			this.uiAdapter = null;
+		}
 		super.init();
 	}
 
@@ -249,6 +290,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			return;
 		}
 		refreshAfterScan();
+		syncDetail();
 		scrollToTarget();
 		drawMenu(graphics, mouseX, mouseY);
 	}
@@ -264,9 +306,26 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		pendingScroll = null;
 		menuRow = null;
 		finishRename(false);
+		ClientChunkDetail.clear();
+		ticketsExpanded = false;
+		detailVersion = ClientChunkDetail.version();
 		showHint();
 		reloadRows();
 		resetList();
+	}
+
+	/** 收到新的区块详情时重绘右栏；结果与当前选中行不匹配则等下一份。 */
+	private void syncDetail() {
+		long version = ClientChunkDetail.version();
+		if (version == detailVersion) {
+			return;
+		}
+		detailVersion = version;
+		Row row = selected;
+		if (row != null && ClientChunkDetail.dataFor(row.dimension(), row.x(), row.z()) != null) {
+			showDetail(row);
+			showInfo(row);
+		}
 	}
 
 	/** 右键功能列表：重命名、在地图上定位（双击定位仍然保留）。 */
@@ -467,7 +526,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				component.setSelected(component.row == row);
 			}
 		}
-		showDetail(row);
+		present(row);
 		pendingScroll = row;
 	}
 
@@ -487,7 +546,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	}
 
 	private FlowLayout listHeader() {
-		FlowLayout header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(14)).gap(COLUMN_GAP);
+		FlowLayout header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(13)).gap(COLUMN_GAP);
 		header.padding(Insets.both(2, 0));
 		header.verticalAlignment(VerticalAlignment.CENTER);
 		header.child(headerCell("msptmap.analysis.column.x", columns[0], HorizontalAlignment.LEFT));
@@ -512,7 +571,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	 * 最后一列吸收取整误差，列宽总和不会超出可用宽。
 	 */
 	private void computeColumnWidths(int windowWidth) {
-		int usable = Math.round(0.68f * (windowWidth - 8)) - SCROLLBAR_WIDTH
+		int usable = Math.round(0.41f * (windowWidth - 8)) - SCROLLBAR_WIDTH
 				- ROW_PADDING_HORIZONTAL - COLUMN_GAP * (COLUMN_WEIGHTS.length - 1);
 		usable = Math.max(usable, COLUMN_WEIGHTS.length);
 		int totalWeight = 0;
@@ -552,7 +611,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				int chunkZ = chunk.z1() >> 4;
 				allRows.add(new Row(dim, chunkX, chunkZ, chunk.mspt(), chunk.entities(),
 						chunk.loadLevel(), chunk.computeLevel(), chunk.loadTicket(), chunk.simTicket(),
-						chunk.nanos()));
+						chunk.nanos(), chunk.counts()));
 			}
 		}
 	}
@@ -657,7 +716,21 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				component.setSelected(component.row == row);
 			}
 		}
+		present(row);
+	}
+
+	/** 展示某行的详情并请求服务端补充数据；两张列表回到折叠态，两栏滚到顶部。 */
+	private void present(Row row) {
+		ticketsExpanded = false;
+		if (detailScroll != null) {
+			detailScroll.scrollTo(0);
+		}
+		if (infoScroll != null) {
+			infoScroll.scrollTo(0);
+		}
 		showDetail(row);
+		showInfo(row);
+		MsptMapClient.requestDetail(row.dimension(), row.x(), row.z());
 	}
 
 	/** 双击行：关闭本界面并在世界地图上定位该区块（未装世界地图时只提示）。 */
@@ -675,6 +748,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		detail.clearChildren();
 		detail.child(UIComponents.label(Component.translatable("msptmap.analysis.detail.hint"))
 				.color(Color.ofArgb(TEXT_DIM)).shadow(false));
+		info.clearChildren();
 	}
 
 	/** 详情首行与列表坐标列共用的内容：维度方块图标、[x,z]、区块名称（放不下时截断）。 */
@@ -716,32 +790,268 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		return icon;
 	}
 
-	private void showDetail(Row row) {
-		detail.clearChildren();
-		detail.child(coordContent(row, detailWidth));
-		detail.child(divider());
-		detail.child(detailLine("msptmap.analysis.detail.mspt",
-				Decimals.format3(row.mspt()) + (ClientConfig.tooltipMsptUnit ? " mspt" : "")));
-		detail.child(detailLine("msptmap.analysis.detail.entities", Integer.toString(row.entities())));
-		detail.child(detailLine("msptmap.analysis.detail.level",
-				row.loadLevel() + "/" + row.computeLevel()));
-		detail.child(detailLine("msptmap.analysis.detail.ticket_load", ticketName(row.loadTicket())));
-		detail.child(detailLine("msptmap.analysis.detail.ticket_sim", ticketName(row.simTicket())));
-		detail.child(UIComponents.label(Component.translatable("msptmap.analysis.detail.categories"))
-				.color(Color.ofArgb(TEXT_DIM)).shadow(false));
-		for (TickCategory category : TickText.ORDER) {
-			detail.child(UIComponents.label(TickText.secondary(TickText.categoryLine(
-					row.nanos()[category.ordinal()], ClientSnapshot.windowTicks(), category))).shadow(false));
+	/**
+	 * 按右栏文字所需宽度反推窗口宽度；超出本次 build 的窗口时，下一帧重建界面并整体拉宽。
+	 *
+	 * @param share 该栏占内容区宽度的比例（详情栏 0.26、信息栏 0.31）
+	 */
+	private void requirePaneWidth(int textWidth, float share) {
+		int needed = (int) Math.ceil((textWidth + PANE_PADDING + SCROLLBAR_WIDTH) / share) + WINDOW_INSET;
+		if (needed > requiredWindowWidth) {
+			requiredWindowWidth = needed;
 		}
+		if (requiredWindowWidth > builtWindowWidth && !relayoutPending) {
+			relayoutPending = true;
+			Minecraft minecraft = Minecraft.getInstance();
+			minecraft.execute(() -> {
+				if (minecraft.gui.screen() == this) {
+					this.rebuildWidgets();
+				}
+			});
+		}
+	}
+
+	/** 详情栏内容可用宽：栏宽减去滚动条与左右内边距。 */
+	private int detailContentWidth() {
+		return Math.max(1, Math.round(0.26f * contentWidth) - SCROLLBAR_WIDTH - PANE_PADDING);
+	}
+
+	private void showDetail(Row row) {
+		if (detailScroll != null) {
+			detailScroll.keepScroll();
+		}
+		detail.clearChildren();
+		Font font = Minecraft.getInstance().font;
+		int widest = coordContentWidth(row);
+		// 详情栏内容按自然宽度布局；区块名称放不下时截断
+		detail.child(coordContent(row, detailContentWidth()));
+		detail.child(divider());
+		widest = Math.max(widest, addDetailLine("msptmap.analysis.detail.mspt",
+				Decimals.format3(row.mspt()) + (ClientConfig.tooltipMsptUnit ? " mspt" : "")));
+		widest = Math.max(widest, addDetailLine("msptmap.analysis.detail.entities",
+				Integer.toString(row.entities())));
+		widest = Math.max(widest, addDetailLine("msptmap.analysis.detail.level",
+				row.loadLevel() + "/" + row.computeLevel()));
+		widest = Math.max(widest, addDetailLine("msptmap.analysis.detail.ticket_load",
+				ticketName(row.loadTicket())));
+		widest = Math.max(widest, addDetailLine("msptmap.analysis.detail.ticket_sim",
+				ticketName(row.simTicket())));
+		detail.child(sectionLabel("msptmap.analysis.detail.categories"));
+		widest = Math.max(widest, font.width(Component.translatable("msptmap.analysis.detail.categories")));
+		for (TickCategory category : TickText.ORDER) {
+			Component line = categoryText(row, category);
+			detail.child(UIComponents.label(line).shadow(false));
+			widest = Math.max(widest, font.width(line));
+		}
+		requirePaneWidth(widest, 0.26f);
+		if (detailScroll != null) {
+			detailScroll.restoreScroll();
+		}
+	}
+
+	/** 添加一行详情（标签灰、值白）并返回该行的自然宽。 */
+	private int addDetailLine(String key, String value) {
+		detail.child(detailLine(key, value));
+		return Minecraft.getInstance().font.width(detailText(key, value));
+	}
+
+	/** 各类耗时行：耗时后附本窗口内的触发次数。 */
+	private static Component categoryText(Row row, TickCategory category) {
+		Component line = TickText.secondary(TickText.categoryLine(
+				row.nanos()[category.ordinal()], ClientSnapshot.windowTicks(), category));
+		// 次数紧跟在耗时后：与列表里的实体数同口径，为本窗口内的触发次数
+		return line.copy().append(Component.literal("  ×" + row.counts()[category.ordinal()]));
+	}
+
+	/** 详情首行的自然宽：图标、坐标与完整区块名称。 */
+	private static int coordContentWidth(Row row) {
+		Font font = Minecraft.getInstance().font;
+		String coords = "[" + row.x() + "," + row.z() + "]";
+		int width = ICON_SIZE + 4 + font.width(coords);
+		String name = ClientConfig.chunkName(row.dimension(), row.x(), row.z());
+		return name == null ? width : width + font.width(name);
+	}
+
+	/** 右栏：加载票与实体组成，数据由服务端在收到详情请求后补充。 */
+	private void showInfo(Row row) {
+		if (infoScroll != null) {
+			infoScroll.keepScroll();
+		}
+		info.clearChildren();
+		Font font = Minecraft.getInstance().font;
+		int widest = 0;
+		// 旧服务端没有这个包，右下角另有固定说明
+		if (MsptMapClient.canRequestDetail()) {
+			Component ticketsTitle = Component.translatable("msptmap.analysis.detail.tickets");
+			info.child(sectionLabel("msptmap.analysis.detail.tickets"));
+			widest = Math.max(widest, font.width(ticketsTitle));
+			ClientChunkDetail.Data data = ClientChunkDetail.dataFor(row.dimension(), row.x(), row.z());
+			if (data == null) {
+				info.child(noteLabel("msptmap.analysis.detail.loading"));
+				widest = Math.max(widest,
+						font.width(Component.translatable("msptmap.analysis.detail.loading")));
+			} else {
+				widest = Math.max(widest, ticketList(row, data.tickets()));
+				info.child(divider());
+				Component entitiesTitle = Component.translatable("msptmap.analysis.detail.entity_list");
+				info.child(sectionLabel("msptmap.analysis.detail.entity_list"));
+				widest = Math.max(widest, font.width(entitiesTitle));
+				widest = Math.max(widest, entityList(data.entities()));
+			}
+		}
+		requirePaneWidth(widest, 0.31f);
+		if (infoScroll != null) {
+			infoScroll.restoreScroll();
+		}
+	}
+
+	/** 加载票列表：每张票两行（首行类型，次行来源与加载/模拟等级），超过四条折叠。返回最宽行。 */
+	private int ticketList(Row row, List<ChunkDetailResultPayload.TicketInfo> tickets) {
+		Font font = Minecraft.getInstance().font;
+		if (tickets.isEmpty()) {
+			info.child(noteLabel("msptmap.analysis.detail.none"));
+			return font.width(Component.translatable("msptmap.analysis.detail.none"));
+		}
+		// 来源与等级各占固定列，票与票之间纵向对齐；展开后才可见的票也要算进宽度
+		int sourceWidth = 0;
+		int levelWidth = 0;
+		int widest = 0;
+		for (ChunkDetailResultPayload.TicketInfo ticket : tickets) {
+			sourceWidth = Math.max(sourceWidth, font.width(Component.literal(ticketSource(row, ticket))));
+			levelWidth = Math.max(levelWidth, font.width(Component.literal(ticketLevel(ticket))));
+			widest = Math.max(widest, font.width(Component.literal(ticket.type())));
+		}
+		sourceWidth += 4;
+		widest = Math.max(widest, sourceWidth + levelWidth);
+		int shown = ticketsExpanded ? tickets.size() : Math.min(TICKET_LIST_ROWS, tickets.size());
+		for (int i = 0; i < shown; i++) {
+			ChunkDetailResultPayload.TicketInfo ticket = tickets.get(i);
+			FlowLayout entry = UIContainers.verticalFlow(Sizing.content(), Sizing.content()).gap(0);
+			entry.child(UIComponents.label(Component.literal(ticket.type()))
+					.shadow(false).color(Color.ofArgb(TEXT)));
+			FlowLayout detail = UIContainers.horizontalFlow(Sizing.content(), Sizing.content()).gap(0);
+			LabelComponent source = UIComponents.label(Component.literal(ticketSource(row, ticket)))
+					.shadow(false).color(Color.ofArgb(TEXT_DIM));
+			source.horizontalSizing(Sizing.fixed(sourceWidth));
+			LabelComponent levelLabel = UIComponents.label(Component.literal(ticketLevel(ticket)))
+					.shadow(false).color(Color.ofArgb(TEXT_DIM));
+			levelLabel.horizontalSizing(Sizing.fixed(levelWidth));
+			levelLabel.horizontalTextAlignment(HorizontalAlignment.RIGHT);
+			detail.child(source);
+			detail.child(levelLabel);
+			entry.child(detail);
+			info.child(entry);
+		}
+		return Math.max(widest, addToggle(tickets.size(), shown, ticketsExpanded, expanded -> {
+			ticketsExpanded = expanded;
+			showInfo(row);
+		}));
+	}
+
+	/** 票的来源：本区块持票写 center，其余写 @锚点；两列固定宽，等级右对齐。 */
+	private static String ticketSource(Row row, ChunkDetailResultPayload.TicketInfo ticket) {
+		if (ticket.anchorX() == row.x() && ticket.anchorZ() == row.z()) {
+			return "center";
+		}
+		return "@" + ticket.anchorX() + "," + ticket.anchorZ();
+	}
+
+	/** 票的等级：加载/模拟，某链不参与写 -。 */
+	private static String ticketLevel(ChunkDetailResultPayload.TicketInfo ticket) {
+		return level(ticket.loadLevel()) + "/" + level(ticket.simLevel());
+	}
+
+	private static String level(int level) {
+		return level < 0 ? "-" : Integer.toString(level);
+	}
+
+	/** 实体列表：名称 × 数量，全部显示。返回最宽行。 */
+	private int entityList(List<ChunkDetailResultPayload.EntityInfo> entities) {
+		Font font = Minecraft.getInstance().font;
+		if (entities.isEmpty()) {
+			info.child(noteLabel("msptmap.analysis.detail.none"));
+			return font.width(Component.translatable("msptmap.analysis.detail.none"));
+		}
+		int widest = 0;
+		for (ChunkDetailResultPayload.EntityInfo entity : entities) {
+			Component line = Component.literal(entityName(entity.id()) + " ×" + entity.count());
+			info.child(UIComponents.label(line).shadow(false).color(Color.ofArgb(TEXT)));
+			widest = Math.max(widest, font.width(line));
+		}
+		return widest;
+	}
+
+	/**
+	 * 实体名称：原版译名键 {@code entity.<命名空间>.<路径>}；语言表里没有时退回完整 ID。
+	 * 模组实体的译名键同样是这个形状。
+	 */
+	private static String entityName(String id) {
+		String key = "entity." + id.replace(':', '.');
+		String name = Component.translatable(key).getString();
+		return name.equals(key) ? id : name;
+	}
+
+	/** 票列表超过四张时的折叠按钮：显示剩余条数，点击就地展开 / 收起。返回按钮宽度。 */
+	private int addToggle(int total, int shown, boolean expanded,
+			java.util.function.Consumer<Boolean> toggle) {
+		if (total <= TICKET_LIST_ROWS) {
+			return 0;
+		}
+		Component text = expanded
+				? Component.translatable("msptmap.summary.sources_less")
+				: Component.translatable("msptmap.summary.sources_more", total - shown);
+		LabelComponent label = UIComponents.label(TickText.secondary(text)).shadow(false);
+		label.cursorStyle(CursorStyle.HAND);
+		label.mouseDown().subscribe((click, doubled) -> {
+			if (click.button() != 0) {
+				return false;
+			}
+			playClick();
+			toggle.accept(!expanded);
+			return true;
+		});
+		info.child(label);
+		return Minecraft.getInstance().font.width(text);
+	}
+
+	/** 列表标题：灰色，与「各类耗时」同款。 */
+	private static LabelComponent sectionLabel(String key) {
+		return UIComponents.label(Component.translatable(key))
+				.color(Color.ofArgb(TEXT_DIM)).shadow(false);
+	}
+
+	/** 灰字提示（加载中、无数据）。 */
+	private static LabelComponent noteLabel(String key) {
+		return UIComponents.label(Component.translatable(key))
+				.color(Color.ofArgb(TEXT_DIM)).shadow(false);
+	}
+
+	/** 旧服务端提示：固定在详情区底部，右对齐两行。 */
+	private static FlowLayout oldServerHint() {
+		FlowLayout hint = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content()).gap(0);
+		hint.child(rightLabel("msptmap.analysis.detail.old_server_1"));
+		hint.child(rightLabel("msptmap.analysis.detail.old_server_2"));
+		return hint;
+	}
+
+	private static LabelComponent rightLabel(String key) {
+		LabelComponent label = UIComponents.label(Component.translatable(key))
+				.color(Color.ofArgb(TEXT_DIM)).shadow(false);
+		label.horizontalSizing(Sizing.fill(100));
+		label.horizontalTextAlignment(HorizontalAlignment.RIGHT);
+		return label;
 	}
 
 	/** 详情行：标签灰、值白，中间空两格。 */
 	private LabelComponent detailLine(String key, String value) {
-		Component line = Component.translatable(key)
+		return UIComponents.label(detailText(key, value)).shadow(false);
+	}
+
+	private static Component detailText(String key, String value) {
+		return Component.translatable(key)
 				.withStyle(style -> style.withColor(TextColor.fromRgb(TEXT_DIM & 0xFFFFFF)))
 				.append(Component.literal("  " + value)
 						.withStyle(style -> style.withColor(TextColor.fromRgb(TEXT & 0xFFFFFF))));
-		return UIComponents.label(line).shadow(false);
 	}
 
 	/** 标题与正文之间的细分隔线。 */
@@ -761,26 +1071,19 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	}
 
 	private record Row(String dimension, int x, int z, float mspt, int entities, int loadLevel, int computeLevel,
-			int loadTicket, int simTicket, long[] nanos) {
+			int loadTicket, int simTicket, long[] nanos, int[] counts) {
 	}
 
-	/**
-	 * 滚到最底部时追加下一批行的滚动容器。{@code maxScroll} 与 {@code scrollOffset} 在 owo 的
-	 * ScrollContainer 中是 protected，子类可以直接判断是否触底。
-	 */
-	private final class IncrementalScroll extends ScrollContainer<FlowLayout> {
-		private final Runnable onLoadMore;
-
-		private IncrementalScroll(Sizing horizontalSizing, Sizing verticalSizing, FlowLayout child,
-				Runnable onLoadMore) {
-			super(ScrollDirection.VERTICAL, horizontalSizing, verticalSizing, child);
-			this.onLoadMore = onLoadMore;
-		}
-
+	/** 重建内容时保持滚动偏移的垂直滚动容器。 */
+	private abstract static class KeepingScroll extends ScrollContainer<FlowLayout> {
 		/** 清空重建前记下偏移；restoreScroll 在重建后恢复。 */
 		private double savedScroll = -1;
 
-		void keepScroll() {
+		private KeepingScroll(Sizing horizontalSizing, Sizing verticalSizing, FlowLayout child) {
+			super(ScrollDirection.VERTICAL, horizontalSizing, verticalSizing, child);
+		}
+
+		final void keepScroll() {
 			savedScroll = this.scrollOffset;
 		}
 
@@ -788,7 +1091,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		 * 重建行后恢复原有偏移：clearChildren 会让子项高度瞬时归零，
 		 * ScrollContainer.layout 随即把 scrollOffset 钳到顶部。
 		 */
-		void restoreScroll() {
+		final void restoreScroll() {
 			double offset = savedScroll;
 			savedScroll = -1;
 			if (offset <= 0 || this.maxScroll <= 0) {
@@ -796,6 +1099,20 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			}
 			this.scrollOffset = Math.min(offset, this.maxScroll);
 			this.currentScrollPosition = this.scrollOffset;
+		}
+	}
+
+	/**
+	 * 滚到最底部时追加下一批行的滚动容器。{@code maxScroll} 与 {@code scrollOffset} 在 owo 的
+	 * ScrollContainer 中是 protected，子类可以直接判断是否触底。
+	 */
+	private final class IncrementalScroll extends KeepingScroll {
+		private final Runnable onLoadMore;
+
+		private IncrementalScroll(Sizing horizontalSizing, Sizing verticalSizing, FlowLayout child,
+				Runnable onLoadMore) {
+			super(horizontalSizing, verticalSizing, child);
+			this.onLoadMore = onLoadMore;
 		}
 
 		@Override
@@ -805,6 +1122,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				this.onLoadMore.run();
 			}
 			return handled;
+		}
+	}
+
+	/** 详情与信息栏的滚动容器：重建内容时就地保持偏移。 */
+	private final class PaneScroll extends KeepingScroll {
+		private PaneScroll(Sizing horizontalSizing, Sizing verticalSizing, FlowLayout child) {
+			super(horizontalSizing, verticalSizing, child);
 		}
 	}
 
@@ -886,7 +1210,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		private final int index;
 
 		private RowComponent(Row row, int index) {
-			super(Sizing.fill(100), Sizing.fixed(13), Algorithm.HORIZONTAL);
+			super(Sizing.fill(100), Sizing.fixed(12), Algorithm.HORIZONTAL);
 			this.row = row;
 			this.index = index;
 			this.gap(COLUMN_GAP);

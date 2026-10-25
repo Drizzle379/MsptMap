@@ -9,7 +9,7 @@ import msptmap.util.HeatColors;
  * 颜色、阈值与“哪些区块铺淡灰”的规则集中在这里，避免两处漂移。
  */
 final class HeatStyle {
-	/** 达到该加载等级即弱加载（与 {@code ChunkLevel.isBlockTicking} 的分界一致）。 */
+	/** 加载等级正好等于该值即弱加载（32 以上不算）。 */
 	static final int WEAK_LOAD_LEVEL = 32;
 
 	/** 弱加载区块的填充色与透明度。 */
@@ -29,7 +29,7 @@ final class HeatStyle {
 
 	/** 弱加载且未勾选「计时时染色」时铺淡灰；其余区块按热力色绘制。 */
 	static boolean weakGray(ClientSnapshot.Chunk chunk) {
-		return ClientConfig.showWeakGray && chunk.loadLevel() >= WEAK_LOAD_LEVEL
+		return ClientConfig.showWeakGray && chunk.loadLevel() == WEAK_LOAD_LEVEL
 				&& !(chunk.timed() && ClientConfig.weakTimedColor);
 	}
 

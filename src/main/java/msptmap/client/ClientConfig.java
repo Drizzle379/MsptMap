@@ -62,7 +62,7 @@ public final class ClientConfig {
 	/** 是否在 Xaero 小地图上同步显示热力图（世界地图不受影响）。 */
 	public static boolean minimapHeatmap;
 
-	/** 弱加载（加载等级 ≥32）的区块是否绘制淡灰色。 */
+	/** 弱加载（加载等级 =32）的区块是否绘制淡灰色。 */
 	public static boolean showWeakGray;
 
 	/**
