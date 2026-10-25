@@ -89,6 +89,7 @@ public final class MapScreenHook implements ChunkFocus.Host {
 	 * 1.44–1.47 之间一致；取不到时对应功能降级，不影响地图与按钮。
 	 */
 	private static final Field CAMERA_DESTINATION = field("cameraDestination");
+	private static final Field DEST_SCALE = field("destScale");
 	private static final Field ATTACHED_CAMERA = field("attachedCamera");
 	private static final Field MOUSE_BLOCK_POS_X = field("mouseBlockPosX");
 	private static final Field MOUSE_BLOCK_POS_Z = field("mouseBlockPosZ");
@@ -212,6 +213,11 @@ public final class MapScreenHook implements ChunkFocus.Host {
 			CAMERA_DESTINATION.set(map, destination);
 		} catch (IllegalAccessException ignored) {
 		}
+	}
+
+	@Override
+	public void setZoom(double zoom) {
+		setStaticDouble(DEST_SCALE, zoom);
 	}
 
 	/* ---------- 按钮 ---------- */
@@ -582,6 +588,16 @@ public final class MapScreenHook implements ChunkFocus.Host {
 		}
 		try {
 			field.setBoolean(null, value);
+		} catch (IllegalAccessException ignored) {
+		}
+	}
+
+	private static void setStaticDouble(Field field, double value) {
+		if (field == null) {
+			return;
+		}
+		try {
+			field.setDouble(null, value);
 		} catch (IllegalAccessException ignored) {
 		}
 	}

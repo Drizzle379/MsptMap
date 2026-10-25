@@ -16,6 +16,9 @@ import xaero.map.world.MapWorld;
  * 定位的时序：目标维度未加载则忽略，切换落地后才设相机目标。
  */
 public final class ChunkFocus {
+	/** 定位后固定拉到的缩放倍数（Xaero 的缩放范围 0.0625~50）。 */
+	private static final double FOCUS_ZOOM = 10.0;
+
 	/** 宿主：地图屏 mixin 实现，把本类的动作落到 Xaero 的字段上。 */
 	public interface Host {
 		/** 当前的地图处理器；地图尚未创建时为 null。 */
@@ -26,6 +29,9 @@ public final class ChunkFocus {
 
 		/** 设相机的动画目标（方块坐标）：自下一帧起向它滑动，到达后由 Xaero 置 null。 */
 		void setCameraDestination(int[] destination);
+
+		/** 把地图缩放到指定倍数：改写 Xaero 的目标缩放，地图随后的帧动画过渡过去。 */
+		void setZoom(double zoom);
 	}
 
 	/**
@@ -117,6 +123,7 @@ public final class ChunkFocus {
 			return;
 		}
 		host.setCameraDestination(pendingFocus);
+		host.setZoom(FOCUS_ZOOM);
 		pendingFocus = null;
 		pendingDimension = null;
 	}
