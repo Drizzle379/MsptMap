@@ -71,10 +71,10 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int ICON_SIZE = 8;
 	/** 坐标列的最小宽度：图标 + 间隙 + 约 9 个字符的 [x,z]。 */
 	private static final int COORD_MIN_WIDTH = 64;
-	/** 右键菜单：两项固定，每项高 13、项间 1 像素分割线，四周留 4 像素。 */
+	/** 右键菜单：两项固定，每项高 13、项间 1 像素分割线；上下无额外留白，文字左侧缩进 4 像素。 */
 	private static final int MENU_ITEM_HEIGHT = 13;
 	private static final int MENU_SEPARATOR = 1;
-	private static final int MENU_PADDING = 4;
+	private static final int MENU_TEXT_INSET = 4;
 	private static final int MENU_ITEMS = 2;
 
 	private static final DateTimeFormatter SCAN_TIME = DateTimeFormatter.ofPattern("MM/dd HH:mm:ss");
@@ -277,16 +277,16 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		for (Component item : menuItems()) {
 			width = Math.max(width, Minecraft.getInstance().font.width(item));
 		}
-		return width + MENU_PADDING * 2;
+		return width + MENU_TEXT_INSET * 2;
 	}
 
 	private int menuHeight() {
-		return MENU_ITEMS * MENU_ITEM_HEIGHT + (MENU_ITEMS - 1) * MENU_SEPARATOR + MENU_PADDING * 2;
+		return MENU_ITEMS * MENU_ITEM_HEIGHT + (MENU_ITEMS - 1) * MENU_SEPARATOR;
 	}
 
 	/** 第 index 项的顶部（屏幕坐标）。 */
 	private int menuItemTop(int index) {
-		return menuY + MENU_PADDING + index * (MENU_ITEM_HEIGHT + MENU_SEPARATOR);
+		return menuY + index * (MENU_ITEM_HEIGHT + MENU_SEPARATOR);
 	}
 
 	/** 在点击处打开菜单；贴边时向内收，菜单不越出屏幕。 */
@@ -308,14 +308,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		for (int i = 0; i < items.length; i++) {
 			int top = menuItemTop(i);
 			if (mouseX >= menuX && mouseX < menuX + width && mouseY >= top && mouseY < top + MENU_ITEM_HEIGHT) {
-				graphics.fill(menuX + 1, top, menuX + width - 1, top + MENU_ITEM_HEIGHT, 0x40FFFFFF);
+				graphics.fill(menuX, top, menuX + width, top + MENU_ITEM_HEIGHT, 0x40FFFFFF);
 			}
-			graphics.text(Minecraft.getInstance().font, items[i], menuX + MENU_PADDING,
+			graphics.text(Minecraft.getInstance().font, items[i], menuX + MENU_TEXT_INSET,
 					top + (MENU_ITEM_HEIGHT - 8) / 2, TEXT);
 			if (i < items.length - 1) {
 				int lineY = top + MENU_ITEM_HEIGHT;
-				graphics.fill(menuX + MENU_PADDING, lineY, menuX + width - MENU_PADDING,
-						lineY + MENU_SEPARATOR, 0x30FFFFFF);
+				graphics.fill(menuX, lineY, menuX + width, lineY + MENU_SEPARATOR, 0x30FFFFFF);
 			}
 		}
 	}
