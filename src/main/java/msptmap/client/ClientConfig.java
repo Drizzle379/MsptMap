@@ -10,7 +10,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
@@ -100,6 +102,12 @@ public final class ClientConfig {
 	/** 各类明细各自的显示开关。下标 = {@link TickCategory#ordinal()}，顺序不可变更。 */
 	public static final boolean[] tooltipCategories = new boolean[TickCategory.COUNT];
 
+	/** 区块的自定义名称：键见 {@link #chunkKey}；有序，写盘顺序稳定。 */
+	private static final Map<String, String> chunkNames = new TreeMap<>();
+
+	/** 配置文件里区块名称的键前缀：后接去掉命名空间的维度、区块 X 与 Z。 */
+	private static final String CHUNK_NAME_PREFIX = "chunkName.";
+
 	private ClientConfig() {
 	}
 
@@ -167,6 +175,7 @@ public final class ClientConfig {
 	static void load(Path file) {
 		// 先回默认值再覆盖：缺失的键用默认值，坏值也不会残留部分旧状态
 		resetToDefaults();
+		chunkNames.clear();
 		Properties properties = PropertiesFile.read(file, "设置");
 		if (properties == null) {
 			return;
@@ -174,6 +183,7 @@ public final class ClientConfig {
 		for (Option option : OPTIONS) {
 			option.read(properties);
 		}
+		readChunkNames(properties);
 		clamp();
 	}
 
@@ -189,7 +199,60 @@ public final class ClientConfig {
 		for (Option option : OPTIONS) {
 			option.write(text);
 		}
+		writeChunkNames(text);
 		PropertiesFile.write(file, text.toString(), "设置");
+	}
+
+	/** 区块的自定义名称；未命名时返回 null。 */
+	public static String chunkName(String dimension, int chunkX, int chunkZ) {
+		return chunkNames.get(chunkKey(dimension, chunkX, chunkZ));
+	}
+
+	/** 设置区块名称；空字符串表示清除。 */
+	public static void setChunkName(String dimension, int chunkX, int chunkZ, String name) {
+		String key = chunkKey(dimension, chunkX, chunkZ);
+		if (name.isEmpty()) {
+			chunkNames.remove(key);
+		} else {
+			chunkNames.put(key, name);
+		}
+	}
+
+	private static String chunkKey(String dimension, int chunkX, int chunkZ) {
+		return dimension + "|" + chunkX + "|" + chunkZ;
+	}
+
+	/** 读名称行：键形如 chunkName.overworld.12.-34（维度去掉 minecraft: 前缀）。 */
+	private static void readChunkNames(Properties properties) {
+		for (String key : properties.stringPropertyNames()) {
+			if (!key.startsWith(CHUNK_NAME_PREFIX)) {
+				continue;
+			}
+			String[] parts = key.substring(CHUNK_NAME_PREFIX.length()).split("\\.");
+			if (parts.length != 3) {
+				continue;
+			}
+			try {
+				chunkNames.put(chunkKey("minecraft:" + parts[0], Integer.parseInt(parts[1]),
+						Integer.parseInt(parts[2])), properties.getProperty(key).trim());
+			} catch (NumberFormatException ignored) {
+				// 手改坏的键跳过，其余名称照常读取
+			}
+		}
+	}
+
+	/** 写名称行；反斜杠是 properties 的转义符，需转义自身。 */
+	private static void writeChunkNames(StringBuilder text) {
+		if (chunkNames.isEmpty()) {
+			return;
+		}
+		text.append('\n');
+		for (Map.Entry<String, String> entry : chunkNames.entrySet()) {
+			String[] parts = entry.getKey().split("\\|", 3);
+			text.append(CHUNK_NAME_PREFIX).append(parts[0].replace("minecraft:", ""))
+					.append('.').append(parts[1]).append('.').append(parts[2])
+					.append('=').append(entry.getValue().replace("\\", "\\\\")).append('\n');
+		}
 	}
 
 	/** 悬停详情中该类的明细是否显示。 */

@@ -27,8 +27,12 @@ import msptmap.vendor.owo.ui.core.Surface;
 import msptmap.vendor.owo.ui.core.UIComponent;
 import msptmap.vendor.owo.ui.core.VerticalAlignment;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -60,7 +64,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int LOAD_STEP = 50;
 
 	/** 各列宽度的权重：实际列宽在 {@link #computeColumnWidths} 里按列表可用宽度等比分配。 */
-	private static final int[] COLUMN_WEIGHTS = {75, 52, 30, 50, 50};
+	private static final int[] COLUMN_WEIGHTS = {100, 52, 30, 50, 50};
 	private static final int COLUMN_GAP = 3;
 	private static final int SCROLLBAR_WIDTH = 8;
 	/** 数据行左右内边距之和（见 {@link RowComponent} 的 padding）。 */
@@ -72,6 +76,10 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	/** 表头排序三角：7×4，纹理上段为升序、中段为降序、下段透明供未排序列占位。 */
 	private static final int SORT_ARROW_WIDTH = 7;
 	private static final int SORT_ARROW_HEIGHT = 4;
+	/** 右键菜单：两项固定，每项高 13，四周留 4 像素。 */
+	private static final int MENU_ITEM_HEIGHT = 13;
+	private static final int MENU_PADDING = 4;
+	private static final int MENU_ITEMS = 2;
 
 	private static final DateTimeFormatter SCAN_TIME = DateTimeFormatter.ofPattern("MM/dd HH:mm:ss");
 
@@ -109,6 +117,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private @Nullable Row pendingScroll;
 	/** 界面上次见到的扫描时间；扫描完成后据此刷新列表。 */
 	private long scannedAt;
+	/** 右键菜单的目标行与菜单左上角；未打开时为 null。 */
+	private @Nullable Row menuRow;
+	private int menuX;
+	private int menuY;
+	/** 重命名输入框与目标行；编辑中非 null。 */
+	private @Nullable EditBox renameBox;
+	private @Nullable Row renameRow;
 
 	public AnalysisScreen(@Nullable Screen parent) {
 		this(parent, null, 0, 0);
@@ -220,6 +235,15 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 	}
 
+	/** 窗口尺寸变化会重建控件树：输入框与菜单的坐标随之失效，直接丢弃。 */
+	@Override
+	protected void init() {
+		menuRow = null;
+		renameBox = null;
+		renameRow = null;
+		super.init();
+	}
+
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
@@ -228,6 +252,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 		refreshAfterScan();
 		scrollToTarget();
+		drawMenu(graphics, mouseX, mouseY);
 	}
 
 	/** 扫描结果整体替换，旧的选中行与滚动位置不再有意义，回到顶部。 */
@@ -239,9 +264,174 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		scannedAt = scanned;
 		selected = null;
 		pendingScroll = null;
+		menuRow = null;
+		finishRename(false);
 		showHint();
 		reloadRows();
 		resetList();
+	}
+
+	/** 右键功能列表：重命名、在地图上定位（双击定位仍然保留）。 */
+	private static Component[] menuItems() {
+		return new Component[]{
+				Component.translatable("msptmap.analysis.menu.rename"),
+				Component.translatable("msptmap.analysis.menu.locate")};
+	}
+
+	private int menuWidth() {
+		int width = 0;
+		for (Component item : menuItems()) {
+			width = Math.max(width, Minecraft.getInstance().font.width(item));
+		}
+		return width + MENU_PADDING * 2;
+	}
+
+	private int menuHeight() {
+		return MENU_ITEMS * MENU_ITEM_HEIGHT + MENU_PADDING * 2;
+	}
+
+	/** 在点击处打开菜单；贴边时向内收，菜单不越出屏幕。 */
+	private void openMenu(Row row, int x, int y) {
+		menuRow = row;
+		menuX = Math.max(1, Math.min(x, this.width - menuWidth() - 1));
+		menuY = Math.max(1, Math.min(y, this.height - menuHeight() - 1));
+	}
+
+	private void drawMenu(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		if (menuRow == null) {
+			return;
+		}
+		int width = menuWidth();
+		int height = menuHeight();
+		graphics.fill(menuX - 1, menuY - 1, menuX + width + 1, menuY + height + 1, BORDER);
+		graphics.fill(menuX, menuY, menuX + width, menuY + height, 0xF0101010);
+		Component[] items = menuItems();
+		for (int i = 0; i < items.length; i++) {
+			int top = menuY + MENU_PADDING + i * MENU_ITEM_HEIGHT;
+			if (mouseX >= menuX && mouseX < menuX + width && mouseY >= top && mouseY < top + MENU_ITEM_HEIGHT) {
+				graphics.fill(menuX + 1, top, menuX + width - 1, top + MENU_ITEM_HEIGHT, 0x40FFFFFF);
+			}
+			graphics.text(Minecraft.getInstance().font, items[i], menuX + MENU_PADDING,
+					top + (MENU_ITEM_HEIGHT - 8) / 2, TEXT);
+		}
+	}
+
+	/** 菜单打开时吞掉本次点击：命中项执行动作，点在菜单外只关闭。 */
+	private boolean handleMenuClick(MouseButtonEvent click) {
+		Row row = menuRow;
+		menuRow = null;
+		if (row == null) {
+			return true;
+		}
+		int width = menuWidth();
+		if (click.x() >= menuX && click.x() < menuX + width) {
+			for (int i = 0; i < MENU_ITEMS; i++) {
+				int top = menuY + MENU_PADDING + i * MENU_ITEM_HEIGHT;
+				if (click.y() >= top && click.y() < top + MENU_ITEM_HEIGHT) {
+					if (i == 0) {
+						beginRename(row);
+					} else {
+						locate(row);
+					}
+					return true;
+				}
+			}
+		}
+		return true;
+	}
+
+	/** 在该行上叠一个原版输入框：Enter 保存，Esc 或点击别处取消。 */
+	private void beginRename(Row row) {
+		RowComponent component = rowComponent(row);
+		if (component == null) {
+			return;
+		}
+		renameRow = row;
+		renameBox = new EditBox(Minecraft.getInstance().font, component.x() + 2, component.y() - 1,
+				Math.max(80, columns[0] - 4), 13, Component.translatable("msptmap.analysis.rename.narration"));
+		renameBox.setMaxLength(24);
+		String current = ClientConfig.chunkName(row.dimension(), row.x(), row.z());
+		renameBox.setValue(current == null ? "" : current);
+		renameBox.setHint(Component.translatable("msptmap.analysis.rename.hint"));
+		renameBox.setFocused(true);
+		addRenderableWidget(renameBox);
+	}
+
+	private @Nullable RowComponent rowComponent(Row row) {
+		for (UIComponent child : list.children()) {
+			if (child instanceof RowComponent component && component.row == row) {
+				return component;
+			}
+		}
+		return null;
+	}
+
+	private void finishRename(boolean save) {
+		EditBox box = renameBox;
+		Row row = renameRow;
+		renameBox = null;
+		renameRow = null;
+		if (box == null) {
+			return;
+		}
+		removeWidget(box);
+		if (save && row != null) {
+			ClientConfig.setChunkName(row.dimension(), row.x(), row.z(), box.getValue().trim());
+			rebuild();
+		}
+	}
+
+	@Override
+	public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
+		if (menuRow != null) {
+			return handleMenuClick(click);
+		}
+		if (renameBox != null) {
+			if (renameBox.mouseClicked(click, doubled)) {
+				renameBox.setFocused(true);
+				return true;
+			}
+			finishRename(false);
+			return true;
+		}
+		return super.mouseClicked(click, doubled);
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent input) {
+		if (renameBox != null) {
+			if (input.isEscape()) {
+				finishRename(false);
+				return true;
+			}
+			if (input.isConfirmation()) {
+				finishRename(true);
+				return true;
+			}
+			return renameBox.keyPressed(input);
+		}
+		if (menuRow != null && input.isEscape()) {
+			menuRow = null;
+			return true;
+		}
+		return super.keyPressed(input);
+	}
+
+	@Override
+	public boolean charTyped(CharacterEvent input) {
+		if (renameBox != null) {
+			return renameBox.charTyped(input);
+		}
+		return super.charTyped(input);
+	}
+
+	/** 菜单或输入框打开时不平移列表，避免两者位置错开。 */
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+		if (menuRow != null || renameBox != null) {
+			return true;
+		}
+		return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
 	}
 
 	/** 选中从地图带来的目标区块；本次快照没有该区块时在详情区说明。 */
@@ -759,7 +949,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			}
 		}
 
-		/** 坐标列：图标紧贴 [x,z]，整组在列内居中；图标不参与排序。 */
+		/** 坐标列：图标紧贴 [x,z]，名称接在坐标右侧（放不下时截断）；图标不参与排序。 */
 		private FlowLayout coordCell(Row row) {
 			FlowLayout rowLayout = UIContainers.horizontalFlow(Sizing.fixed(columns[0]), Sizing.content());
 			rowLayout.horizontalAlignment(HorizontalAlignment.CENTER);
@@ -767,10 +957,23 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			FlowLayout content = UIContainers.horizontalFlow(Sizing.content(), Sizing.content()).gap(2);
 			content.verticalAlignment(VerticalAlignment.CENTER);
 			content.child(dimensionIcon(row.dimension()));
-			LabelComponent coord = UIComponents.label(Component.literal("[" + row.x() + "," + row.z() + "]"))
+			String coords = "[" + row.x() + "," + row.z() + "]";
+			LabelComponent coord = UIComponents.label(Component.literal(coords))
 					.shadow(false).color(Color.ofArgb(TEXT));
 			coord.verticalTextAlignment(VerticalAlignment.CENTER);
 			content.child(coord);
+			String name = ClientConfig.chunkName(row.dimension(), row.x(), row.z());
+			if (name != null) {
+				Font font = Minecraft.getInstance().font;
+				// 减去图标、坐标与两处 gap，余下宽度留给名称
+				String shown = font.plainSubstrByWidth(name, Math.max(0, columns[0] - ICON_SIZE - 4 - font.width(coords)));
+				if (!shown.isEmpty()) {
+					LabelComponent label = UIComponents.label(Component.literal(shown))
+							.shadow(false).color(Color.ofArgb(TEXT_DIM));
+					label.verticalTextAlignment(VerticalAlignment.CENTER);
+					content.child(label);
+				}
+			}
 			rowLayout.child(content);
 			return rowLayout;
 		}
@@ -804,6 +1007,12 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 		@Override
 		public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
+			if (click.button() == 1) {
+				select(this.row);
+				// owo 传入的是相对本组件的坐标，菜单按屏幕坐标定位
+				openMenu(this.row, (int) (x() + click.x()), (int) (y() + click.y()));
+				return true;
+			}
 			if (click.button() != 0) {
 				return false;
 			}
