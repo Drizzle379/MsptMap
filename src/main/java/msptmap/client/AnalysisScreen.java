@@ -62,7 +62,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int LOAD_STEP = 50;
 
 	/** 各列宽度的权重：实际列宽在 {@link #computeColumnWidths} 里按列表可用宽度等比分配。 */
-	private static final int[] COLUMN_WEIGHTS = {100, 52, 30, 50, 50};
+	private static final int[] COLUMN_WEIGHTS = {100, 52, 30, 92};
 	private static final int COLUMN_GAP = 3;
 	private static final int SCROLLBAR_WIDTH = 8;
 	/** 数据行左右内边距之和（见 {@link RowComponent} 的 padding）。 */
@@ -103,6 +103,8 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private LabelComponent scanTime;
 	/** 状态栏可用宽度，用于判断右侧的时间是否放得下。 */
 	private int contentWidth;
+	/** 详情区的可用宽度，用于截断首行的区块名称。 */
+	private int detailWidth;
 
 	private String dimension = "*";
 	private int loaded = LOAD_STEP;
@@ -147,6 +149,8 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		int windowHeight = (int) (DESIGN_HEIGHT * scale);
 		// 内容区宽 = 窗口宽 - outline 左右 padding(2) - content 左右 padding(6)
 		contentWidth = windowWidth - 8;
+		// 详情区宽 = body 的 31%，减去滚动条与详情内边距（左右各 3）
+		detailWidth = Math.round(0.31f * contentWidth) - SCROLLBAR_WIDTH - 6;
 		computeColumnWidths(windowWidth);
 		// 从地图右键进入时先切到目标维度，标签高亮与列表筛选据此保持一致
 		if (targetDimension != null && DIMENSIONS.contains(targetDimension)) {
@@ -489,8 +493,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		header.child(headerCell("msptmap.analysis.column.x", columns[0], HorizontalAlignment.LEFT));
 		header.child(headerCell("msptmap.analysis.column.mspt", columns[1], HorizontalAlignment.CENTER));
 		header.child(headerCell("msptmap.analysis.column.entities_short", columns[2], HorizontalAlignment.CENTER));
-		header.child(headerCell("msptmap.analysis.column.load_level", columns[3], HorizontalAlignment.CENTER));
-		header.child(headerCell("msptmap.analysis.column.compute_level", columns[4], HorizontalAlignment.CENTER));
+		header.child(headerCell("msptmap.analysis.column.level", columns[3], HorizontalAlignment.CENTER));
 		return header;
 	}
 
@@ -505,7 +508,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	}
 
 	/**
-	 * 按列表实际可用宽度等比分配五列：可用宽 = 列表列宽 - 滚动条 - 行内边距 - 列间隙。
+	 * 按列表实际可用宽度等比分配四列：可用宽 = 列表列宽 - 滚动条 - 行内边距 - 列间隙。
 	 * 最后一列吸收取整误差，列宽总和不会超出可用宽。
 	 */
 	private void computeColumnWidths(int windowWidth) {
@@ -674,16 +677,54 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				.color(Color.ofArgb(TEXT_DIM)).shadow(false));
 	}
 
+	/** 详情首行与列表坐标列共用的内容：维度方块图标、[x,z]、区块名称（放不下时截断）。 */
+	private static FlowLayout coordContent(Row row, int maxWidth) {
+		FlowLayout content = UIContainers.horizontalFlow(Sizing.content(), Sizing.content()).gap(2);
+		content.verticalAlignment(VerticalAlignment.CENTER);
+		content.child(dimensionIcon(row.dimension()));
+		String coords = "[" + row.x() + "," + row.z() + "]";
+		LabelComponent coord = UIComponents.label(Component.literal(coords))
+				.shadow(false).color(Color.ofArgb(TEXT));
+		coord.verticalTextAlignment(VerticalAlignment.CENTER);
+		content.child(coord);
+		String name = ClientConfig.chunkName(row.dimension(), row.x(), row.z());
+		if (name != null) {
+			Font font = Minecraft.getInstance().font;
+			// 减去图标、坐标与两处 gap，余下宽度留给名称
+			String shown = font.plainSubstrByWidth(name, Math.max(0, maxWidth - ICON_SIZE - 4 - font.width(coords)));
+			if (!shown.isEmpty()) {
+				LabelComponent label = UIComponents.label(Component.literal(shown))
+						.shadow(false).color(Color.ofArgb(TEXT_DIM));
+				label.verticalTextAlignment(VerticalAlignment.CENTER);
+				content.child(label);
+			}
+		}
+		return content;
+	}
+
+	/** 维度对应的方块侧面纹理（草方块 / 下界岩 / 末地石）。 */
+	private static TextureComponent dimensionIcon(String dimension) {
+		String block = switch (dimension) {
+			case "minecraft:the_nether" -> "netherrack";
+			case "minecraft:the_end" -> "end_stone";
+			default -> "grass_block_side";
+		};
+		TextureComponent icon = UIComponents.texture(
+				Ids.of("minecraft", "textures/block/" + block + ".png"), 0, 0, 16, 16, 16, 16);
+		icon.horizontalSizing(Sizing.fixed(ICON_SIZE));
+		icon.verticalSizing(Sizing.fixed(ICON_SIZE));
+		return icon;
+	}
+
 	private void showDetail(Row row) {
 		detail.clearChildren();
-		detail.child(UIComponents.label(Component.translatable("msptmap.analysis.detail.title",
-				Component.translatable(Dimensions.key(row.dimension())), row.x(), row.z())).shadow(false));
+		detail.child(coordContent(row, detailWidth));
 		detail.child(divider());
 		detail.child(detailLine("msptmap.analysis.detail.mspt",
 				Decimals.format3(row.mspt()) + (ClientConfig.tooltipMsptUnit ? " mspt" : "")));
 		detail.child(detailLine("msptmap.analysis.detail.entities", Integer.toString(row.entities())));
-		detail.child(detailLine("msptmap.analysis.detail.load_level", Integer.toString(row.loadLevel())));
-		detail.child(detailLine("msptmap.analysis.detail.compute_level", Integer.toString(row.computeLevel())));
+		detail.child(detailLine("msptmap.analysis.detail.level",
+				row.loadLevel() + "/" + row.computeLevel()));
 		detail.child(detailLine("msptmap.analysis.detail.ticket_load", ticketName(row.loadTicket())));
 		detail.child(detailLine("msptmap.analysis.detail.ticket_sim", ticketName(row.simTicket())));
 		detail.child(UIComponents.label(Component.translatable("msptmap.analysis.detail.categories"))
@@ -859,8 +900,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 					? TickText.colored(msptText, ScanSummary.chunkColor(row.mspt(), row.dimension()))
 					: Component.literal(msptText), columns[1], TEXT));
 			child(cell(Component.translatable("msptmap.analysis.column.entities", row.entities()).getString(), columns[2], TEXT_DIM));
-			child(cell(Integer.toString(row.loadLevel()), columns[3], TEXT_DIM));
-			child(cell(Integer.toString(row.computeLevel()), columns[4], TEXT_DIM));
+			child(cell(row.loadLevel() + "/" + row.computeLevel(), columns[3], TEXT_DIM));
 		}
 
 		/** 选中行浅灰底，其余恢复斑马纹。 */
@@ -879,42 +919,8 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			FlowLayout rowLayout = UIContainers.horizontalFlow(Sizing.fixed(columns[0]), Sizing.content());
 			rowLayout.horizontalAlignment(HorizontalAlignment.LEFT);
 			rowLayout.verticalAlignment(VerticalAlignment.CENTER);
-			FlowLayout content = UIContainers.horizontalFlow(Sizing.content(), Sizing.content()).gap(2);
-			content.verticalAlignment(VerticalAlignment.CENTER);
-			content.child(dimensionIcon(row.dimension()));
-			String coords = "[" + row.x() + "," + row.z() + "]";
-			LabelComponent coord = UIComponents.label(Component.literal(coords))
-					.shadow(false).color(Color.ofArgb(TEXT));
-			coord.verticalTextAlignment(VerticalAlignment.CENTER);
-			content.child(coord);
-			String name = ClientConfig.chunkName(row.dimension(), row.x(), row.z());
-			if (name != null) {
-				Font font = Minecraft.getInstance().font;
-				// 减去图标、坐标与两处 gap，余下宽度留给名称
-				String shown = font.plainSubstrByWidth(name, Math.max(0, columns[0] - ICON_SIZE - 4 - font.width(coords)));
-				if (!shown.isEmpty()) {
-					LabelComponent label = UIComponents.label(Component.literal(shown))
-							.shadow(false).color(Color.ofArgb(TEXT_DIM));
-					label.verticalTextAlignment(VerticalAlignment.CENTER);
-					content.child(label);
-				}
-			}
-			rowLayout.child(content);
+			rowLayout.child(coordContent(row, columns[0]));
 			return rowLayout;
-		}
-
-		/** 维度对应的方块侧面纹理（草方块 / 下界岩 / 末地石）。 */
-		private TextureComponent dimensionIcon(String dimension) {
-			String block = switch (dimension) {
-				case "minecraft:the_nether" -> "netherrack";
-				case "minecraft:the_end" -> "end_stone";
-				default -> "grass_block_side";
-			};
-			TextureComponent icon = UIComponents.texture(
-					Ids.of("minecraft", "textures/block/" + block + ".png"), 0, 0, 16, 16, 16, 16);
-			icon.horizontalSizing(Sizing.fixed(ICON_SIZE));
-			icon.verticalSizing(Sizing.fixed(ICON_SIZE));
-			return icon;
 		}
 
 		private LabelComponent cell(String text, int width, int color) {
