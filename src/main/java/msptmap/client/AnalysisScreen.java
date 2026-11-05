@@ -68,9 +68,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int[] COLUMN_WEIGHTS = {117, 52, 30, 55};
 	private static final int COLUMN_GAP = 2;
 	private static final int SCROLLBAR_WIDTH = 8;
-	/** 详情/信息栏内容左右内边距之和（见两栏的 Insets.of(3)）。 */
-	private static final int PANE_PADDING = 6;
-	/** 窗口宽与内容区宽之差（outline 与 content 的左右 padding）。 */
+		/** 窗口宽与内容区宽之差（outline 与 content 的左右 padding）。 */
 	private static final int WINDOW_INSET = 8;
 	/** 以 1.2 倍设计尺寸为内容基准；窗口更小时栏内容不缩，由各栏滚动条查看。 */
 	private static final int BASE_CONTENT_WIDTH = (int) (DESIGN_WIDTH * SCALE_MAX) - WINDOW_INSET;
@@ -241,10 +239,11 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		listColumn.child(listHScroll);
 		body.child(listColumn);
 
-		detail = UIContainers.verticalFlow(Sizing.fixed(detailPaneWidth()), Sizing.content()).gap(2);
-		detail.padding(Insets.of(3));
+		detail = UIContainers.verticalFlow(Sizing.content(), Sizing.content()).gap(2);
+		// 右侧留出竖向滚动条的位置；内容更宽时由外层横向滚动容器滚动
+		detail.padding(Insets.of(3, 3, 3, 3 + SCROLLBAR_WIDTH));
 		FlowLayout detailColumn = UIContainers.verticalFlow(Sizing.fill(28), Sizing.fill(100)).gap(1);
-		detailScroll = new PaneScroll(Sizing.fixed(detailScrollWidth()), Sizing.fill(100), detail);
+		detailScroll = new PaneScroll(Sizing.content(), Sizing.fill(100), detail);
 		detailScroll.scrollbar(ScrollContainer.Scrollbar.flat(Color.ofArgb(0x66FFFFFF)));
 		detailScroll.scrollbarThiccness(SCROLLBAR_WIDTH);
 		ScrollContainer<PaneScroll> detailHScroll = UIContainers.horizontalScroll(
@@ -836,31 +835,18 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		return bar;
 	}
 
-	/** 详情栏内容布局体宽（含左右内边距）。 */
-	private int detailPaneWidth() {
-		return Math.max(1, detailScrollWidth() - SCROLLBAR_WIDTH);
-	}
-
-	/** 详情栏滚动容器宽：内容布局体 + 竖向滚动条占位。 */
-	private static int detailScrollWidth() {
-		return Math.round(0.28f * BASE_CONTENT_WIDTH);
-	}
-
-	/** 详情栏内容可用宽：详情栏整体宽减去左右内边距。 */
-	private int detailContentWidth() {
-		return Math.max(1, detailPaneWidth() - PANE_PADDING);
-	}
-
 	private void showDetail(Row row) {
 		if (detailScroll != null) {
 			detailScroll.keepScroll();
 		}
 		detail.clearChildren();
-		// 区块名称放不下时截断
-		detail.child(coordContent(row, detailContentWidth(), TEXT));
+		// 详情栏可横向滚动，名称不再截断
+		detail.child(coordContent(row, Integer.MAX_VALUE, TEXT));
 		detail.child(divider());
-		addDetailLine("msptmap.analysis.detail.mspt",
-				Decimals.format3(row.mspt()) + (ClientConfig.tooltipMsptUnit ? " mspt" : ""));
+		String msptText = Decimals.format3(row.mspt()) + (ClientConfig.tooltipMsptUnit ? " mspt" : "");
+		addDetailLine("msptmap.analysis.detail.mspt", ClientConfig.summaryColored
+				? TickText.colored(msptText, ScanSummary.chunkColor(row.mspt(), row.dimension()))
+				: Component.literal(msptText));
 		addDetailLine("msptmap.analysis.detail.entities", Integer.toString(row.entities()));
 		addDetailLine("msptmap.analysis.detail.load_level", Integer.toString(row.loadLevel()));
 		addDetailLine("msptmap.analysis.detail.compute_level", Integer.toString(row.computeLevel()));
@@ -881,9 +867,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		detail.child(detailLine(key, value));
 	}
 
-	/** 各类耗时行：名称白色并缩进两格，耗时与触发次数灰色，次数贴右。 */
+	private void addDetailLine(String key, Component value) {
+		detail.child(detailLine(key, value));
+	}
+
+	/** 各类耗时行：名称白色并缩进两格，耗时与触发次数灰色，次数贴右；过长时随整行横向滚动。 */
 	private static FlowLayout categoryRow(Row row, TickCategory category) {
-		FlowLayout line = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
+		FlowLayout line = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
 		line.verticalAlignment(VerticalAlignment.CENTER);
 		line.child(UIComponents.label(Component.literal("  ").append(TickText.categoryLine(
 				row.nanos()[category.ordinal()], ClientSnapshot.windowTicks(), category, TEXT_DIM)))
@@ -1060,6 +1050,14 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	/** 详情行：标签白色、值灰色，中间空两格。 */
 	private LabelComponent detailLine(String key, String value) {
 		return UIComponents.label(detailText(key, value)).shadow(false);
+	}
+
+	/** 详情行（值自带样式，如合计的梯度色）。 */
+	private LabelComponent detailLine(String key, Component value) {
+		return UIComponents.label(Component.translatable(key)
+				.withStyle(style -> style.withColor(TextColor.fromRgb(TEXT & 0xFFFFFF)))
+				.append(Component.literal("  "))
+				.append(value)).shadow(false);
 	}
 
 	private static Component detailText(String key, String value) {
