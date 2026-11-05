@@ -6,9 +6,6 @@ import msptmap.vendor.owo.ui.util.FocusHandler;
 import msptmap.vendor.owo.util.EventSource;
 import msptmap.vendor.owo.util.EventStream;
 import msptmap.vendor.owo.util.Observable;
-import msptmap.vendor.owo.ui.event.CharInput;
-import msptmap.vendor.owo.ui.event.KeyInput;
-import msptmap.vendor.owo.ui.event.MouseClick;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;

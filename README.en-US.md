@@ -33,7 +33,7 @@ Identifies the specific chunks responsible for server-side lag.
 | :--- | :--- |
 | 🌡️ **Per-chunk heatmap** | Chunks are coloured green → yellow → red according to the tick time they consume. Weakly-loaded chunks are shown in pale grey; those that perform measurable work can be coloured in the settings. The heatmap can also be shown on the Xaero minimap. |
 | 🧩 **Seven tick categories** | Random ticks, scheduled ticks, block updates, block events, block entities, entities and mob spawning are measured independently; the tooltip identifies the category to which the cost belongs. |
-| 🏷️ **Load source lookup** | The load ticket behind each chunk is resolved: `player_loading`, `forced`, `portal`, `ender_pearl`, `dragon`, and others. Chunks that hold a ticket are outlined in blue, and the tooltip reports the ticket name together with the `@x,z` coordinates of the chunk on which the ticket resides. |
+| 🏷️ **Load source lookup** | The load ticket behind each chunk is resolved: `player_loading`, `forced`, `portal`, `ender_pearl`, `dragon`, and others. Chunks that hold a ticket are outlined in blue, and the tooltip reports the ticket name together with the `@[x,z]` coordinates of the chunk on which the ticket resides. |
 | 📊 **Scan overview** | A single panel reports total mspt, entity count, load sources and the five most costly chunks, aggregated across **all three dimensions**, whereas the map itself displays one dimension at a time. |
 | 🖱️ **Click to locate** | Selecting an entry in the overview moves the map to the corresponding chunk. A fold row expands the complete source list. When the overview or that list is taller than the screen, a scroll bar appears on its right edge and the mouse wheel scrolls it. |
 | 📡 **Optional monitoring** | Off by default. When enabled, the server watches MSPT and, on sustained overload, scans on its own and alerts the online operators with a clickable list of the five most costly chunks. |
@@ -88,7 +88,7 @@ Download the latest build from [Modrinth](https://modrinth.com/mod/msptmap) or t
 
 ### Interpreting load tickets
 
-The load ticket identifies the ticket that keeps the chunk loaded; the `@x,z` suffix gives the coordinates of the chunk on which the ticket resides; a chunk outlined in blue holds a ticket.
+The load ticket identifies the ticket that keeps the chunk loaded; the `@[x,z]` suffix gives the coordinates of the chunk on which the ticket resides; a chunk outlined in blue holds a ticket.
 (In fact, every chunk around a player holds a ticket; for brevity, only the ticket of the chunk the player is in is shown.)
 
 <details>
@@ -107,7 +107,7 @@ The load ticket identifies the ticket that keeps the chunk loaded; the `@x,z` su
 | `unknown` | Vanilla's fallback ticket type, or a custom ticket from another mod |
 
 > [!NOTE]
-> Games through 1.21.4 have no queryable ticket table; the ticket name and its `@x,z` are therefore not displayed there, and only the load level is shown.
+> Games through 1.21.4 have no queryable ticket table; the ticket name and its `@[x,z]` are therefore not displayed there, and only the load level is shown.
 </details>
 
 

@@ -77,7 +77,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private static final int[] COLUMN_WEIGHTS = {117, 52, 30, 55};
 	private static final int COLUMN_GAP = 2;
 	private static final int SCROLLBAR_WIDTH = 8;
-		/** 窗口宽与内容区宽之差（outline 与 content 的左右 padding）。 */
+	/** 窗口宽与内容区宽之差（outline 与 content 的左右 padding）。 */
 	private static final int WINDOW_INSET = 8;
 	/** 以 1.2 倍设计尺寸为内容基准；窗口更小时栏内容不缩，由各栏滚动条查看。 */
 	private static final int BASE_CONTENT_WIDTH = (int) (DESIGN_WIDTH * SCALE_MAX) - WINDOW_INSET;
@@ -364,7 +364,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 	}
 
-	/** 右键功能列表：重命名、在地图上定位（双击定位仍然保留）。 */
+	/** 右键功能列表：重命名、在地图上定位。 */
 	private static Component[] menuItems() {
 		return new Component[]{
 				Component.translatable("msptmap.analysis.menu.rename"),
@@ -496,7 +496,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	@Override
 	public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
 		if (menuRow != null) {
-			return handleMenuClick(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()));
+			return handleMenuClick(new MouseClick(click.x(), click.y(), click.button()));
 		}
 		if (renameBox != null) {
 			if (renameBox.mouseClicked(click, doubled)) {
@@ -540,7 +540,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	/*@Override
 	public boolean mouseClicked(double x, double y, int button) {
 		if (menuRow != null) {
-			return handleMenuClick(new MouseClick(x, y, button, 0));
+			return handleMenuClick(new MouseClick(x, y, button));
 		}
 		if (renameBox != null) {
 			if (renameBox.mouseClicked(x, y, button)) {
@@ -1043,12 +1043,12 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		});
 	}
 
-	/** 票的来源：本区块持票写 center，其余写 @锚点；两列固定宽，等级右对齐。 */
+	/** 票的来源：本区块持票写 center，其余写 @[x,z] 锚点；两列固定宽，等级右对齐。 */
 	private static String ticketSource(Row row, ChunkDetailResultPayload.TicketInfo ticket) {
 		if (isCenterTicket(row, ticket)) {
 			return "center";
 		}
-		return "@" + ticket.anchorX() + "," + ticket.anchorZ();
+		return "@[" + ticket.anchorX() + "," + ticket.anchorZ() + "]";
 	}
 
 	/** 票的锚点是否就在本区块。 */
@@ -1434,7 +1434,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	}
 
 	/** 26.3 起输入后端改用 SDL，鼠标按钮编号为 1/2/3；此前为 0/1/2。 */
-private static boolean isLeftClick(MouseClick click) {
+	private static boolean isLeftClick(MouseClick click) {
 		//? if >=26.3 {
 		return click.button() == 1;
 		//?} else {

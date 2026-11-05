@@ -34,9 +34,9 @@ public class OwoUIGraphics extends GuiGraphicsExtractor {
     public static OwoUIGraphics of(GuiGraphicsExtractor graphics) {
         var owoContext = new OwoUIGraphics(
             Minecraft.getInstance(),
-            graphics.guiRenderState,
-            ((GuiGraphicsExtractorAccessor) graphics).owo$getMouseY(),
-            ((GuiGraphicsExtractorAccessor) graphics).owo$getMouseX()
+            ((GuiGraphicsExtractorAccessor) graphics).owo$getGuiRenderState(),
+            ((GuiGraphicsExtractorAccessor) graphics).owo$getMouseX(),
+            ((GuiGraphicsExtractorAccessor) graphics).owo$getMouseY()
         );
 
         ((GuiGraphicsExtractorAccessor) owoContext).owo$setScissorStack(((GuiGraphicsExtractorAccessor) graphics).owo$getScissorStack());

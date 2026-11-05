@@ -107,7 +107,7 @@ public final class TickText {
 	}
 
 	/**
-	 * 等级行后半段：票名——「玩家加载」「强制加载 @x,z」「玩家模拟中心」；存疑时是「未知 *」。
+	 * 等级行后半段：票名——「玩家加载」「强制加载 @[x,z]」「玩家模拟中心」；存疑时是「未知 *」。
 	 * 未勾选该开关、或该链没有来源（如无模拟票的弱加载区块）时返回空组件。
 	 */
 	static Component ticket(int code, boolean enabled, int chunkX, int chunkZ) {

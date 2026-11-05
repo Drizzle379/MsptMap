@@ -7,7 +7,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 *///?}
 
 /** 与版本无关的键盘事件数据。 */
-public record KeyInput(int key, int scancode, int modifiers) {
+public record KeyInput(int key, int modifiers) {
 
     public boolean isCycleFocus() {
         //? if >=26.3 {
@@ -51,6 +51,7 @@ public record KeyInput(int key, int scancode, int modifiers) {
 
     public boolean hasShiftDown() {
         //? if >=26.3 {
+        // SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT
         return (this.modifiers & 3) != 0;
         //?} else {
         /*return (this.modifiers & 1) != 0;
@@ -59,6 +60,7 @@ public record KeyInput(int key, int scancode, int modifiers) {
 
     public boolean hasAltDown() {
         //? if >=26.3 {
+        // SDL_KMOD_LALT | SDL_KMOD_RALT
         return (this.modifiers & 768) != 0;
         //?} else {
         /*return (this.modifiers & 4) != 0;

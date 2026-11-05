@@ -73,14 +73,6 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
         return adapter;
     }
 
-    /**
-     * Create a new UI adapter without the specific context of a screen
-     */
-    public static <R extends ParentUIComponent> OwoUIAdapter<R> createWithoutScreen(int x, int y, int width, int height, BiFunction<Sizing, Sizing, R> rootComponentMaker) {
-        var rootComponent = rootComponentMaker.apply(Sizing.fill(100), Sizing.fill(100));
-        return new OwoUIAdapter<>(x, y, width, height, rootComponent);
-    }
-
     public void inflateAndMount() {
         this.rootComponent.inflate(Size.of(this.width, this.height));
         this.rootComponent.mount(null, this.x, this.y);
@@ -172,52 +164,52 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
     //? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
-        return this.rootComponent.onMouseDown(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()), doubled);
+        return this.rootComponent.onMouseDown(new MouseClick(click.x(), click.y(), click.button()), doubled);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent click) {
-        return this.rootComponent.onMouseUp(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()));
+        return this.rootComponent.onMouseUp(new MouseClick(click.x(), click.y(), click.button()));
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent click, double deltaX, double deltaY) {
-        return this.rootComponent.onMouseDrag(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()), deltaX, deltaY);
+        return this.rootComponent.onMouseDrag(new MouseClick(click.x(), click.y(), click.button()), deltaX, deltaY);
     }
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        return this.rootComponent.onKeyPress(new KeyInput(input.key(), 0, input.modifiers()));
+        return this.rootComponent.onKeyPress(new KeyInput(input.key(), input.modifiers()));
     }
 
     @Override
     public boolean charTyped(CharacterEvent input) {
-        return this.rootComponent.onCharTyped(new CharInput((char) input.codepoint(), 0));
+        return this.rootComponent.onCharTyped(new CharInput(input.codepoint()));
     }
     //?} else {
     /*@Override
     public boolean mouseClicked(double x, double y, int button) {
-        return this.rootComponent.onMouseDown(new MouseClick(x, y, button, 0), false);
+        return this.rootComponent.onMouseDown(new MouseClick(x, y, button), false);
     }
 
     @Override
     public boolean mouseReleased(double x, double y, int button) {
-        return this.rootComponent.onMouseUp(new MouseClick(x, y, button, 0));
+        return this.rootComponent.onMouseUp(new MouseClick(x, y, button));
     }
 
     @Override
     public boolean mouseDragged(double x, double y, int button, double deltaX, double deltaY) {
-        return this.rootComponent.onMouseDrag(new MouseClick(x, y, button, 0), deltaX, deltaY);
+        return this.rootComponent.onMouseDrag(new MouseClick(x, y, button), deltaX, deltaY);
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        return this.rootComponent.onKeyPress(new KeyInput(keyCode, scanCode, modifiers));
+        return this.rootComponent.onKeyPress(new KeyInput(keyCode, modifiers));
     }
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        return this.rootComponent.onCharTyped(new CharInput(codePoint, modifiers));
+        return this.rootComponent.onCharTyped(new CharInput(codePoint));
     }
     *///?}
 

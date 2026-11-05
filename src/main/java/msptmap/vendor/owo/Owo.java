@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class Owo {
     /** 内置源码自己的命名空间，与官方 owo-lib 完全隔离。 */
-    public static final String MOD_ID = "msptmap_owo";
+    public static final String MOD_ID = "msptmap";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
     private Owo() {

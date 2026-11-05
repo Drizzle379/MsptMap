@@ -2,7 +2,6 @@ package msptmap.vendor.owo.ui.event;
 
 import msptmap.vendor.owo.util.EventStream;
 
-
 public interface MouseDrag {
     boolean onMouseDrag(MouseClick click, double deltaX, double deltaY);
 

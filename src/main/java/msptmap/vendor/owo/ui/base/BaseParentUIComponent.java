@@ -218,7 +218,7 @@ public abstract class BaseParentUIComponent extends BaseUIComponent implements P
     public boolean onMouseUp(MouseClick click) {
         if (this.focusHandler != null && this.focusHandler.focused() != null) {
             final var focused = this.focusHandler.focused();
-            return focused.onMouseUp(new MouseClick(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.button(), click.modifiers()));
+            return focused.onMouseUp(new MouseClick(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.button()));
         } else {
             return super.onMouseUp(click);
         }
@@ -233,7 +233,7 @@ public abstract class BaseParentUIComponent extends BaseUIComponent implements P
     public boolean onMouseDrag(MouseClick click, double deltaX, double deltaY) {
         if (this.focusHandler != null && this.focusHandler.focused() != null) {
             final var focused = this.focusHandler.focused();
-            return focused.onMouseDrag(new MouseClick(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.button(), click.modifiers()), deltaX, deltaY);
+            return focused.onMouseDrag(new MouseClick(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.button()), deltaX, deltaY);
         } else {
             return super.onMouseDrag(click, deltaX, deltaY);
         }

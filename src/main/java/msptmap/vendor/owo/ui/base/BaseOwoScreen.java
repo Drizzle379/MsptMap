@@ -20,7 +20,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-//? if <26.1.2 {
+//? if <1.21.9 {
 /*import org.lwjgl.glfw.GLFW;
 *///?}
 
@@ -124,7 +124,7 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
             this.onClose();
         }
     }
-    //?} else if >=1.21.10 {
+    //?} else if >=1.21.6 {
     /*@Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float a) {}
 

@@ -125,7 +125,7 @@ public interface ParentUIComponent extends UIComponent {
         while (iter.hasPrevious()) {
             var child = iter.previous();
             if (!child.isInBoundingBox(this.x() + click.x(), this.y() + click.y())) continue;
-            if (child.onMouseDown(new MouseClick(this.x() + click.x() - child.x(), this.y() + click.y() - child.y(), click.button(), click.modifiers()), doubled)) {
+            if (child.onMouseDown(new MouseClick(this.x() + click.x() - child.x(), this.y() + click.y() - child.y(), click.button()), doubled)) {
                 return true;
             }
         }

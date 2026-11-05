@@ -21,7 +21,7 @@ import java.util.List;
  * 自动扫描的聊天告警：一条标题加若干可点击的区块行。
  *
  * <p>区块行与扫描总览的卡顿区块行同构（同用 {@code msptmap.summary.line} 语言键）：二级条目的缩进与
- * 附注灰、{@code 耗时 @ 维度 x,z} 的排布，耗时按热力色的同一条斜坡着色，红点取单区块的默认红阈值。
+ * 附注灰、{@code 耗时 @ 维度 [x,z]} 的排布，耗时按热力色的同一条斜坡着色，红点取单区块的默认红阈值。
  * 两处因此可直接对照。
  *
  * <p>文案一律 {@code translatableWithFallback}：接收范围设为「所有玩家」时，未装本模组的玩家没有
@@ -45,7 +45,7 @@ public final class MsptAlert {
 			"[MsptMap] Server MSPT stayed above %1$s mspt; scanned lagging chunks:";
 	/** 行格式与总览的数据行共用同一个语言键，两处排版不会分家。 */
 	private static final String ROW_KEY = "msptmap.summary.line";
-	private static final String ROW_FALLBACK = "%1$s @ %2$s %3$s,%4$s";
+	private static final String ROW_FALLBACK = "%1$s @ %2$s [%3$s,%4$s]";
 	private static final String HOVER_KEY = "msptmap.alert.hover";
 	private static final String HOVER_FALLBACK = "Click to locate this chunk on the world map";
 
@@ -89,7 +89,7 @@ public final class MsptAlert {
 				.withStyle(style -> style.withBold(true));
 	}
 
-	/** 一条区块行：耗时 @ 维度 x,z；整行附注灰，耗时另着色，与总览的卡顿区块行一致。 */
+	/** 一条区块行：耗时 @ 维度 [x,z]；整行附注灰，耗时另着色，与总览的卡顿区块行一致。 */
 	private static Component row(MsptSampler.Heavy heavy, int windowTicks) {
 		// 维度名走本模组短名键（仅装了本模组的客户端显示中文短名）；未装的按原版短名回退，
 		// 不能只给原版 dimension.* 键：官方语言文件中并无此键，只会显示裸键名

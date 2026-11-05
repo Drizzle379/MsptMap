@@ -1,6 +1,7 @@
 package msptmap.vendor.owo.mixin.ui.access;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -22,6 +23,9 @@ public interface GuiGraphicsExtractorAccessor {
     @Mutable
     @Accessor("scissorStack")
     void owo$setScissorStack(GuiGraphicsExtractor.ScissorStack scissorStack);
+
+    @Accessor("guiRenderState")
+    GuiRenderState owo$getGuiRenderState();
 
     @Accessor("mouseX")
     int owo$getMouseX();

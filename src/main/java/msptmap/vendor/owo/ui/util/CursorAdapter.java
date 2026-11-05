@@ -25,10 +25,6 @@ public class CursorAdapter {
         return new CursorAdapter(Minecraft.getInstance().getWindow());
     }
 
-    public static CursorAdapter ofWindow(Window window) {
-        return new CursorAdapter(window);
-    }
-
     public void applyStyle(CursorStyle style) {
         if (this.disposed || this.lastCursorStyle == style) return;
 
@@ -44,7 +40,7 @@ public class CursorAdapter {
 //?} else {
 /*public class CursorAdapter {
 
-    protected static final CursorStyle[] ACTIVE_STYLES = {CursorStyle.POINTER, CursorStyle.TEXT, CursorStyle.HAND, CursorStyle.CROSSHAIR, CursorStyle.MOVE, CursorStyle.HORIZONTAL_RESIZE, CursorStyle.VERTICAL_RESIZE, CursorStyle.NWSE_RESIZE, CursorStyle.NESW_RESIZE, CursorStyle.NOT_ALLOWED};
+    protected static final CursorStyle[] ACTIVE_STYLES = {CursorStyle.POINTER, CursorStyle.HAND};
 
     protected final EnumMap<CursorStyle, Long> cursors = new EnumMap<>(CursorStyle.class);
     protected final long windowHandle;
@@ -64,10 +60,6 @@ public class CursorAdapter {
 
     public static CursorAdapter ofClientWindow() {
         return new CursorAdapter(Minecraft.getInstance().getWindow());
-    }
-
-    public static CursorAdapter ofWindow(Window window) {
-        return new CursorAdapter(window);
     }
 
     public void applyStyle(CursorStyle style) {

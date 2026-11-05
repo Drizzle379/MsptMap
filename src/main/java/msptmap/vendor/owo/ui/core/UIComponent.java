@@ -3,9 +3,6 @@ package msptmap.vendor.owo.ui.core;
 import msptmap.vendor.owo.ui.event.*;
 import msptmap.vendor.owo.ui.util.FocusHandler;
 import msptmap.vendor.owo.util.EventSource;
-import msptmap.vendor.owo.ui.event.CharInput;
-import msptmap.vendor.owo.ui.event.KeyInput;
-import msptmap.vendor.owo.ui.event.MouseClick;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
