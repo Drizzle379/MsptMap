@@ -6,13 +6,11 @@ import msptmap.vendor.owo.ui.util.FocusHandler;
 import msptmap.vendor.owo.util.EventSource;
 import msptmap.vendor.owo.util.EventStream;
 import msptmap.vendor.owo.util.Observable;
-import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -50,7 +48,6 @@ public abstract class BaseUIComponent implements UIComponent {
     protected boolean dirty = false;
 
     protected CursorStyle cursorStyle = CursorStyle.NONE;
-    protected List<ClientTooltipComponent> tooltip = List.of();
 
     protected int x, y;
     protected int width, height;
@@ -261,17 +258,6 @@ public abstract class BaseUIComponent implements UIComponent {
     public BaseUIComponent cursorStyle(CursorStyle style) {
         this.cursorStyle = style;
         return this;
-    }
-
-    @Override
-    public UIComponent tooltip(List<ClientTooltipComponent> tooltip) {
-        this.tooltip = tooltip;
-        return this;
-    }
-
-    @Override
-    public List<ClientTooltipComponent> tooltip() {
-        return this.tooltip;
     }
 
     @Override

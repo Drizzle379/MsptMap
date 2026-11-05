@@ -1,7 +1,5 @@
 package msptmap.vendor.owo.ui.core;
 
-import io.wispforest.endec.Endec;
-import io.wispforest.endec.impl.StructEndecBuilder;
 import org.jetbrains.annotations.ApiStatus;
 
 /**
@@ -12,12 +10,6 @@ import org.jetbrains.annotations.ApiStatus;
  * @param height The height of the rectangle
  */
 public record Size(int width, int height) {
-
-    public static final Endec<Size> ENDEC =StructEndecBuilder.of(
-            Endec.INT.fieldOf("width", Size::width),
-            Endec.INT.fieldOf("height", Size::height),
-            Size::of
-    );
 
     private static final Size ZERO = new Size(0, 0);
 

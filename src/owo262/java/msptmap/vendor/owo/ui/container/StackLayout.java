@@ -5,12 +5,8 @@ import msptmap.vendor.owo.ui.core.OwoUIGraphics;
 import msptmap.vendor.owo.ui.core.Size;
 import msptmap.vendor.owo.ui.core.Sizing;
 import msptmap.vendor.owo.ui.core.UIComponent;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
 import msptmap.vendor.owo.ui.util.MountingHelper;
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 import java.util.*;
 
@@ -150,18 +146,5 @@ public class StackLayout extends BaseParentUIComponent {
     @Override
     public List<UIComponent> children() {
         return this.childrenView;
-    }
-
-    @Override
-    public void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        super.parseProperties(model, element, children);
-
-        final var components = UIParsing
-                .get(children, "children", e -> UIParsing.<Element>allChildrenOfType(e, Node.ELEMENT_NODE))
-                .orElse(Collections.emptyList());
-
-        for (var child : components) {
-            this.child(model.parseComponent(UIComponent.class, child));
-        }
     }
 }

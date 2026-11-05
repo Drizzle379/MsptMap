@@ -1,13 +1,9 @@
 package msptmap.vendor.owo.ui.core;
 
-import msptmap.vendor.owo.ui.parsing.UIModelParsingException;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.ApiStatus;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
-public record Insets(int top, int bottom, int left, int right) implements Animatable<Insets> {
+public record Insets(int top, int bottom, int left, int right) {
 
     private static final Insets NONE = new Insets(0, 0, 0, 0);
 
@@ -47,7 +43,6 @@ public record Insets(int top, int bottom, int left, int right) implements Animat
         return this.top + this.bottom;
     }
 
-    @Override
     public Insets interpolate(Insets next, float delta) {
         return new Insets(
                 (int) Mth.lerpInt(delta, this.top, next.top),
@@ -95,29 +90,5 @@ public record Insets(int top, int bottom, int left, int right) implements Animat
 
     public static Insets none() {
         return NONE;
-    }
-
-    public static Insets parse(Element insetsElement) {
-        int top = 0, bottom = 0, left = 0, right = 0;
-
-        for (var node : UIParsing.<Element>allChildrenOfType(insetsElement, Node.ELEMENT_NODE)) {
-            try {
-                int value = Integer.parseInt(node.getTextContent().strip());
-
-                switch (node.getNodeName()) {
-                    case "top" -> top = value;
-                    case "bottom" -> bottom = value;
-                    case "left" -> left = value;
-                    case "right" -> right = value;
-                    case "all" -> right = left = top = bottom = value;
-                    case "vertical" -> top = bottom = value;
-                    case "horizontal" -> left = right = value;
-                }
-            } catch (NumberFormatException exception) {
-                throw new UIModelParsingException("Non-int value in inset declaration");
-            }
-        }
-
-        return of(top, bottom, left, right);
     }
 }

@@ -31,17 +31,6 @@
 		"msptmap.mixins.json",
 		"msptmap.client.mixins.json"${extra_mixin_entry}
 	],
-	"jars": [
-		{
-			"file": "META-INF/jars/endec-0.1.12.jar"
-		},
-		{
-			"file": "META-INF/jars/gson-0.1.7.jar"
-		},
-		{
-			"file": "META-INF/jars/netty-0.1.6.jar"
-		}
-	],
 	"depends": {
 		"fabricloader": ">=${loader_version}",
 		"minecraft": "${minecraft_range}",

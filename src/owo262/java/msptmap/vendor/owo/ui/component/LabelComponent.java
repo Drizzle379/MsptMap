@@ -2,22 +2,14 @@ package msptmap.vendor.owo.ui.component;
 
 import msptmap.vendor.owo.ui.base.BaseUIComponent;
 import msptmap.vendor.owo.ui.core.*;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
 import msptmap.vendor.owo.util.Observable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
-import org.jetbrains.annotations.Nullable;
-import org.w3c.dom.Element;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 
 public class LabelComponent extends BaseUIComponent {
 
@@ -34,10 +26,6 @@ public class LabelComponent extends BaseUIComponent {
     protected final Observable<Integer> lineSpacing = Observable.of(2);
     protected boolean shadow;
     protected int maxWidth;
-
-    protected Function<@Nullable Style, Boolean> textClickHandler = style -> {
-        return style != null && OwoUIGraphics.utilityScreen().handleTextClick(style, Minecraft.getInstance().gui.screen());
-    };
 
     protected LabelComponent(Component text) {
         this.text = text;
@@ -123,15 +111,6 @@ public class LabelComponent extends BaseUIComponent {
         return this.lineSpacing.get();
     }
 
-    public LabelComponent textClickHandler(Function<@Nullable Style, Boolean> textClickHandler) {
-        this.textClickHandler = textClickHandler;
-        return this;
-    }
-
-    public Function<Style, Boolean> textClickHandler() {
-        return textClickHandler;
-    }
-
     @Override
     protected int determineHorizontalContentSize(Sizing sizing) {
         int widestText = 0;
@@ -166,12 +145,6 @@ public class LabelComponent extends BaseUIComponent {
 
     protected int textHeight() {
         return (this.wrappedText.size() * (this.lineHeight() + this.lineSpacing())) - this.lineSpacing();
-    }
-
-    @Override
-    public void update(float delta, int mouseX, int mouseY) {
-        super.update(delta, mouseX, mouseY);
-        this.color.update(delta);
     }
 
     @Override
@@ -227,47 +200,6 @@ public class LabelComponent extends BaseUIComponent {
 
             goodFunction.draw(renderX, renderY, renderText, this.shadow, this.color.get());
         }
-    }
-
-    @Override
-    public void drawTooltip(OwoUIGraphics context, int mouseX, int mouseY, float partialTicks, float delta) {
-        super.drawTooltip(context, mouseX, mouseY, partialTicks, delta);
-        Style hoveredStyle = this.styleAt(mouseX - this.x, mouseY - this.y);
-        if (hoveredStyle != null) {
-            context.componentHoverEffect(this.textRenderer, hoveredStyle, mouseX, mouseY);
-        }
-    }
-
-    @Override
-    public boolean shouldDrawTooltip(double mouseX, double mouseY) {
-        var hoveredStyle = this.styleAt((int) (mouseX - this.x), (int) (mouseY - this.y));
-        return super.shouldDrawTooltip(mouseX, mouseY) || (hoveredStyle != null && hoveredStyle.getHoverEvent() != null && this.isInBoundingBox(mouseX, mouseY));
-    }
-
-    @Override
-    public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
-        Style clickedStyle = this.styleAt((int) click.x(), (int) click.y());
-        return (clickedStyle != null && this.textClickHandler.apply(clickedStyle)) | super.onMouseDown(click, doubled);
-    }
-
-    @Nullable
-    protected Style styleAt(int mouseX, int mouseY) {
-        // 内置裁剪版不保留文字内的点击/悬停样式采集
-        return null;
-    }
-
-    @Override
-    public void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        super.parseProperties(model, element, children);
-        UIParsing.apply(children, "text", UIParsing::parseText, this::text);
-        UIParsing.apply(children, "max-width", UIParsing::parseUnsignedInt, this::maxWidth);
-        UIParsing.apply(children, "color", Color::parse, this::color);
-        UIParsing.apply(children, "shadow", UIParsing::parseBool, this::shadow);
-        UIParsing.apply(children, "line-height", UIParsing::parseUnsignedInt, this::lineHeight);
-        UIParsing.apply(children, "line-spacing", UIParsing::parseUnsignedInt, this::lineSpacing);
-
-        UIParsing.apply(children, "vertical-text-alignment", VerticalAlignment::parse, this::verticalTextAlignment);
-        UIParsing.apply(children, "horizontal-text-alignment", HorizontalAlignment::parse, this::horizontalTextAlignment);
     }
 
     @FunctionalInterface

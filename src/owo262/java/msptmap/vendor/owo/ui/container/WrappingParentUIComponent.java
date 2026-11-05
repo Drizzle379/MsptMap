@@ -5,15 +5,9 @@ import msptmap.vendor.owo.ui.core.ParentUIComponent;
 import msptmap.vendor.owo.ui.core.Size;
 import msptmap.vendor.owo.ui.core.Sizing;
 import msptmap.vendor.owo.ui.core.UIComponent;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIModelParsingException;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public abstract class WrappingParentUIComponent<C extends UIComponent> extends BaseParentUIComponent {
 
@@ -80,18 +74,5 @@ public abstract class WrappingParentUIComponent<C extends UIComponent> extends B
     @Override
     public ParentUIComponent removeChild(UIComponent child) {
         throw new UnsupportedOperationException("Cannot remove the child of a wrapping component");
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        super.parseProperties(model, element, children);
-
-        try {
-            var childList = UIParsing.<Element>allChildrenOfType(element, Node.ELEMENT_NODE);
-            this.child((C) model.parseComponent(UIComponent.class, childList.get(0)));
-        } catch (UIModelParsingException exception) {
-            throw new UIModelParsingException("Could not initialize container child", exception);
-        }
     }
 }

@@ -1,14 +1,11 @@
 package msptmap.vendor.owo.ui.core;
 
 import msptmap.vendor.owo.Owo;
-import msptmap.vendor.owo.ui.parsing.UIModelParsingException;
 import net.minecraft.util.Mth;
-import org.w3c.dom.Element;
 
-import java.util.Locale;
 import java.util.Objects;
 
-public class Positioning implements Animatable<Positioning> {
+public class Positioning {
 
     private static final Positioning LAYOUT_POSITIONING = new Positioning(0, 0, Type.LAYOUT);
 
@@ -33,7 +30,6 @@ public class Positioning implements Animatable<Positioning> {
         return this.type == Type.RELATIVE || this.type == Type.ACROSS;
     }
 
-    @Override
     public Positioning interpolate(Positioning next, float delta) {
         if (next.type != this.type) {
             Owo.LOGGER.warn("Cannot interpolate between positioning of type " + this.type + " and " + next.type);
@@ -96,25 +92,6 @@ public class Positioning implements Animatable<Positioning> {
 
     public enum Type {
         RELATIVE, ACROSS, ABSOLUTE, LAYOUT
-    }
-
-    public static Positioning parse(Element positioningElement) {
-        var typeString = positioningElement.getAttribute("type");
-        if (typeString.isBlank()) {
-            throw new UIModelParsingException("Missing 'type' attribute on positioning declaration. Must be one of: relative, absolute, layout");
-        }
-
-        var type = Type.valueOf(typeString.toUpperCase(Locale.ROOT));
-
-        var values = positioningElement.getTextContent().strip();
-        if (!values.matches("-?\\d+,-?\\d+")) {
-            throw new UIModelParsingException("Invalid value in positioning declaration");
-        }
-
-        int x = Integer.parseInt(values.split(",")[0]);
-        int y = Integer.parseInt(values.split(",")[1]);
-
-        return new Positioning(x, y, type);
     }
 
     @Override

@@ -7,7 +7,7 @@ import org.joml.Vector2f;
 /**
  * Represents a rectangle positioned in 2D-space
  */
-public interface PositionedRectangle extends Animatable<PositionedRectangle> {
+public interface PositionedRectangle {
 
     /**
      * @return The x-coordinate of the top-left corner of this rectangle
@@ -66,7 +66,6 @@ public interface PositionedRectangle extends Animatable<PositionedRectangle> {
         );
     }
 
-    @Override
     default PositionedRectangle interpolate(PositionedRectangle next, float delta) {
         return PositionedRectangle.of(
                 (int) Mth.lerpInt(delta, this.x(), next.x()),

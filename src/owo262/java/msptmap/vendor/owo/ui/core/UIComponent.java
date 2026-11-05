@@ -1,28 +1,15 @@
 package msptmap.vendor.owo.ui.core;
 
 import msptmap.vendor.owo.ui.event.*;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
 import msptmap.vendor.owo.ui.util.FocusHandler;
 import msptmap.vendor.owo.util.EventSource;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.w3c.dom.Element;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 public interface UIComponent extends PositionedRectangle {
@@ -37,20 +24,6 @@ public interface UIComponent extends PositionedRectangle {
      * @param delta        The duration of the last frame, in partial ticks
      */
     void draw(OwoUIGraphics graphics, int mouseX, int mouseY, float partialTicks, float delta);
-
-    /**
-     * Draw the current tooltip of this component onto the screen
-     *
-     * @param context      The transformation stack
-     * @param mouseX       The mouse pointer's x-coordinate
-     * @param mouseY       The mouse pointer's y-coordinate
-     * @param partialTicks The fraction of the current tick that has passed
-     * @param delta        The duration of the last frame, in partial ticks
-     */
-    default void drawTooltip(OwoUIGraphics context, int mouseX, int mouseY, float partialTicks, float delta) {
-        if (!this.shouldDrawTooltip(mouseX, mouseY)) return;
-        context.drawTooltip(Minecraft.getInstance().font, mouseX, mouseY, this.tooltip());
-    }
 
     /**
      * Draw something which clearly indicates
@@ -163,57 +136,6 @@ public interface UIComponent extends PositionedRectangle {
      * @return The current id of this component
      */
     @Nullable String id();
-
-    /**
-     * Set the tooltip this component should display
-     * while hovered
-     *
-     * @param tooltip The tooltip to display
-     */
-    UIComponent tooltip(@Nullable List<ClientTooltipComponent> tooltip);
-
-    /**
-     * Set the tooltip of this component to the given
-     * text, without any wrapping applied
-     */
-    default UIComponent tooltip(@NotNull Collection<net.minecraft.network.chat.Component> tooltip) {
-        var components = new ArrayList<ClientTooltipComponent>();
-        for (var line : tooltip) components.add(ClientTooltipComponent.create(line.getVisualOrderText()));
-        this.tooltip(components);
-        return this;
-    }
-
-    /**
-     * Set the tooltip of this component to the given
-     * text, wrapping at newline characters
-     */
-    default UIComponent tooltip(@NotNull net.minecraft.network.chat.Component tooltip) {
-        var components = new ArrayList<ClientTooltipComponent>();
-        for (var line : Minecraft.getInstance().font.split(tooltip, Integer.MAX_VALUE)) {
-            components.add(ClientTooltipComponent.create(line));
-        }
-        this.tooltip(components);
-        return this;
-    }
-
-    /**
-     * @return The tooltip this component currently
-     * display while hovered
-     */
-    @Contract(pure = true)
-    @Nullable List<ClientTooltipComponent> tooltip();
-
-    /**
-     * Determine if this component should currently
-     * render its tooltip
-     *
-     * @param mouseX The mouse cursor's x-coordinate
-     * @param mouseY The mouse cursor's y-coordinate
-     * @return {@code true} if the tooltip should be rendered
-     */
-    default boolean shouldDrawTooltip(double mouseX, double mouseY) {
-        return this.tooltip() != null && !this.tooltip().isEmpty() && this.isInBoundingBox(mouseX, mouseY);
-    }
 
     /**
      * Inflate this component into some amount of available space
@@ -437,10 +359,6 @@ public interface UIComponent extends PositionedRectangle {
      * @param mouseY The mouse pointer's y-coordinate
      */
     default void update(float delta, int mouseX, int mouseY) {
-        this.margins().update(delta);
-        this.positioning().update(delta);
-        this.horizontalSizing().update(delta);
-        this.verticalSizing().update(delta);
     }
 
     /**
@@ -463,33 +381,6 @@ public interface UIComponent extends PositionedRectangle {
     default Size fullSize() {
         var margins = this.margins().get();
         return Size.of(this.width() + margins.horizontal(), this.height() + margins.vertical());
-    }
-
-    /**
-     * Read the properties, and potentially children, of this
-     * component from the given XML element
-     *
-     * @param model    The UI model that's being instantiated,
-     *                 used for creating child components
-     * @param element  The XML element representing this component
-     * @param children The child elements of the XML element representing
-     *                 this component by tag name, without duplicates
-     */
-    default void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        if (!element.getAttribute("id").isBlank()) {
-            this.id(element.getAttribute("id").strip());
-        }
-
-        UIParsing.apply(children, "margins", Insets::parse, this::margins);
-        UIParsing.apply(children, "positioning", Positioning::parse, this::positioning);
-        UIParsing.apply(children, "cursor-style", UIParsing.parseEnum(CursorStyle.class), this::cursorStyle);
-        UIParsing.apply(children, "tooltip-text", UIParsing::parseText, this::tooltip);
-
-        if (children.containsKey("sizing")) {
-            var sizingValues = UIParsing.childElements(children.get("sizing"));
-            UIParsing.apply(sizingValues, "vertical", Sizing::parse, this::verticalSizing);
-            UIParsing.apply(sizingValues, "horizontal", Sizing::parse, this::horizontalSizing);
-        }
     }
 
     /**
@@ -528,9 +419,7 @@ public interface UIComponent extends PositionedRectangle {
      * layout calculations.
      * <p>
      * For the majority of components this will be identical
-     * to {@link #x()} as they don't have special logic. A notable
-     * exception is the {@link msptmap.vendor.owo.ui.container.DraggableContainer}
-     * which internally applies a separate offset from dragging
+     * to {@link #x()} as they don't have special logic.
      */
     default int baseX() {
         return this.x();
@@ -572,9 +461,7 @@ public interface UIComponent extends PositionedRectangle {
      * layout calculations.
      * <p>
      * For the majority of components this will be identical
-     * to {@link #y()} as they don't have special logic. A notable
-     * exception is the {@link msptmap.vendor.owo.ui.container.DraggableContainer}
-     * which internally applies a separate offset from dragging
+     * to {@link #y()} as they don't have special logic.
      */
     default int baseY() {
         return this.y();
@@ -613,20 +500,6 @@ public interface UIComponent extends PositionedRectangle {
     default void moveTo(int x, int y) {
         this.updateX(x);
         this.updateY(y);
-    }
-
-    /**
-     * @return a textual representation of the component's details for use in debugging with the inspector HUD.
-     *          Default implementation contains positioning, size and margins.
-     * @see OwoUIGraphics#drawInspector(ParentUIComponent, double, double, boolean)
-     */
-    default MutableComponent inspectorDescriptor() {
-        final var margins = this.margins().get();
-        return Component.literal(this.x() + "," + this.y() + " (" + this.width() + "," + this.height() + ")")
-                .append(
-                        Component.literal(" <" + margins.top() + "," + margins.bottom() + "," + margins.left() + "," + margins.right() + ">")
-                                .setStyle(Style.EMPTY.withColor(ChatFormatting.YELLOW))
-                );
     }
 
     enum FocusSource {

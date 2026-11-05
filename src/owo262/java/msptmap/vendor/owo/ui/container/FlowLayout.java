@@ -2,15 +2,9 @@ package msptmap.vendor.owo.ui.container;
 
 import msptmap.vendor.owo.ui.base.BaseParentUIComponent;
 import msptmap.vendor.owo.ui.core.*;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
 import msptmap.vendor.owo.ui.util.MountingHelper;
 import msptmap.vendor.owo.util.Observable;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 import java.util.*;
 
@@ -145,39 +139,6 @@ public class FlowLayout extends BaseParentUIComponent {
     public void draw(OwoUIGraphics graphics, int mouseX, int mouseY, float partialTicks, float delta) {
         super.draw(graphics, mouseX, mouseY, partialTicks, delta);
         this.drawChildren(graphics, mouseX, mouseY, partialTicks, delta, this.children);
-    }
-
-    @Override
-    public void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        super.parseProperties(model, element, children);
-
-        UIParsing.apply(children, "gap", UIParsing::parseSignedInt, this::gap);
-
-        final var components = UIParsing
-                .get(children, "children", e -> UIParsing.<Element>allChildrenOfType(e, Node.ELEMENT_NODE))
-                .orElse(Collections.emptyList());
-
-        for (var child : components) {
-            this.child(model.parseComponent(UIComponent.class, child));
-        }
-    }
-
-    @Override
-    public MutableComponent inspectorDescriptor() {
-        final var descriptor = super.inspectorDescriptor();
-        return this.gap() == 0 ? descriptor : descriptor.append(
-                Component.literal(" [" + this.gap() + "]")
-        );
-    }
-
-    public static FlowLayout parse(Element element) {
-        UIParsing.expectAttributes(element, "direction");
-
-        return switch (element.getAttribute("direction")) {
-            case "horizontal" -> UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
-            case "ltr-text-flow" -> UIContainers.ltrTextFlow(Sizing.content(), Sizing.content());
-            default -> UIContainers.verticalFlow(Sizing.content(), Sizing.content());
-        };
     }
 
     @FunctionalInterface

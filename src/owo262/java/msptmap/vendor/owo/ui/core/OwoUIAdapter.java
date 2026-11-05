@@ -1,6 +1,5 @@
 package msptmap.vendor.owo.ui.core;
 
-import msptmap.vendor.owo.Owo;
 import msptmap.vendor.owo.ui.util.CursorAdapter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -12,14 +11,13 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.function.BiFunction;
 
 /**
  * A UI adapter constitutes the main entrypoint to using owo-ui.
  * It takes care of rendering the UI tree correctly, handles input events
- * and cursor styling as well as the component inspector.
+ * and cursor styling.
  * <p>
  * Additionally, the adapter implements all interfaces required for it
  * to be treated as a normal widget by the vanilla screen system - this means
@@ -28,16 +26,10 @@ import java.util.function.BiFunction;
  * working out of the box
  * <p>
  * To draw the UI tree managed by this adapter, call {@link OwoUIAdapter#extractRenderState(GuiGraphicsExtractor, int, int, float)}.
- * Note that this does not draw the current tooltip of the UI - this must be done separately
- * by invoking {@link #drawTooltip(GuiGraphicsExtractor, int, int, float)}. If in a scenario with multiple adapters
- * or other sources rendering UI elements to the screen, it is generally desirable to delay tooltip
- * drawing until after all UI is drawn to avoid layering issues.
  *
  * @see msptmap.vendor.owo.ui.base.BaseOwoScreen
  */
 public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListener, Renderable, NarratableEntry {
-
-    private static boolean isRendering = false;
 
     public final R rootComponent;
     public final CursorAdapter cursorAdapter;
@@ -46,10 +38,6 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
 
     protected int x, y;
     protected int width, height;
-
-    public boolean enableInspector = false;
-    public boolean globalInspector = false;
-    public int inspectorZOffset = 1000;
 
     protected OwoUIAdapter(int x, int y, int width, int height, R rootComponent) {
         this.x = x;
@@ -130,21 +118,6 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
         this.disposed = true;
     }
 
-    /**
-     * @return Toggle rendering of the inspector
-     */
-    public boolean toggleInspector() {
-        return this.enableInspector = !this.enableInspector;
-    }
-
-    /**
-     * @return Toggle the inspector between
-     * hovered and global mode
-     */
-    public boolean toggleGlobalInspector() {
-        return this.globalInspector = !this.globalInspector;
-    }
-
     public int x() {
         return this.x;
     }
@@ -166,47 +139,19 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
         if (!(graphics instanceof OwoUIGraphics)) graphics = OwoUIGraphics.of(graphics);
         var owoGraphics = (OwoUIGraphics) graphics;
 
-        try {
-            isRendering = true;
-
-
-            final var delta = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaTicks();
-            final var window = Minecraft.getInstance().getWindow();
-
-            this.rootComponent.update(delta, mouseX, mouseY);
-
-            graphics.enableScissor(0, 0, window.getWidth(), window.getHeight());
-            this.rootComponent.draw(owoGraphics, mouseX, mouseY, a, delta);
-            graphics.disableScissor();
-
-            final var hovered = this.rootComponent.childAt(mouseX, mouseY);
-            if (!disposed && hovered != null) {
-                this.cursorAdapter.applyStyle(hovered.cursorStyle());
-            }
-
-            if (this.enableInspector) {
-                OwoUIGraphics.drawInspector(owoGraphics, this.rootComponent, mouseX, mouseY, !this.globalInspector);
-            }
-
-        } finally {
-            isRendering = false;
-        }
-    }
-
-    /**
-     * Draw the current tooltip of the UI managed by this adapter. This method
-     * must not be called without a previous, corresponding call to {@link #render(GuiGraphics, int, int, float)}
-     *
-     * @since 0.12.19
-     */
-    public void drawTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        if (!(graphics instanceof OwoUIGraphics)) graphics = OwoUIGraphics.of(graphics);
-        var owoContext = (OwoUIGraphics) graphics;
-
         final var delta = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaTicks();
+        final var window = Minecraft.getInstance().getWindow();
 
-        this.rootComponent.drawTooltip(owoContext, mouseX, mouseY, partialTicks, delta);
-        graphics.extractDeferredElements(mouseX, mouseY, partialTicks);
+        this.rootComponent.update(delta, mouseX, mouseY);
+
+        graphics.enableScissor(0, 0, window.getWidth(), window.getHeight());
+        this.rootComponent.draw(owoGraphics, mouseX, mouseY, a, delta);
+        graphics.disableScissor();
+
+        final var hovered = this.rootComponent.childAt(mouseX, mouseY);
+        if (!disposed && hovered != null) {
+            this.cursorAdapter.applyStyle(hovered.cursorStyle());
+        }
     }
 
     @Override
@@ -244,15 +189,6 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (Owo.DEBUG && input.key() == GLFW.GLFW_KEY_LEFT_SHIFT) {
-            if (input.hasControlDown()) {
-                this.toggleInspector();
-            } else if (input.hasAltDown()) {
-                this.toggleGlobalInspector();
-            }
-        }
-
-
         return this.rootComponent.onKeyPress(input);
     }
 
@@ -268,8 +204,4 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
 
     @Override
     public void updateNarration(NarrationElementOutput builder) {}
-
-    public static boolean isRendering() {
-        return isRendering;
-    }
 }

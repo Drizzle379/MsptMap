@@ -1,20 +1,11 @@
 package msptmap.vendor.owo.ui.core;
 
-import msptmap.vendor.owo.ui.parsing.IncompatibleUIModelException;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.w3c.dom.Element;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -128,43 +119,6 @@ public interface ParentUIComponent extends UIComponent {
     ParentUIComponent removeChild(UIComponent child);
 
     @Override
-    default void drawTooltip(OwoUIGraphics context, int mouseX, int mouseY, float partialTicks, float delta) {
-        if (this.hasParent()) {
-            UIComponent.super.drawTooltip(context, mouseX, mouseY, partialTicks, delta);
-            return;
-        }
-
-        var hoveredDescendants = new ArrayList<UIComponent>();
-        this.forEachDescendantWhere(hoveredDescendants::add, component -> component.isInBoundingBox(mouseX, mouseY));
-        hoveredDescendants.remove(this);
-
-        for (int i = hoveredDescendants.size() - 1; i >= 0; i--) {
-            ParentUIComponent nextParent = null;
-            for (int parentIdx = i - 1; parentIdx >= 0; parentIdx--) {
-                if (hoveredDescendants.get(parentIdx) instanceof ParentUIComponent parent) {
-                    nextParent = parent;
-                    break;
-                }
-            }
-
-            var current = hoveredDescendants.get(i);
-            if (nextParent != null && current.parent() != nextParent) break;
-            if (!current.shouldDrawTooltip(mouseX, mouseY)) continue;
-
-            context.pushMatrix();
-            for (; i >= 0; i--) {
-                if (i > 0 && hoveredDescendants.get(i).parent() != hoveredDescendants.get(i - 1)) break;
-                context.translateMatrix(0, 0);
-            }
-
-            current.drawTooltip(context, mouseX, mouseY, partialTicks, delta);
-            context.popMatrix();
-
-            break;
-        }
-    }
-
-    @Override
     default boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
         var iter = this.children().listIterator(this.children().size());
 
@@ -200,30 +154,9 @@ public interface ParentUIComponent extends UIComponent {
      */
     @Override
     default void update(float delta, int mouseX, int mouseY) {
-        this.padding().update(delta);
-
         for (int i = 0; i < this.children().size(); i++) {
             this.children().get(i).update(delta, mouseX, mouseY);
         }
-    }
-
-    @Override
-    default void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        UIComponent.super.parseProperties(model, element, children);
-        UIParsing.apply(children, "padding", Insets::parse, this::padding);
-        UIParsing.apply(children, "surface", Surface::parse, this::surface);
-        UIParsing.apply(children, "vertical-alignment", VerticalAlignment::parse, this::verticalAlignment);
-        UIParsing.apply(children, "horizontal-alignment", HorizontalAlignment::parse, this::horizontalAlignment);
-        UIParsing.apply(children, "allow-overflow", UIParsing::parseBool, this::allowOverflow);
-    }
-
-    @Override
-    default MutableComponent inspectorDescriptor() {
-        final var padding = this.padding().get();
-        return UIComponent.super.inspectorDescriptor().append(
-                Component.literal(" >" + padding.top() + "," + padding.bottom() + "," + padding.left() + "," + padding.right() + "<")
-                        .setStyle(Style.EMPTY.withColor(ChatFormatting.AQUA))
-        );
     }
 
     /**
@@ -243,7 +176,7 @@ public interface ParentUIComponent extends UIComponent {
             if (Objects.equals(child.id(), id)) {
 
                 if (!expectedClass.isAssignableFrom(child.getClass())) {
-                    throw new IncompatibleUIModelException(
+                    throw new IllegalStateException(
                             "Expected child with id '" + id + "'"
                                     + " to be a " + expectedClass.getSimpleName()
                                     + " but it is a " + child.getClass().getSimpleName()

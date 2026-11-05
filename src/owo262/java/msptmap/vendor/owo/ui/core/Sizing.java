@@ -1,14 +1,11 @@
 package msptmap.vendor.owo.ui.core;
 
-import msptmap.vendor.owo.ui.parsing.UIModelParsingException;
 import net.minecraft.util.Mth;
-import org.w3c.dom.Element;
 
-import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 
-public class Sizing implements Animatable<Sizing> {
+public class Sizing {
 
     private static final Sizing CONTENT_SIZING = new Sizing(0, Method.CONTENT);
 
@@ -323,7 +320,6 @@ public class Sizing implements Animatable<Sizing> {
         return this.isContent() ? 1f : 0f;
     }
 
-    @Override
     public Sizing interpolate(Sizing next, float delta) {
         if (next.method != this.method) {
             return new MergedSizing(this, next, delta);
@@ -334,30 +330,6 @@ public class Sizing implements Animatable<Sizing> {
 
     public enum Method {
         FIXED, CONTENT, FILL, EXPAND
-    }
-
-    public static Sizing parse(Element sizingElement) {
-        var methodString = sizingElement.getAttribute("method");
-        if (methodString.isBlank()) {
-            throw new UIModelParsingException("Missing 'method' attribute on sizing declaration. Must be one of: fixed, content, fill");
-        }
-
-        var method = Method.valueOf(methodString.toUpperCase(Locale.ROOT));
-        var value = sizingElement.getTextContent().strip();
-
-        if (method == Method.CONTENT) {
-            if (!value.matches("(-?\\d+)?")) {
-                throw new UIModelParsingException("Invalid value in sizing declaration");
-            }
-
-            return new Sizing(value.isEmpty() ? 0 : Integer.parseInt(value), method);
-        } else {
-            if (!value.matches("-?\\d+")) {
-                throw new UIModelParsingException("Invalid value in sizing declaration");
-            }
-
-            return new Sizing(Integer.parseInt(value), method);
-        }
     }
 
     @Override

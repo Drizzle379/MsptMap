@@ -332,7 +332,7 @@ public abstract class BaseParentUIComponent extends BaseUIComponent implements P
 
     /**
      * Draw the children of this component along with
-     * their focus outline and tooltip, optionally clipping
+     * their focus outline, optionally clipping
      * them if {@link #allowOverflow} is {@code false}
      *
      * @param children The list of children to draw

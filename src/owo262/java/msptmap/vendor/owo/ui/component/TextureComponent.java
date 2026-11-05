@@ -2,13 +2,8 @@ package msptmap.vendor.owo.ui.component;
 
 import msptmap.vendor.owo.ui.base.BaseUIComponent;
 import msptmap.vendor.owo.ui.core.*;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
-import org.w3c.dom.Element;
-
-import java.util.Map;
 
 public class TextureComponent extends BaseUIComponent {
 
@@ -18,7 +13,6 @@ public class TextureComponent extends BaseUIComponent {
     protected final int textureWidth, textureHeight;
 
     protected final AnimatableProperty<PositionedRectangle> visibleArea;
-    protected boolean blend = false;
 
     protected TextureComponent(Identifier texture, int u, int v, int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
         this.texture = texture;
@@ -43,12 +37,6 @@ public class TextureComponent extends BaseUIComponent {
     }
 
     @Override
-    public void update(float delta, int mouseX, int mouseY) {
-        super.update(delta, mouseX, mouseY);
-        this.visibleArea.update(delta);
-    }
-
-    @Override
     public void draw(OwoUIGraphics graphics, int mouseX, int mouseY, float partialTicks, float delta) {
         var matrices = graphics.pose();
         matrices.pushMatrix();
@@ -60,7 +48,7 @@ public class TextureComponent extends BaseUIComponent {
         int bottomEdge = Math.min(visibleArea.y() + visibleArea.height(), regionHeight);
         int rightEdge = Math.min(visibleArea.x() + visibleArea.width(), regionWidth);
 
-        graphics.blit(this.blend ? RenderPipelines.GUI_TEXTURED : OwoUIPipelines.GUI_TEXTURED_NO_BLEND,
+        graphics.blit(RenderPipelines.GUI_TEXTURED,
             this.texture,
             visibleArea.x(),
             visibleArea.y(),
@@ -88,76 +76,5 @@ public class TextureComponent extends BaseUIComponent {
 
     public AnimatableProperty<PositionedRectangle> visibleArea() {
         return this.visibleArea;
-    }
-
-    public TextureComponent blend(boolean blend) {
-        this.blend = blend;
-        return this;
-    }
-
-    public boolean blend() {
-        return this.blend;
-    }
-
-    @Override
-    public void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        super.parseProperties(model, element, children);
-
-        UIParsing.apply(children, "blend", UIParsing::parseBool, this::blend);
-
-        if (children.containsKey("visible-area")) {
-            var areaChildren = UIParsing.childElements(children.get("visible-area"));
-
-            int x = 0, y = 0, width = this.regionWidth, height = this.regionHeight;
-            if (areaChildren.containsKey("x")) {
-                x = UIParsing.parseSignedInt(areaChildren.get("x"));
-            }
-
-            if (areaChildren.containsKey("y")) {
-                y = UIParsing.parseSignedInt(areaChildren.get("y"));
-            }
-
-            if (areaChildren.containsKey("width")) {
-                width = UIParsing.parseSignedInt(areaChildren.get("width"));
-            }
-
-            if (areaChildren.containsKey("height")) {
-                height = UIParsing.parseSignedInt(areaChildren.get("height"));
-            }
-
-            this.visibleArea(PositionedRectangle.of(x, y, width, height));
-        }
-    }
-
-    public static TextureComponent parse(Element element) {
-        UIParsing.expectAttributes(element, "texture");
-        var textureId = UIParsing.parseIdentifier(element.getAttributeNode("texture"));
-
-        int u = 0, v = 0, regionWidth = 0, regionHeight = 0, textureWidth = 256, textureHeight = 256;
-        if (element.hasAttribute("u")) {
-            u = UIParsing.parseSignedInt(element.getAttributeNode("u"));
-        }
-
-        if (element.hasAttribute("v")) {
-            v = UIParsing.parseSignedInt(element.getAttributeNode("v"));
-        }
-
-        if (element.hasAttribute("region-width")) {
-            regionWidth = UIParsing.parseSignedInt(element.getAttributeNode("region-width"));
-        }
-
-        if (element.hasAttribute("region-height")) {
-            regionHeight = UIParsing.parseSignedInt(element.getAttributeNode("region-height"));
-        }
-
-        if (element.hasAttribute("texture-width")) {
-            textureWidth = UIParsing.parseSignedInt(element.getAttributeNode("texture-width"));
-        }
-
-        if (element.hasAttribute("texture-height")) {
-            textureHeight = UIParsing.parseSignedInt(element.getAttributeNode("texture-height"));
-        }
-
-        return new TextureComponent(textureId, u, v, regionWidth, regionHeight, textureWidth, textureHeight);
     }
 }

@@ -19,8 +19,6 @@ repositories {
 	}
 	// Mod Menu（编译时需要，运行时不打包：装了才有「模组菜单 → 设置」入口）
 	maven { url = 'https://maven.terraformersmc.com/releases/' }
-	// owo 内置 UI 的序列化依赖 endec（只随 26.2 的包打进去）
-	maven { url = 'https://maven.wispforest.io/releases/' }
 }
 
 dependencies {
@@ -59,17 +57,7 @@ dependencies {
 	// ② Mixin 0.17.4 写出的注解形式，Fabric Loader 里带的 0.5.4 认不了。
 	include(implementation("io.github.llamalad7:mixinextras-fabric:0.5.5"))
 
-	// 内置 owo-ui 的序列化依赖；只进 26.2 的包（源码在 src/owo262，其他版本不编译）。
-	// Maven 上的 endec 主 jar 不含 format/gson、format/bytebuf 两个模块，故连同 owo 自带的
-	// 三个嵌套 jar 一起放入 libs/owo。
-	if (project.minecraft_version == '26.2') {
-		def owoLibs = files("$rootDir/libs/owo/endec-0.1.12.jar",
-				"$rootDir/libs/owo/gson-0.1.7.jar", "$rootDir/libs/owo/netty-0.1.6.jar")
-		implementation owoLibs
-		// UIModelLoader 解析 JSON5；运行期由 Fabric Loader 提供
-		compileOnly "blue.endless:jankson:1.2.2"
 	}
-}
 
 group = project.maven_group
 // jar 名 = MsptMap-Fabric-v<mod 版本>+<最高支持版本>.jar（生态惯例，与 sodium-fabric-…+mc26.2r1 同构）：
@@ -132,11 +120,9 @@ if (project.minecraft_version == '26.2') {
 	sourceSets.main.resources.srcDir(rootProject.file('src/owo262/resources'))
 	sourceSets.main.java.srcDir(rootProject.file('src/analysis262/java'))
 	sourceSets.main.resources.srcDir(rootProject.file('src/analysis262/resources'))
-	// owo 依赖 access widener 放宽原版 GUI 的访问级别（工具提示、控件尺寸等），
-	// 并通过 mixin 把 UIComponent 接口注入原版控件（Button/Checkbox 等直接充当组件）
+	// owo 依赖 access widener 放宽原版 GUI 的访问级别（控件挂载、裁剪栈等）
 	loom {
 		accessWidenerPath = rootProject.file('src/owo262/resources/msptmap_owo.accesswidener')
-		interfaceInjection.enableDependencyInterfaceInjection = true
 	}
 }
 

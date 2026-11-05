@@ -1,34 +1,18 @@
 package msptmap.vendor.owo.ui.container;
 
-import msptmap.vendor.owo.Owo;
 import msptmap.vendor.owo.ui.core.*;
-import msptmap.vendor.owo.ui.parsing.UIModel;
-import msptmap.vendor.owo.ui.parsing.UIModelParsingException;
-import msptmap.vendor.owo.ui.parsing.UIParsing;
 import msptmap.vendor.owo.ui.util.Delta;
-import msptmap.vendor.owo.ui.util.NinePatchTexture;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
 import org.lwjgl.glfw.GLFW;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
-import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComponent<C> {
-
-    public static final Identifier VERTICAL_VANILLA_SCROLLBAR_TEXTURE = Owo.id("scrollbar/vanilla_vertical");
-    public static final Identifier DISABLED_VERTICAL_VANILLA_SCROLLBAR_TEXTURE = Owo.id("scrollbar/vanilla_vertical_disabled");
-    public static final Identifier HORIZONTAL_VANILLA_SCROLLBAR_TEXTURE = Owo.id("scrollbar/vanilla_horizontal_disabled");
-    public static final Identifier DISABLED_HORIZONTAL_VANILLA_SCROLLBAR_TEXTURE = Owo.id("scrollbar/vanilla_horizontal_disabled");
-    public static final Identifier VANILLA_SCROLLBAR_TRACK_TEXTURE = Owo.id("scrollbar/track");
-    public static final Identifier FLAT_VANILLA_SCROLLBAR_TEXTURE = Owo.id("scrollbar/vanilla_flat");
 
     protected double scrollOffset = 0;
     protected double currentScrollPosition = 0;
@@ -354,22 +338,6 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
         return this.fixedScrollbarLength;
     }
 
-    @Override
-    public void parseProperties(UIModel model, Element element, Map<String, Element> children) {
-        super.parseProperties(model, element, children);
-        UIParsing.apply(children, "fixed-scrollbar-length", UIParsing::parseUnsignedInt, this::fixedScrollbarLength);
-        UIParsing.apply(children, "scrollbar-thiccness", UIParsing::parseUnsignedInt, this::scrollbarThiccness);
-        UIParsing.apply(children, "scrollbar", Scrollbar::parse, this::scrollbar);
-
-        UIParsing.apply(children, "scroll-step", UIParsing::parseUnsignedInt, this::scrollStep);
-    }
-
-    public static ScrollContainer<?> parse(Element element) {
-        return element.getAttribute("direction").equals("vertical")
-                ? UIContainers.verticalScroll(Sizing.content(), Sizing.content(), null)
-                : UIContainers.horizontalScroll(Sizing.content(), Sizing.content(), null);
-    }
-
     @FunctionalInterface
     public interface Scrollbar {
 
@@ -382,7 +350,8 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
             return (context, x, y, width, height, trackX, trackY, trackWidth, trackHeight, lastInteractTime, direction, active) -> {
                 if (!active) return;
 
-                final var progress = Easing.SINE.apply(Mth.clamp(lastInteractTime - System.currentTimeMillis(), 0, 750) / 750f);
+                final float input = Mth.clamp(lastInteractTime - System.currentTimeMillis(), 0, 750) / 750f;
+                final var progress = (float) (Math.sin(input * Math.PI - Math.PI / 2) * 0.5 + 0.5);
                 int alpha = (int) (progress * (scrollbarColor >>> 24));
 
                 context.fill(
@@ -392,49 +361,8 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
             };
         }
 
-        /**
-         * The vanilla scrollbar used by the creative inventory screen
-         */
-        static Scrollbar vanilla() {
-            return (context, x, y, width, height, trackX, trackY, trackWidth, trackHeight, lastInteractTime, direction, active) -> {
-                NinePatchTexture.draw(VANILLA_SCROLLBAR_TRACK_TEXTURE, context, trackX, trackY, trackWidth, trackHeight);
-
-                var texture = direction == ScrollDirection.VERTICAL
-                        ? active ? VERTICAL_VANILLA_SCROLLBAR_TEXTURE : DISABLED_VERTICAL_VANILLA_SCROLLBAR_TEXTURE
-                        : active ? HORIZONTAL_VANILLA_SCROLLBAR_TEXTURE : DISABLED_HORIZONTAL_VANILLA_SCROLLBAR_TEXTURE;
-
-                NinePatchTexture.draw(texture, context, x + 1, y + 1, width - 2, height - 2);
-            };
-        }
-
-        /**
-         * The more flat looking vanilla scrollbar used in the
-         * game options screens
-         */
-        static Scrollbar vanillaFlat() {
-            return (context, x, y, width, height, trackX, trackY, trackWidth, trackHeight, lastInteractTime, direction, active) -> {
-                context.fill(trackX, trackY, trackX + trackWidth, trackY + trackHeight, Color.BLACK.argb());
-                NinePatchTexture.draw(FLAT_VANILLA_SCROLLBAR_TEXTURE, context, x, y, width, height);
-            };
-        }
-
         void draw(OwoUIGraphics context, int x, int y, int width, int height, int trackX, int trackY, int trackWidth, int trackHeight,
                   long lastInteractTime, ScrollDirection direction, boolean active);
-
-        static Scrollbar parse(Element element) {
-            var children = UIParsing.<Element>allChildrenOfType(element, Node.ELEMENT_NODE);
-            if (children.size() > 1)
-                throw new UIModelParsingException("'scrollbar' declaration may only contain a single child");
-
-            var scrollbarElement = children.get(0);
-            return switch (scrollbarElement.getNodeName()) {
-                case "vanilla" -> vanilla();
-                case "vanilla-flat" -> vanillaFlat();
-                case "flat" -> flat(Color.parse(scrollbarElement));
-                default ->
-                        throw new UIModelParsingException("Unknown scrollbar type '" + scrollbarElement.getNodeName() + "'");
-            };
-        }
     }
 
     public enum ScrollDirection {

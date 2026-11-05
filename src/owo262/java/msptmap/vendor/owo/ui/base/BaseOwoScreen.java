@@ -5,10 +5,7 @@ import msptmap.vendor.owo.ui.core.CursorStyle;
 import msptmap.vendor.owo.ui.core.OwoUIAdapter;
 import msptmap.vendor.owo.ui.core.ParentUIComponent;
 import msptmap.vendor.owo.ui.core.UIComponent;
-import msptmap.vendor.owo.ui.inject.GreedyInputUIComponent;
 import msptmap.vendor.owo.ui.util.DisposableScreen;
-import msptmap.vendor.owo.ui.util.UIErrorToast;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
@@ -95,23 +92,9 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
                 this.uiAdapter.inflateAndMount();
             } catch (Exception error) {
                 Owo.LOGGER.warn("Could not initialize owo screen", error);
-                UIErrorToast.report(error);
                 this.invalid = true;
             }
         }
-
-        ScreenEvents.afterExtract(this).register((screen, drawContext, mouseX, mouseY, tickDelta) -> {
-            this.drawComponentTooltip(drawContext, mouseX, mouseY, tickDelta);
-        });
-    }
-
-    /**
-     * Draw the tooltip of this screen's component tree, invoked
-     * by {@link ScreenEvents#afterExtract(Screen)} (Screen)} so that tooltips are
-     * properly rendered above content
-     */
-    protected void drawComponentTooltip(GuiGraphicsExtractor drawContext, int mouseX, int mouseY, float tickDelta) {
-        if (this.uiAdapter != null) this.uiAdapter.drawTooltip(drawContext, mouseX, mouseY, tickDelta);
     }
 
     /**
@@ -137,12 +120,6 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
     @Override
     public boolean keyPressed(KeyEvent input) {
         if (this.uiAdapter == null) return false;
-
-        if (!input.hasControlDown()
-                && this.uiAdapter.rootComponent.focusHandler().focused() instanceof GreedyInputUIComponent inputComponent
-                && inputComponent.onKeyPress(input)) {
-            return true;
-        }
 
         if (super.keyPressed(input)) {
             return true;
