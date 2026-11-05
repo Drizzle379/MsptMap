@@ -1,6 +1,6 @@
 package msptmap.vendor.owo.ui.core;
 
-import net.minecraft.client.input.MouseButtonEvent;
+import msptmap.vendor.owo.ui.event.MouseClick;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -119,13 +119,13 @@ public interface ParentUIComponent extends UIComponent {
     ParentUIComponent removeChild(UIComponent child);
 
     @Override
-    default boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
+    default boolean onMouseDown(MouseClick click, boolean doubled) {
         var iter = this.children().listIterator(this.children().size());
 
         while (iter.hasPrevious()) {
             var child = iter.previous();
             if (!child.isInBoundingBox(this.x() + click.x(), this.y() + click.y())) continue;
-            if (child.onMouseDown(new MouseButtonEvent(this.x() + click.x() - child.x(), this.y() + click.y() - child.y(), click.buttonInfo()), doubled)) {
+            if (child.onMouseDown(new MouseClick(this.x() + click.x() - child.x(), this.y() + click.y() - child.y(), click.button(), click.modifiers()), doubled)) {
                 return true;
             }
         }

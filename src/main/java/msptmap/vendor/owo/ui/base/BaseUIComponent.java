@@ -6,9 +6,9 @@ import msptmap.vendor.owo.ui.util.FocusHandler;
 import msptmap.vendor.owo.util.EventSource;
 import msptmap.vendor.owo.util.EventStream;
 import msptmap.vendor.owo.util.Observable;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import msptmap.vendor.owo.ui.event.CharInput;
+import msptmap.vendor.owo.ui.event.KeyInput;
+import msptmap.vendor.owo.ui.event.MouseClick;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
@@ -160,7 +160,7 @@ public abstract class BaseUIComponent implements UIComponent {
     }
 
     @Override
-    public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
+    public boolean onMouseDown(MouseClick click, boolean doubled) {
         return this.mouseDownEvents.sink().onMouseDown(click, doubled);
     }
 
@@ -170,7 +170,7 @@ public abstract class BaseUIComponent implements UIComponent {
     }
 
     @Override
-    public boolean onMouseUp(MouseButtonEvent click) {
+    public boolean onMouseUp(MouseClick click) {
         return this.mouseUpEvents.sink().onMouseUp(click);
     }
 
@@ -190,7 +190,7 @@ public abstract class BaseUIComponent implements UIComponent {
     }
 
     @Override
-    public boolean onMouseDrag(MouseButtonEvent click, double deltaX, double deltaY) {
+    public boolean onMouseDrag(MouseClick click, double deltaX, double deltaY) {
         return this.mouseDragEvents.sink().onMouseDrag(click, deltaX, deltaY);
     }
 
@@ -200,7 +200,7 @@ public abstract class BaseUIComponent implements UIComponent {
     }
 
     @Override
-    public boolean onKeyPress(KeyEvent input) {
+    public boolean onKeyPress(KeyInput input) {
         return this.keyPressEvents.sink().onKeyPress(input);
     }
 
@@ -210,7 +210,7 @@ public abstract class BaseUIComponent implements UIComponent {
     }
 
     @Override
-    public boolean onCharTyped(CharacterEvent input) {
+    public boolean onCharTyped(CharInput input) {
         return this.charTypedEvents.sink().onCharTyped(input);
     }
 

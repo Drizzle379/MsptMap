@@ -67,7 +67,7 @@ version = "v${project.mod_version}+${project.jar_mc}"
 
 // 内置 UI 的版本档位：26.x 用 GuiGraphicsExtractor，1.21.10/11 用 GuiGraphics
 def is26 = project.minecraft_version.startsWith('26.')
-def is121x = project.minecraft_version == '1.21.10' || project.minecraft_version == '1.21.11'
+def is121x = project.minecraft_version == '1.21.8' || project.minecraft_version == '1.21.10' || project.minecraft_version == '1.21.11'
 def usesOwo = is26 || is121x
 def accessWidener = is26 ? 'msptmap.owo26.accesswidener'
 		: (is121x ? 'msptmap.owo121x.accesswidener' : 'msptmap.accesswidener')

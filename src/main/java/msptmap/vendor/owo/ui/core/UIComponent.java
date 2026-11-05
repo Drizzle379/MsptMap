@@ -3,9 +3,9 @@ package msptmap.vendor.owo.ui.core;
 import msptmap.vendor.owo.ui.event.*;
 import msptmap.vendor.owo.ui.util.FocusHandler;
 import msptmap.vendor.owo.util.EventSource;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import msptmap.vendor.owo.ui.event.CharInput;
+import msptmap.vendor.owo.ui.event.KeyInput;
+import msptmap.vendor.owo.ui.event.MouseClick;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
@@ -241,7 +241,7 @@ public interface UIComponent extends PositionedRectangle {
      * @return {@code true} if this component handled the click and no more
      * components should be notified
      */
-    boolean onMouseDown(MouseButtonEvent click, boolean doubled);
+    boolean onMouseDown(MouseClick click, boolean doubled);
 
     EventSource<MouseDown> mouseDown();
 
@@ -253,7 +253,7 @@ public interface UIComponent extends PositionedRectangle {
      * @return {@code true} if this component handled the event and no more
      *                     components should be notified
      */
-    boolean onMouseUp(MouseButtonEvent click);
+    boolean onMouseUp(MouseClick click);
 
     EventSource<MouseUp> mouseUp();
 
@@ -283,7 +283,7 @@ public interface UIComponent extends PositionedRectangle {
      * @return {@code true} if this component handled the mouse move and no more
      * components should be notified
      */
-    boolean onMouseDrag(MouseButtonEvent click, double deltaX, double deltaY);
+    boolean onMouseDrag(MouseClick click, double deltaX, double deltaY);
 
     EventSource<MouseDrag> mouseDrag();
 
@@ -295,7 +295,7 @@ public interface UIComponent extends PositionedRectangle {
      * @return {@code true} if this component handled the key-press and no
      *                     more components should be notified
      */
-    boolean onKeyPress(KeyEvent input);
+    boolean onKeyPress(KeyInput input);
 
     EventSource<KeyPress> keyPress();
 
@@ -308,7 +308,7 @@ public interface UIComponent extends PositionedRectangle {
      * @return {@code true} if this component handled the input and no
      *                     * more components should be notified
      */
-    boolean onCharTyped(CharacterEvent input);
+    boolean onCharTyped(CharInput input);
 
     EventSource<CharTyped> charTyped();
 

@@ -1,10 +1,10 @@
 package msptmap.vendor.owo.ui.event;
 
 import msptmap.vendor.owo.util.EventStream;
-import net.minecraft.client.input.CharacterEvent;
+
 
 public interface CharTyped {
-    boolean onCharTyped(CharacterEvent input);
+    boolean onCharTyped(CharInput input);
 
     static EventStream<CharTyped> newStream() {
         return new EventStream<>(subscribers -> (input) -> {

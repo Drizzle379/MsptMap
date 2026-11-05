@@ -1,8 +1,13 @@
 package msptmap.vendor.owo.ui.core;
 
+//? if >=1.21.9 {
 import com.mojang.blaze3d.platform.cursor.CursorType;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
+//?} else {
+/*import org.lwjgl.glfw.GLFW;
+*///?}
 
+//? if >=1.21.9 {
 public enum CursorStyle {
     /**
      * The default cursor style defined by
@@ -76,3 +81,22 @@ public enum CursorStyle {
 
     CursorStyle(CursorType cursor) {this.cursor = cursor;}
 }
+//?} else {
+/*public enum CursorStyle {
+    NONE(0),
+    POINTER(GLFW.GLFW_ARROW_CURSOR),
+    TEXT(GLFW.GLFW_IBEAM_CURSOR),
+    HAND(GLFW.GLFW_HAND_CURSOR),
+    CROSSHAIR(GLFW.GLFW_CROSSHAIR_CURSOR),
+    MOVE(GLFW.GLFW_RESIZE_ALL_CURSOR),
+    HORIZONTAL_RESIZE(GLFW.GLFW_HRESIZE_CURSOR),
+    VERTICAL_RESIZE(GLFW.GLFW_VRESIZE_CURSOR),
+    NWSE_RESIZE(GLFW.GLFW_RESIZE_NWSE_CURSOR),
+    NESW_RESIZE(GLFW.GLFW_RESIZE_NESW_CURSOR),
+    NOT_ALLOWED(GLFW.GLFW_NOT_ALLOWED_CURSOR);
+
+    public final int glfw;
+
+    CursorStyle(int glfw) {this.glfw = glfw;}
+}
+*///?}

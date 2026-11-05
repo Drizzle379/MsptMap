@@ -2,8 +2,8 @@ package msptmap.vendor.owo.ui.container;
 
 import msptmap.vendor.owo.ui.core.*;
 import msptmap.vendor.owo.ui.util.Delta;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import msptmap.vendor.owo.ui.event.KeyInput;
+import msptmap.vendor.owo.ui.event.MouseClick;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
@@ -204,7 +204,7 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
     }
 
     @Override
-    public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
+    public boolean onMouseDown(MouseClick click, boolean doubled) {
         if (this.isInScrollbar(this.x + click.x(), this.y + click.y())) {
             super.onMouseDown(click, doubled);
             return true;
@@ -214,7 +214,7 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
     }
 
     @Override
-    public boolean onMouseDrag(MouseButtonEvent click, double deltaX, double deltaY) {
+    public boolean onMouseDrag(MouseClick click, double deltaX, double deltaY) {
         if (!this.scrollbaring && !this.isInScrollbar(this.x + click.x(), this.y + click.y()))
             return super.onMouseDrag(click, deltaX, deltaY);
 
@@ -230,7 +230,7 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
     }
 
     @Override
-    public boolean onKeyPress(KeyEvent input) {
+    public boolean onKeyPress(KeyInput input) {
         if (input.key() == this.direction.lessKeycode) {
             this.scrollBy(-10, false, true);
         } else if (input.key() == this.direction.moreKeycode) {
@@ -246,7 +246,7 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
     }
 
     @Override
-    public boolean onMouseUp(MouseButtonEvent click) {
+    public boolean onMouseUp(MouseClick click) {
         this.scrollbaring = false;
         return true;
     }

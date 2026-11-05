@@ -1,6 +1,6 @@
 package msptmap.client;
 
-//? if >=1.21.10 {
+//? if >=1.21.6 {
 import msptmap.net.ChunkDetailResultPayload;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
@@ -34,9 +34,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 *///?}
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import msptmap.vendor.owo.ui.event.MouseClick;
+//? if >=1.21.9 {
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+//?} else {
+/*import org.lwjgl.glfw.GLFW;
+*///?}
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
@@ -54,7 +59,7 @@ import java.util.List;
  * 综合分析界面。窗口沿用 CarpetGUI 的视觉语言：深色半透明内容区、灰色细边框、扁平按钮与顶部标签栏。
  *
  * <p>布局自左向右为区块列表、详情、加载票与实体。列表分批加载：先显示 50 行，滚到底部再追加
- * 50 行，滚动条随内容变长而缩短。界面只在 1.21.10 及以上编译。
+ * 50 行，滚动条随内容变长而缩短。界面只在 1.21.6 及以上编译。
  */
 public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	/** 设计尺寸；只按屏幕大小在 0.7–1.2 倍之间缩放，不随内容变化。 */
@@ -423,7 +428,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	}
 
 	/** 菜单打开时吞掉本次点击：命中项执行动作，点在菜单外只关闭。 */
-	private boolean handleMenuClick(MouseButtonEvent click) {
+	private boolean handleMenuClick(MouseClick click) {
 		Row row = menuRow;
 		menuRow = null;
 		if (row == null) {
@@ -487,10 +492,11 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 	}
 
+	//? if >=1.21.9 {
 	@Override
 	public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
 		if (menuRow != null) {
-			return handleMenuClick(click);
+			return handleMenuClick(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()));
 		}
 		if (renameBox != null) {
 			if (renameBox.mouseClicked(click, doubled)) {
@@ -530,6 +536,51 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 		return super.charTyped(input);
 	}
+	//?} else {
+	/*@Override
+	public boolean mouseClicked(double x, double y, int button) {
+		if (menuRow != null) {
+			return handleMenuClick(new MouseClick(x, y, button, 0));
+		}
+		if (renameBox != null) {
+			if (renameBox.mouseClicked(x, y, button)) {
+				renameBox.setFocused(true);
+				return true;
+			}
+			finishRename(false);
+			return true;
+		}
+		return super.mouseClicked(x, y, button);
+	}
+
+	@Override
+	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+		if (renameBox != null) {
+			if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+				finishRename(false);
+				return true;
+			}
+			if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+				finishRename(true);
+				return true;
+			}
+			return renameBox.keyPressed(keyCode, scanCode, modifiers);
+		}
+		if (menuRow != null && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+			menuRow = null;
+			return true;
+		}
+		return super.keyPressed(keyCode, scanCode, modifiers);
+	}
+
+	@Override
+	public boolean charTyped(char codePoint, int modifiers) {
+		if (renameBox != null) {
+			return renameBox.charTyped(codePoint, modifiers);
+		}
+		return super.charTyped(codePoint, modifiers);
+	}
+	*///?}
 
 	/** 菜单或输入框打开时不平移列表，避免两者位置错开。 */
 	@Override
@@ -1292,7 +1343,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 
 		@Override
-		public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
+		public boolean onMouseDown(MouseClick click, boolean doubled) {
 			if (!isLeftClick(click)) {
 				return false;
 			}
@@ -1364,7 +1415,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 
 		@Override
-		public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
+		public boolean onMouseDown(MouseClick click, boolean doubled) {
 			if (isRightClick(click)) {
 				select(this.row);
 				// owo 传入的是相对本组件的坐标，菜单按屏幕坐标定位
@@ -1383,7 +1434,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	}
 
 	/** 26.3 起输入后端改用 SDL，鼠标按钮编号为 1/2/3；此前为 0/1/2。 */
-private static boolean isLeftClick(MouseButtonEvent click) {
+private static boolean isLeftClick(MouseClick click) {
 		//? if >=26.3 {
 		return click.button() == 1;
 		//?} else {
@@ -1391,7 +1442,7 @@ private static boolean isLeftClick(MouseButtonEvent click) {
 		*///?}
 	}
 
-	private static boolean isRightClick(MouseButtonEvent click) {
+	private static boolean isRightClick(MouseClick click) {
 		//? if >=26.3 {
 		return click.button() == 3;
 		//?} else {

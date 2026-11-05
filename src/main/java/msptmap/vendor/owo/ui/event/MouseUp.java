@@ -1,10 +1,10 @@
 package msptmap.vendor.owo.ui.event;
 
 import msptmap.vendor.owo.util.EventStream;
-import net.minecraft.client.input.MouseButtonEvent;
+
 
 public interface MouseUp {
-    boolean onMouseUp(MouseButtonEvent click);
+    boolean onMouseUp(MouseClick click);
 
     static EventStream<MouseUp> newStream() {
         return new EventStream<>(subscribers -> (click) -> {

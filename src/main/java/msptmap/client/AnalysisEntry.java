@@ -1,11 +1,11 @@
 package msptmap.client;
 
-//? if >=1.21.10 {
+//? if >=1.21.6 {
 import msptmap.MsptMapMod;
 import msptmap.util.Ids;
 //? if >=26.1.2 {
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
-//?} else if >=1.21.10 {
+//?} else if >=1.21.6 {
 /*import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 *///?}
 import net.minecraft.client.KeyMapping;
@@ -29,7 +29,6 @@ public final class AnalysisEntry {
 
 	/** 客户端初始化时注册键位；默认键为 UNKNOWN，即未绑定。 */
 	public static void register() {
-		KeyMapping.Category category = KeyMapping.Category.register(Ids.of(MsptMapMod.MOD_ID, "analysis"));
 		int defaultKey =
 				//? if >=26.3 {
 				InputConstants.UNKNOWN.getValue();
@@ -37,9 +36,13 @@ public final class AnalysisEntry {
 				/*GLFW.GLFW_KEY_UNKNOWN;
 				*///?}
 		//? if >=26.1.2 {
+		KeyMapping.Category category = KeyMapping.Category.register(Ids.of(MsptMapMod.MOD_ID, "analysis"));
 		key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.msptmap.analysis", defaultKey, category));
-		//?} else if >=1.21.10 {
-		/*key = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.msptmap.analysis", defaultKey, category));
+		//?} else if >=1.21.9 {
+		/*KeyMapping.Category category = KeyMapping.Category.register(Ids.of(MsptMapMod.MOD_ID, "analysis"));
+		key = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.msptmap.analysis", defaultKey, category));
+		*///?} else {
+		/*key = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.msptmap.analysis", defaultKey, "key.categories.msptmap.analysis"));
 		*///?}
 	}
 

@@ -4,9 +4,9 @@ import msptmap.vendor.owo.ui.container.WrappingParentUIComponent;
 import msptmap.vendor.owo.ui.core.*;
 import msptmap.vendor.owo.ui.util.FocusHandler;
 import msptmap.vendor.owo.util.Observable;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import msptmap.vendor.owo.ui.event.CharInput;
+import msptmap.vendor.owo.ui.event.KeyInput;
+import msptmap.vendor.owo.ui.event.MouseClick;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 
@@ -205,7 +205,7 @@ public abstract class BaseParentUIComponent extends BaseUIComponent implements P
     }
 
     @Override
-    public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
+    public boolean onMouseDown(MouseClick click, boolean doubled) {
         if (this.focusHandler != null) {
             this.focusHandler.updateClickFocus(this.x + click.x(), this.y + click.y());
         }
@@ -215,10 +215,10 @@ public abstract class BaseParentUIComponent extends BaseUIComponent implements P
     }
 
     @Override
-    public boolean onMouseUp(MouseButtonEvent click) {
+    public boolean onMouseUp(MouseClick click) {
         if (this.focusHandler != null && this.focusHandler.focused() != null) {
             final var focused = this.focusHandler.focused();
-            return focused.onMouseUp(new MouseButtonEvent(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.buttonInfo()));
+            return focused.onMouseUp(new MouseClick(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.button(), click.modifiers()));
         } else {
             return super.onMouseUp(click);
         }
@@ -230,17 +230,17 @@ public abstract class BaseParentUIComponent extends BaseUIComponent implements P
     }
 
     @Override
-    public boolean onMouseDrag(MouseButtonEvent click, double deltaX, double deltaY) {
+    public boolean onMouseDrag(MouseClick click, double deltaX, double deltaY) {
         if (this.focusHandler != null && this.focusHandler.focused() != null) {
             final var focused = this.focusHandler.focused();
-            return focused.onMouseDrag(new MouseButtonEvent(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.buttonInfo()), deltaX, deltaY);
+            return focused.onMouseDrag(new MouseClick(this.x + click.x() - focused.x(), this.y + click.y() - focused.y(), click.button(), click.modifiers()), deltaX, deltaY);
         } else {
             return super.onMouseDrag(click, deltaX, deltaY);
         }
     }
 
     @Override
-    public boolean onKeyPress(KeyEvent input) {
+    public boolean onKeyPress(KeyInput input) {
         if (this.focusHandler == null) return false;
 
         if (input.isCycleFocus()) {
@@ -255,7 +255,7 @@ public abstract class BaseParentUIComponent extends BaseUIComponent implements P
     }
 
     @Override
-    public boolean onCharTyped(CharacterEvent input) {
+    public boolean onCharTyped(CharInput input) {
         if (this.focusHandler == null) return false;
 
         if (this.focusHandler.focused() != null) {

@@ -13,8 +13,10 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 *///?}
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.9 {
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+//?}
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -136,6 +138,7 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
     }
     *///?}
 
+    //? if >=1.21.9 {
     @Override
     public boolean keyPressed(KeyEvent input) {
         if (this.uiAdapter == null) return false;
@@ -144,11 +147,7 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
             return true;
         }
 
-        //? if >=26.1.2 {
         if (input.isEscape() && this.shouldCloseOnEsc()) {
-        //?} else {
-        /*if (input.key() == GLFW.GLFW_KEY_ESCAPE && this.shouldCloseOnEsc()) {
-        *///?}
             this.onClose();
             return true;
         }
@@ -162,6 +161,30 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
 
         return this.uiAdapter.mouseDragged(click, deltaX, deltaY);
     }
+    //?} else {
+    /*@Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (this.uiAdapter == null) return false;
+
+        if (super.keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
+
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && this.shouldCloseOnEsc()) {
+            this.onClose();
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(double x, double y, int button, double deltaX, double deltaY) {
+        if (this.uiAdapter == null) return false;
+
+        return this.uiAdapter.mouseDragged(x, y, button, deltaX, deltaY);
+    }
+    *///?}
 
     @Nullable
     @Override

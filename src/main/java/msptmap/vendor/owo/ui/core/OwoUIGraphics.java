@@ -15,7 +15,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import org.joml.Matrix3x2fStack;
-*///?} else if >=1.21.10 {
+*///?} else if >=1.21.6 {
 /*import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -150,7 +150,7 @@ public class OwoUIGraphics extends GuiGraphicsExtractor {
         this.fill(x + width - 1, y + 1, x + width, y + height - 1, color);
     }
 }
-*///?} else if >=1.21.10 {
+*///?} else if >=1.21.6 {
 /*public class OwoUIGraphics {
 
     protected final GuiGraphics graphics;

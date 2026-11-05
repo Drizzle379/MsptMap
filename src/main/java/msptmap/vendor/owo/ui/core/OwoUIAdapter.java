@@ -12,9 +12,14 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.9 {
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+//?}
+import msptmap.vendor.owo.ui.event.CharInput;
+import msptmap.vendor.owo.ui.event.KeyInput;
+import msptmap.vendor.owo.ui.event.MouseClick;
 
 import java.util.function.BiFunction;
 
@@ -131,7 +136,7 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
             this.cursorAdapter.applyStyle(hovered.cursorStyle());
         }
     }
-    //?} else if >=1.21.10 {
+    //?} else if >=1.21.6 {
     /*@Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float a) {
         var owoGraphics = OwoUIGraphics.of(graphics);
@@ -164,34 +169,61 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
         return true;
     }
 
+    //? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
-        return this.rootComponent.onMouseDown(click, doubled);
+        return this.rootComponent.onMouseDown(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()), doubled);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent click) {
-        return this.rootComponent.onMouseUp(click);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        return this.rootComponent.onMouseScroll(mouseX, mouseY, verticalAmount);
+        return this.rootComponent.onMouseUp(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()));
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent click, double deltaX, double deltaY) {
-        return this.rootComponent.onMouseDrag(click, deltaX, deltaY);
+        return this.rootComponent.onMouseDrag(new MouseClick(click.x(), click.y(), click.button(), click.modifiers()), deltaX, deltaY);
     }
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        return this.rootComponent.onKeyPress(input);
+        return this.rootComponent.onKeyPress(new KeyInput(input.key(), 0, input.modifiers()));
     }
 
     @Override
     public boolean charTyped(CharacterEvent input) {
-        return this.rootComponent.onCharTyped(input);
+        return this.rootComponent.onCharTyped(new CharInput((char) input.codepoint(), 0));
+    }
+    //?} else {
+    /*@Override
+    public boolean mouseClicked(double x, double y, int button) {
+        return this.rootComponent.onMouseDown(new MouseClick(x, y, button, 0), false);
+    }
+
+    @Override
+    public boolean mouseReleased(double x, double y, int button) {
+        return this.rootComponent.onMouseUp(new MouseClick(x, y, button, 0));
+    }
+
+    @Override
+    public boolean mouseDragged(double x, double y, int button, double deltaX, double deltaY) {
+        return this.rootComponent.onMouseDrag(new MouseClick(x, y, button, 0), deltaX, deltaY);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        return this.rootComponent.onKeyPress(new KeyInput(keyCode, scanCode, modifiers));
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        return this.rootComponent.onCharTyped(new CharInput(codePoint, modifiers));
+    }
+    *///?}
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        return this.rootComponent.onMouseScroll(mouseX, mouseY, verticalAmount);
     }
 
     @Override
