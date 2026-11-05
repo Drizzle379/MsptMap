@@ -53,7 +53,7 @@ public final class MapScreenHook implements ChunkFocus.Host {
 	private static final int CLEAR_BUTTON_Y = SCAN_BUTTON_Y + SCAN_BUTTON_SIZE;
 	private static final int CONFIG_BUTTON_Y = CLEAR_BUTTON_Y + SCAN_BUTTON_SIZE;
 
-	/** 综合分析按钮：接在设置按钮下方（仅 26.2+）。 */
+	/** 综合分析按钮：接在设置按钮下方（26.1.2+）。 */
 	private static final int ANALYSIS_BUTTON_Y = CONFIG_BUTTON_Y + SCAN_BUTTON_SIZE;
 
 	/**
@@ -253,7 +253,7 @@ public final class MapScreenHook implements ChunkFocus.Host {
 				Ids.of(MsptMapMod.MOD_ID, "textures/gui/config.png"),
 				button -> MsptMapClient.onConfigPress(map),
 				new Tooltip(Component.translatable("msptmap.button.config")), 256, 256));
-		//? if >=26.2 {
+		//? if >=26.1.2 {
 		// 综合分析：接在设置按钮下方，关闭后回到地图
 		map.addButton(new GuiTexturedButton(SCAN_BUTTON_X, ANALYSIS_BUTTON_Y,
 				SCAN_BUTTON_SIZE, SCAN_BUTTON_SIZE, 0, 0, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE,

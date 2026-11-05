@@ -1,6 +1,6 @@
 package msptmap.client;
 
-//? if >=26.2 {
+//? if >=26.1.2 {
 import msptmap.net.ChunkDetailResultPayload;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
@@ -50,7 +50,7 @@ import java.util.List;
  * 综合分析界面。窗口沿用 CarpetGUI 的视觉语言：深色半透明内容区、灰色细边框、扁平按钮与顶部标签栏。
  *
  * <p>布局自左向右为区块列表、详情、加载票与实体。列表分批加载：先显示 50 行，滚到底部再追加
- * 50 行，滚动条随内容变长而缩短。界面只在 26.2 及以上编译。
+ * 50 行，滚动条随内容变长而缩短。界面只在 26.1.2 及以上编译。
  */
 public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	/** 设计尺寸；只按屏幕大小在 0.7–1.2 倍之间缩放，不随内容变化。 */
@@ -611,6 +611,22 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 				deficit -= take;
 			}
 		}
+		// 等级列表头（「加载/计算」）不能被截断：不足时先从坐标列借，再借 mspt 与实体列
+		int levelMin = Minecraft.getInstance().font.width(
+				Component.translatable("msptmap.analysis.column.level")) + 2;
+		int missing = levelMin - columns[3];
+		if (missing > 0) {
+			int take = Math.min(missing, Math.max(0, columns[0] - minCoord));
+			columns[0] -= take;
+			columns[3] += take;
+			missing -= take;
+			for (int i = 1; i < 3 && missing > 0; i++) {
+				take = Math.min(missing, Math.max(0, columns[i] - 1));
+				columns[i] -= take;
+				columns[3] += take;
+				missing -= take;
+			}
+		}
 	}
 
 	private void reloadRows() {
@@ -1005,7 +1021,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		LabelComponent label = UIComponents.label(TickText.secondary(text)).shadow(false);
 		label.cursorStyle(CursorStyle.HAND);
 		label.mouseDown().subscribe((click, doubled) -> {
-			if (click.button() != 0) {
+			if (!isLeftClick(click)) {
 				return false;
 			}
 			playClick();
@@ -1162,7 +1178,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			this.label.verticalTextAlignment(VerticalAlignment.CENTER);
 			this.child(this.label);
 			this.mouseDown().subscribe((click, doubled) -> {
-				if (click.button() != 0) {
+				if (!isLeftClick(click)) {
 					return false;
 				}
 				// 换维度后旧详情已不在当前列表里，一并清掉
@@ -1210,7 +1226,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			label.verticalTextAlignment(VerticalAlignment.CENTER);
 			this.child(label);
 			this.mouseDown().subscribe((click, doubled) -> {
-				if (click.button() != 0) {
+				if (!isLeftClick(click)) {
 					return false;
 				}
 				playClick();
@@ -1250,7 +1266,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 		@Override
 		public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
-			if (click.button() != 0) {
+			if (!isLeftClick(click)) {
 				return false;
 			}
 			if (sortByEntities != this.entities) {
@@ -1322,13 +1338,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 		@Override
 		public boolean onMouseDown(MouseButtonEvent click, boolean doubled) {
-			if (click.button() == 1) {
+			if (isRightClick(click)) {
 				select(this.row);
 				// owo 传入的是相对本组件的坐标，菜单按屏幕坐标定位
 				openMenu(this.row, (int) (x() + click.x()), (int) (y() + click.y()));
 				return true;
 			}
-			if (click.button() != 0) {
+			if (!isLeftClick(click)) {
 				return false;
 			}
 			select(this.row);
@@ -1337,6 +1353,23 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			}
 			return true;
 		}
+	}
+
+	/** 26.3 起输入后端改用 SDL，鼠标按钮编号为 1/2/3；此前为 0/1/2。 */
+private static boolean isLeftClick(MouseButtonEvent click) {
+		//? if >=26.3 {
+		return click.button() == 1;
+		//?} else {
+		/*return click.button() == 0;
+		*///?}
+	}
+
+	private static boolean isRightClick(MouseButtonEvent click) {
+		//? if >=26.3 {
+		return click.button() == 3;
+		//?} else {
+		/*return click.button() == 1;
+		*///?}
 	}
 
 	private static void playClick() {

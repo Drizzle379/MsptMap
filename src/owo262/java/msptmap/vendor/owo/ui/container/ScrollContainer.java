@@ -7,12 +7,32 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
-import org.lwjgl.glfw.GLFW;
+//? if >=26.3 {
+import com.mojang.blaze3d.platform.InputConstants;
+//?} else {
+/*import org.lwjgl.glfw.GLFW;
+*///?}
 
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComponent<C> {
+
+    //? if >=26.3 {
+    private static final int KEY_UP = InputConstants.KEY_UP;
+    private static final int KEY_DOWN = InputConstants.KEY_DOWN;
+    private static final int KEY_LEFT = InputConstants.KEY_LEFT;
+    private static final int KEY_RIGHT = InputConstants.KEY_RIGHT;
+    private static final int KEY_PAGE_UP = InputConstants.KEY_PAGEUP;
+    private static final int KEY_PAGE_DOWN = InputConstants.KEY_PAGEDOWN;
+    //?} else {
+    /*private static final int KEY_UP = GLFW.GLFW_KEY_UP;
+    private static final int KEY_DOWN = GLFW.GLFW_KEY_DOWN;
+    private static final int KEY_LEFT = GLFW.GLFW_KEY_LEFT;
+    private static final int KEY_RIGHT = GLFW.GLFW_KEY_RIGHT;
+    private static final int KEY_PAGE_UP = GLFW.GLFW_KEY_PAGE_UP;
+    private static final int KEY_PAGE_DOWN = GLFW.GLFW_KEY_PAGE_DOWN;
+    *///?}
 
     protected double scrollOffset = 0;
     protected double currentScrollPosition = 0;
@@ -215,10 +235,10 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
             this.scrollBy(-10, false, true);
         } else if (input.key() == this.direction.moreKeycode) {
             this.scrollBy(10, false, true);
-        } else if (input.key() == GLFW.GLFW_KEY_PAGE_DOWN) {
+        } else if (input.key() == KEY_PAGE_DOWN) {
             this.scrollBy(this.direction.choose(this.width, this.height) * .8, false, true);
             this.lastScrollbarInteractTime = System.currentTimeMillis() + 1250;
-        } else if (input.key() == GLFW.GLFW_KEY_PAGE_UP) {
+        } else if (input.key() == KEY_PAGE_UP) {
             this.scrollBy(this.direction.choose(this.width, this.height) * -.8, false, true);
         }
 
@@ -366,8 +386,8 @@ public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComp
     }
 
     public enum ScrollDirection {
-        VERTICAL(UIComponent::height, UIComponent::updateY, UIComponent::y, Insets::vertical, GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_DOWN),
-        HORIZONTAL(UIComponent::width, UIComponent::updateX, UIComponent::x, Insets::horizontal, GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_RIGHT);
+        VERTICAL(UIComponent::height, UIComponent::updateY, UIComponent::y, Insets::vertical, KEY_UP, KEY_DOWN),
+        HORIZONTAL(UIComponent::width, UIComponent::updateX, UIComponent::x, Insets::horizontal, KEY_LEFT, KEY_RIGHT);
 
         public final Function<UIComponent, Integer> sizeGetter;
         public final BiConsumer<UIComponent, Integer> coordinateSetter;
