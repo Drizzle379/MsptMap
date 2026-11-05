@@ -2,7 +2,11 @@ package msptmap.vendor.owo.ui.core;
 
 import msptmap.vendor.owo.ui.util.CursorAdapter;
 import net.minecraft.client.Minecraft;
+//? if >=26.1.2 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else {
+/*import net.minecraft.client.gui.GuiGraphics;
+*///?}
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
@@ -25,7 +29,7 @@ import java.util.function.BiFunction;
  * you can always simply add it as a widget and get most of the functionality
  * working out of the box
  * <p>
- * To draw the UI tree managed by this adapter, call {@link OwoUIAdapter#extractRenderState(GuiGraphicsExtractor, int, int, float)}.
+ * To draw the UI tree managed by this adapter, use the render method of the active backend.
  *
  * @see msptmap.vendor.owo.ui.base.BaseOwoScreen
  */
@@ -53,11 +57,6 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
      * Create a UI adapter for the given screen. This also sets it up
      * to be rendered and receive input events, without needing you to
      * do any more setup
-     *
-     * @param screen             The screen for which to create an adapter
-     * @param rootComponentMaker A function which will create the root component of this screen
-     * @param <R>                The type of root component the created adapter will use
-     * @return The new UI adapter, already set up for the given screen
      */
     public static <R extends ParentUIComponent> OwoUIAdapter<R> create(Screen screen, BiFunction<Sizing, Sizing, R> rootComponentMaker) {
         var rootComponent = rootComponentMaker.apply(Sizing.fill(100), Sizing.fill(100));
@@ -70,28 +69,13 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
     }
 
     /**
-     * Create a new UI adapter without the specific context of a screen - use this
-     * method when you want to embed owo-ui into a different context
-     *
-     * @param x                  The x-coordinate of the top-left corner of the root component
-     * @param y                  The y-coordinate of the top-left corner of the root component
-     * @param width              The width of the available area, in pixels
-     * @param height             The height of the available area, in pixels
-     * @param rootComponentMaker A function which will create the root component of the adapter
-     * @param <R>                The type of root component the created adapter will use
-     * @return The new UI adapter, ready for layout inflation
+     * Create a new UI adapter without the specific context of a screen
      */
     public static <R extends ParentUIComponent> OwoUIAdapter<R> createWithoutScreen(int x, int y, int width, int height, BiFunction<Sizing, Sizing, R> rootComponentMaker) {
         var rootComponent = rootComponentMaker.apply(Sizing.fill(100), Sizing.fill(100));
         return new OwoUIAdapter<>(x, y, width, height, rootComponent);
     }
 
-    /**
-     * Begin the layout process of the UI tree and
-     * mount the tree once the layout is inflated
-     * <p>
-     * After this method has executed, this adapter is ready for rendering
-     */
     public void inflateAndMount() {
         this.rootComponent.inflate(Size.of(this.width, this.height));
         this.rootComponent.mount(null, this.x, this.y);
@@ -106,13 +90,6 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
         this.inflateAndMount();
     }
 
-    /**
-     * Dispose this UI adapter - this will destroy the cursor
-     * objects held onto by this adapter and stop updating the cursor style
-     * <p>
-     * After this method has executed, this adapter can safely be garbage-collected
-     */
-    // TODO properly dispose root component
     public void dispose() {
         this.cursorAdapter.dispose();
         this.disposed = true;
@@ -134,6 +111,7 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
         return this.height;
     }
 
+    //? if >=26.1.2 {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         if (!(graphics instanceof OwoUIGraphics)) graphics = OwoUIGraphics.of(graphics);
@@ -153,6 +131,25 @@ public class OwoUIAdapter<R extends ParentUIComponent> implements GuiEventListen
             this.cursorAdapter.applyStyle(hovered.cursorStyle());
         }
     }
+    //?} else if >=1.21.10 {
+    /*@Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+        var owoGraphics = OwoUIGraphics.of(graphics);
+
+        final var delta = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaTicks();
+
+        this.rootComponent.update(delta, mouseX, mouseY);
+
+        graphics.enableScissor(0, 0, this.width, this.height);
+        this.rootComponent.draw(owoGraphics, mouseX, mouseY, a, delta);
+        graphics.disableScissor();
+
+        final var hovered = this.rootComponent.childAt(mouseX, mouseY);
+        if (!disposed && hovered != null) {
+            this.cursorAdapter.applyStyle(hovered.cursorStyle());
+        }
+    }
+    *///?}
 
     @Override
     public boolean isMouseOver(double mouseX, double mouseY) {

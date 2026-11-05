@@ -3,18 +3,30 @@ package msptmap.vendor.owo.ui.component;
 import msptmap.vendor.owo.ui.base.BaseUIComponent;
 import msptmap.vendor.owo.ui.core.*;
 import net.minecraft.client.renderer.RenderPipelines;
+//? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
+//?} else {
+/*import net.minecraft.resources.ResourceLocation;
+*///?}
 
 public class TextureComponent extends BaseUIComponent {
 
+    //? if >=1.21.11 {
     protected final Identifier texture;
+    //?} else {
+    /*protected final ResourceLocation texture;
+    *///?}
     protected final int u, v;
     protected final int regionWidth, regionHeight;
     protected final int textureWidth, textureHeight;
 
     protected final AnimatableProperty<PositionedRectangle> visibleArea;
 
+    //? if >=1.21.11 {
     protected TextureComponent(Identifier texture, int u, int v, int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
+    //?} else {
+    /*protected TextureComponent(ResourceLocation texture, int u, int v, int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
+    *///?}
         this.texture = texture;
         this.u = u;
         this.v = v;

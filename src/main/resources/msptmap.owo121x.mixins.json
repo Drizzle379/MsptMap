@@ -1,0 +1,11 @@
+{
+  "required": false,
+  "package": "msptmap.vendor.owo.mixin",
+  "compatibilityLevel": "${mixin_compat_level}",
+  "client": [
+    "ui.ScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

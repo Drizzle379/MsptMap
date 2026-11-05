@@ -1,9 +1,13 @@
 package msptmap.client;
 
-//? if >=26.1.2 {
+//? if >=1.21.10 {
 import msptmap.MsptMapMod;
 import msptmap.util.Ids;
+//? if >=26.1.2 {
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+//?} else if >=1.21.10 {
+/*import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+*///?}
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -26,12 +30,17 @@ public final class AnalysisEntry {
 	/** 客户端初始化时注册键位；默认键为 UNKNOWN，即未绑定。 */
 	public static void register() {
 		KeyMapping.Category category = KeyMapping.Category.register(Ids.of(MsptMapMod.MOD_ID, "analysis"));
-		key = KeyMappingHelper.registerKeyMapping(
+		int defaultKey =
 				//? if >=26.3 {
-				new KeyMapping("key.msptmap.analysis", InputConstants.UNKNOWN.getValue(), category));
+				InputConstants.UNKNOWN.getValue();
 				//?} else {
-				/*new KeyMapping("key.msptmap.analysis", GLFW.GLFW_KEY_UNKNOWN, category));
+				/*GLFW.GLFW_KEY_UNKNOWN;
 				*///?}
+		//? if >=26.1.2 {
+		key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.msptmap.analysis", defaultKey, category));
+		//?} else if >=1.21.10 {
+		/*key = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.msptmap.analysis", defaultKey, category));
+		*///?}
 	}
 
 	/** 每个客户端 tick 检查一次；只在没有其他界面时响应，避免在聊天栏或设置里误开。 */

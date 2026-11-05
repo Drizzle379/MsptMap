@@ -1,6 +1,6 @@
 package msptmap.client;
 
-//? if >=26.1.2 {
+//? if >=1.21.10 {
 import msptmap.net.ChunkDetailResultPayload;
 import msptmap.sampler.MsptSampler;
 import msptmap.sampler.TickCategory;
@@ -27,7 +27,11 @@ import msptmap.vendor.owo.ui.core.UIComponent;
 import msptmap.vendor.owo.ui.core.VerticalAlignment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+//? if >=26.1.2 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else {
+/*import net.minecraft.client.gui.GuiGraphics;
+*///?}
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -50,7 +54,7 @@ import java.util.List;
  * 综合分析界面。窗口沿用 CarpetGUI 的视觉语言：深色半透明内容区、灰色细边框、扁平按钮与顶部标签栏。
  *
  * <p>布局自左向右为区块列表、详情、加载票与实体。列表分批加载：先显示 50 行，滚到底部再追加
- * 50 行，滚动条随内容变长而缩短。界面只在 26.1.2 及以上编译。
+ * 50 行，滚动条随内容变长而缩短。界面只在 1.21.10 及以上编译。
  */
 public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	/** 设计尺寸；只按屏幕大小在 0.7–1.2 倍之间缩放，不随内容变化。 */
@@ -296,6 +300,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		super.init();
 	}
 
+	//? if >=26.1.2 {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
@@ -307,6 +312,19 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		scrollToTarget();
 		drawMenu(graphics, mouseX, mouseY);
 	}
+	//?} else {
+	/*@Override
+	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		super.render(graphics, mouseX, mouseY, partialTick);
+		if (invalid) {
+			return;
+		}
+		refreshAfterScan();
+		syncDetail();
+		scrollToTarget();
+		drawMenu(graphics, mouseX, mouseY);
+	}
+	*///?}
 
 	/** 扫描结果整体替换，旧的选中行与滚动位置不再有意义，回到顶部。 */
 	private void refreshAfterScan() {
@@ -372,7 +390,11 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		menuY = Math.max(1, Math.min(y, this.height - menuHeight() - 1));
 	}
 
+	//? if >=26.1.2 {
 	private void drawMenu(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+	//?} else {
+	/*private void drawMenu(GuiGraphics graphics, int mouseX, int mouseY) {
+	*///?}
 		if (menuRow == null) {
 			return;
 		}
@@ -386,8 +408,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			if (mouseX >= menuX && mouseX < menuX + width && mouseY >= top && mouseY < top + MENU_ITEM_HEIGHT) {
 				graphics.fill(menuX, top, menuX + width, top + MENU_ITEM_HEIGHT, 0x40FFFFFF);
 			}
+			//? if >=26.1.2 {
 			graphics.text(Minecraft.getInstance().font, items[i], menuX + MENU_TEXT_INSET,
 					top + (MENU_ITEM_HEIGHT - 8) / 2, TEXT);
+			//?} else {
+			/*graphics.drawString(Minecraft.getInstance().font, items[i], menuX + MENU_TEXT_INSET,
+					top + (MENU_ITEM_HEIGHT - 8) / 2, TEXT, false);
+			*///?}
 			if (i < items.length - 1) {
 				int lineY = top + MENU_ITEM_HEIGHT;
 				graphics.fill(menuX, lineY, menuX + width, lineY + MENU_SEPARATOR, 0x30FFFFFF);

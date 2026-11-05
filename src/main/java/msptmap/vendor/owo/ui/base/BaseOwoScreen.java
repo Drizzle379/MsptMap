@@ -6,7 +6,11 @@ import msptmap.vendor.owo.ui.core.OwoUIAdapter;
 import msptmap.vendor.owo.ui.core.ParentUIComponent;
 import msptmap.vendor.owo.ui.core.UIComponent;
 import msptmap.vendor.owo.ui.util.DisposableScreen;
+//? if >=26.1.2 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else {
+/*import net.minecraft.client.gui.GuiGraphics;
+*///?}
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -14,8 +18,9 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.function.BiFunction;
+//? if <26.1.2 {
+/*import org.lwjgl.glfw.GLFW;
+*///?}
 
 /**
  * A minimal implementation of a Screen which fully
@@ -58,7 +63,7 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
     /**
      * Initialize the UI adapter for this screen. Usually
      * the body of this method will simply consist of a call
-     * to {@link OwoUIAdapter#create(Screen, BiFunction)}
+     * to {@link OwoUIAdapter#create(Screen, java.util.function.BiFunction)}
      *
      * @return The UI adapter for this screen to use
      */
@@ -105,6 +110,7 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
         return this.uiAdapter.rootComponent.childById(expectedClass, id);
     }
 
+    //? if >=26.1.2 {
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {}
 
@@ -116,6 +122,19 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
             this.onClose();
         }
     }
+    //?} else if >=1.21.10 {
+    /*@Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float a) {}
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+        if (!this.invalid) {
+            super.render(graphics, mouseX, mouseY, a);
+        } else {
+            this.onClose();
+        }
+    }
+    *///?}
 
     @Override
     public boolean keyPressed(KeyEvent input) {
@@ -125,7 +144,11 @@ public abstract class BaseOwoScreen<R extends ParentUIComponent> extends Screen 
             return true;
         }
 
+        //? if >=26.1.2 {
         if (input.isEscape() && this.shouldCloseOnEsc()) {
+        //?} else {
+        /*if (input.key() == GLFW.GLFW_KEY_ESCAPE && this.shouldCloseOnEsc()) {
+        *///?}
             this.onClose();
             return true;
         }
