@@ -1,4 +1,4 @@
-# 每次 push 时在 GitHub 的服务器上编译当前活跃版本 26.2。
+# 每次 push 时在 GitHub 的服务器上编译全部支持版本。
 # 用 Java 25 构建：跑构建的 JVM 只负责运行 Gradle（Stonecutter 插件要求不低于 21），
 # 产物本身的 Java 版本由各版本 gradle.properties 里的 java_release 决定（javac --release），二者无关。
 # 编译结果会挂到对应的 commit 上（通过显示绿勾，失败显示红叉）。失败不阻止本地提交与推送。
@@ -16,7 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["26.2"]
+        version: ["1.20.1", "1.20.4", "1.21.1", "1.21.4", "1.21.8", "1.21.10", "1.21.11", "26.1.2", "26.2", "26.3"]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
