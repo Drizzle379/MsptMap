@@ -845,7 +845,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		searchBox.setWidth(width);
 	}
 
-	/** 搜索备注或坐标：1,2、1，2、[1,2] 均可。 */
+	/** 搜索备注或坐标：1,2、1，2、[1,2] 均可，坐标按子串匹配（输入 50,1 也能命中 50,12）。 */
 	private boolean matchesSearch(Row row) {
 		String query = this.searchQuery.trim();
 		if (query.isEmpty()) {
@@ -856,17 +856,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			return true;
 		}
 		String normalized = query.replace('，', ',').replace("[", "").replace("]", "").replace(" ", "");
-		int comma = normalized.indexOf(',');
-		if (comma < 0) {
-			return false;
-		}
-		try {
-			int x = Integer.parseInt(normalized.substring(0, comma));
-			int z = Integer.parseInt(normalized.substring(comma + 1));
-			return row.x() == x && row.z() == z;
-		} catch (NumberFormatException ignored) {
-			return false;
-		}
+		return !normalized.isEmpty() && (row.x() + "," + row.z()).contains(normalized);
 	}
 
 	/** 筛选、排序或切换维度后回到顶部并只加载第一批。 */
