@@ -5,26 +5,26 @@ import msptmap.vendor.owo.ui.core.UIComponent;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 //? if >=26.3 {
-import com.mojang.blaze3d.platform.InputConstants;
-//?} else {
-/*import org.lwjgl.glfw.GLFW;
-*///?}
+/*import com.mojang.blaze3d.platform.InputConstants;
+*///?} else {
+import org.lwjgl.glfw.GLFW;
+//?}
 
 import java.util.ArrayList;
 
 public class FocusHandler {
 
     //? if >=26.3 {
-    private static final int KEY_UP = InputConstants.KEY_UP;
+    /*private static final int KEY_UP = InputConstants.KEY_UP;
     private static final int KEY_DOWN = InputConstants.KEY_DOWN;
     private static final int KEY_LEFT = InputConstants.KEY_LEFT;
     private static final int KEY_RIGHT = InputConstants.KEY_RIGHT;
-    //?} else {
-    /*private static final int KEY_UP = GLFW.GLFW_KEY_UP;
+    *///?} else {
+    private static final int KEY_UP = GLFW.GLFW_KEY_UP;
     private static final int KEY_DOWN = GLFW.GLFW_KEY_DOWN;
     private static final int KEY_LEFT = GLFW.GLFW_KEY_LEFT;
     private static final int KEY_RIGHT = GLFW.GLFW_KEY_RIGHT;
-    *///?}
+    //?}
 
     protected final ParentUIComponent root;
     @Nullable protected UIComponent focused = null;

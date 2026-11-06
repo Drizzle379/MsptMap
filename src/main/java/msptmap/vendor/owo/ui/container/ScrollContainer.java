@@ -8,10 +8,10 @@ import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
 //? if >=26.3 {
-import com.mojang.blaze3d.platform.InputConstants;
-//?} else {
-/*import org.lwjgl.glfw.GLFW;
-*///?}
+/*import com.mojang.blaze3d.platform.InputConstants;
+*///?} else {
+import org.lwjgl.glfw.GLFW;
+//?}
 
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -19,20 +19,20 @@ import java.util.function.Function;
 public class ScrollContainer<C extends UIComponent> extends WrappingParentUIComponent<C> {
 
     //? if >=26.3 {
-    private static final int KEY_UP = InputConstants.KEY_UP;
+    /*private static final int KEY_UP = InputConstants.KEY_UP;
     private static final int KEY_DOWN = InputConstants.KEY_DOWN;
     private static final int KEY_LEFT = InputConstants.KEY_LEFT;
     private static final int KEY_RIGHT = InputConstants.KEY_RIGHT;
     private static final int KEY_PAGE_UP = InputConstants.KEY_PAGEUP;
     private static final int KEY_PAGE_DOWN = InputConstants.KEY_PAGEDOWN;
-    //?} else {
-    /*private static final int KEY_UP = GLFW.GLFW_KEY_UP;
+    *///?} else {
+    private static final int KEY_UP = GLFW.GLFW_KEY_UP;
     private static final int KEY_DOWN = GLFW.GLFW_KEY_DOWN;
     private static final int KEY_LEFT = GLFW.GLFW_KEY_LEFT;
     private static final int KEY_RIGHT = GLFW.GLFW_KEY_RIGHT;
     private static final int KEY_PAGE_UP = GLFW.GLFW_KEY_PAGE_UP;
     private static final int KEY_PAGE_DOWN = GLFW.GLFW_KEY_PAGE_DOWN;
-    *///?}
+    //?}
 
     protected double scrollOffset = 0;
     protected double currentScrollPosition = 0;

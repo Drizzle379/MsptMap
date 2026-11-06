@@ -133,6 +133,8 @@
   "msptmap.analysis.column.entities_short": "实体",
   "msptmap.analysis.column.level": "加载/计算",
   "msptmap.analysis.column.entities": "%s",
+  "msptmap.analysis.search": "搜索",
+  "msptmap.analysis.search.empty": "没有匹配的区块",
   "msptmap.analysis.detail.hint": "选择一个区块查看明细",
   "msptmap.analysis.detail.missing": "本次扫描没有区块 [%s,%s]",
   "msptmap.analysis.menu.show": "在区块分析界面中显示",

@@ -133,6 +133,8 @@
   "msptmap.analysis.column.entities_short": "Ent",
   "msptmap.analysis.column.level": "Level",
   "msptmap.analysis.column.entities": "%s",
+  "msptmap.analysis.search": "Search",
+  "msptmap.analysis.search.empty": "No matching chunks",
   "msptmap.analysis.detail.hint": "Select a chunk to inspect it",
   "msptmap.analysis.detail.missing": "Chunk [%s,%s] was not included in this scan",
   "msptmap.analysis.menu.show": "Show in chunk analysis",

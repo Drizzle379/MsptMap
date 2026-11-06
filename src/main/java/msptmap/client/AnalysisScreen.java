@@ -54,6 +54,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 综合分析界面。窗口沿用 CarpetGUI 的视觉语言：深色半透明内容区、灰色细边框、扁平按钮与顶部标签栏。
@@ -133,6 +134,11 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	private LabelComponent scanTime;
 	/** 状态栏可用宽度，用于判断右侧的时间是否放得下。 */
 	private int contentWidth;
+	/** 坐标表头右侧的搜索框；按备注或坐标过滤列表。 */
+	private @Nullable EditBox searchBox;
+	private @Nullable FlowLayout headerRow;
+	private @Nullable LabelComponent coordLabel;
+	private String searchQuery = "";
 
 	private String dimension = "*";
 	/** true = 按实体数排序，false = 按 mspt 排序；均由大到小。 */
@@ -303,6 +309,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		renameBox = null;
 		renameRow = null;
 		super.init();
+		if (searchBox != null) {
+			addRenderableWidget(searchBox);
+		}
 	}
 
 	//? if >=26.1.2 {
@@ -312,6 +321,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		if (invalid) {
 			return;
 		}
+		positionSearchBox();
 		refreshAfterScan();
 		syncDetail();
 		scrollToTarget();
@@ -324,6 +334,7 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		if (invalid) {
 			return;
 		}
+		positionSearchBox();
 		refreshAfterScan();
 		syncDetail();
 		scrollToTarget();
@@ -458,8 +469,8 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			return;
 		}
 		renameRow = row;
-		renameBox = new EditBox(Minecraft.getInstance().font, component.x() + 2, component.y() - 1,
-				Math.max(80, columns[0] - 4), 13, Component.translatable("msptmap.analysis.rename.narration"));
+		renameBox = new EditBox(Minecraft.getInstance().font, component.x() + 2, component.y(),
+				Math.max(80, columns[0] - 4), 12, Component.translatable("msptmap.analysis.rename.narration"));
 		renameBox.setMaxLength(24);
 		String current = ClientConfig.chunkName(row.dimension(), row.x(), row.z());
 		renameBox.setValue(current == null ? "" : current);
@@ -495,6 +506,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	//? if >=1.21.9 {
 	@Override
 	public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
+		if (searchBox != null) {
+			if (searchBox.isMouseOver(click.x(), click.y())) {
+				searchBox.setFocused(true);
+				return searchBox.mouseClicked(click, doubled);
+			}
+			searchBox.setFocused(false);
+		}
 		if (menuRow != null) {
 			return handleMenuClick(new MouseClick(click.x(), click.y(), click.button()));
 		}
@@ -511,6 +529,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 	@Override
 	public boolean keyPressed(KeyEvent input) {
+		if (searchBox != null && searchBox.isFocused()) {
+			if (input.isEscape()) {
+				searchBox.setFocused(false);
+				return true;
+			}
+			return searchBox.keyPressed(input);
+		}
 		if (renameBox != null) {
 			if (input.isEscape()) {
 				finishRename(false);
@@ -531,6 +556,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 	@Override
 	public boolean charTyped(CharacterEvent input) {
+		if (searchBox != null && searchBox.isFocused()) {
+			return searchBox.charTyped(input);
+		}
 		if (renameBox != null) {
 			return renameBox.charTyped(input);
 		}
@@ -539,6 +567,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	//?} else {
 	/*@Override
 	public boolean mouseClicked(double x, double y, int button) {
+		if (searchBox != null) {
+			if (searchBox.isMouseOver(x, y)) {
+				searchBox.setFocused(true);
+				return searchBox.mouseClicked(x, y, button);
+			}
+			searchBox.setFocused(false);
+		}
 		if (menuRow != null) {
 			return handleMenuClick(new MouseClick(x, y, button));
 		}
@@ -555,6 +590,13 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+		if (searchBox != null && searchBox.isFocused()) {
+			if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+				searchBox.setFocused(false);
+				return true;
+			}
+			return searchBox.keyPressed(keyCode, scanCode, modifiers);
+		}
 		if (renameBox != null) {
 			if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
 				finishRename(false);
@@ -575,6 +617,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 
 	@Override
 	public boolean charTyped(char codePoint, int modifiers) {
+		if (searchBox != null && searchBox.isFocused()) {
+			return searchBox.charTyped(codePoint, modifiers);
+		}
 		if (renameBox != null) {
 			return renameBox.charTyped(codePoint, modifiers);
 		}
@@ -640,11 +685,24 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		FlowLayout header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(13)).gap(COLUMN_GAP);
 		header.padding(Insets.both(2, 0));
 		header.verticalAlignment(VerticalAlignment.CENTER);
+		headerRow = header;
 		sortHeaders.clear();
-		header.child(headerCell("msptmap.analysis.column.x", columns[0], HorizontalAlignment.LEFT));
+		// 坐标列：坐标二字右侧放搜索框；搜索框是原版控件，由 positionSearchBox 定位
+		FlowLayout coordHeader = UIContainers.horizontalFlow(Sizing.fixed(columns[0]), Sizing.fixed(13));
+		coordHeader.verticalAlignment(VerticalAlignment.CENTER);
+		coordLabel = UIComponents.label(Component.translatable("msptmap.analysis.column.x"))
+				.shadow(false).color(Color.ofArgb(TEXT_DIM));
+		coordLabel.verticalTextAlignment(VerticalAlignment.CENTER);
+		coordHeader.child(coordLabel);
+		header.child(coordHeader);
 		header.child(new SortHeader("msptmap.analysis.column.mspt", columns[1], HorizontalAlignment.CENTER, false));
 		header.child(new SortHeader("msptmap.analysis.column.entities_short", columns[2], HorizontalAlignment.CENTER, true));
 		header.child(headerCell("msptmap.analysis.column.level", columns[3], HorizontalAlignment.CENTER));
+		searchBox = new EditBox(Minecraft.getInstance().font, 0, 0, 60, 12,
+				Component.translatable("msptmap.analysis.search"));
+		searchBox.setMaxLength(48);
+		searchBox.setHint(Component.translatable("msptmap.analysis.search"));
+		searchBox.setResponder(this::onSearchChanged);
 		return header;
 	}
 
@@ -763,6 +821,54 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 		}
 	}
 
+	/** 搜索词变化：回到顶部并按新条件重建列表。 */
+	private void onSearchChanged(String text) {
+		if (text.equals(searchQuery)) {
+			return;
+		}
+		searchQuery = text;
+		resetList();
+		if (selected == null || !visibleRows.contains(selected)) {
+			selectFirstRow();
+		}
+	}
+
+	/** 搜索框是原版控件，每帧跟随坐标表头定位。 */
+	private void positionSearchBox() {
+		if (searchBox == null || headerRow == null || coordLabel == null) {
+			return;
+		}
+		int x = coordLabel.x() + coordLabel.width() + 2;
+		int width = Math.max(60, columns[0] - coordLabel.width() - 4);
+		searchBox.setX(x);
+		searchBox.setY(headerRow.y());
+		searchBox.setWidth(width);
+	}
+
+	/** 搜索备注或坐标：1,2、1，2、[1,2] 均可。 */
+	private boolean matchesSearch(Row row) {
+		String query = this.searchQuery.trim();
+		if (query.isEmpty()) {
+			return true;
+		}
+		String name = ClientConfig.chunkName(row.dimension(), row.x(), row.z());
+		if (name != null && name.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) {
+			return true;
+		}
+		String normalized = query.replace('，', ',').replace("[", "").replace("]", "").replace(" ", "");
+		int comma = normalized.indexOf(',');
+		if (comma < 0) {
+			return false;
+		}
+		try {
+			int x = Integer.parseInt(normalized.substring(0, comma));
+			int z = Integer.parseInt(normalized.substring(comma + 1));
+			return row.x() == x && row.z() == z;
+		} catch (NumberFormatException ignored) {
+			return false;
+		}
+	}
+
 	/** 筛选、排序或切换维度后回到顶部并只加载第一批。 */
 	private void resetList() {
 		loaded = LOAD_STEP;
@@ -789,6 +895,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			if (!"*".equals(dimension) && !row.dimension().equals(dimension)) {
 				continue;
 			}
+			if (!matchesSearch(row)) {
+				continue;
+			}
 			visibleRows.add(row);
 		}
 		// 两种排序都由大到小，最重的区块总在顶部
@@ -809,7 +918,9 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 			list.child(new RowComponent(visibleRows.get(i), i));
 		}
 		if (visibleRows.isEmpty()) {
-			list.child(UIComponents.label(Component.translatable("msptmap.analysis.empty"))
+			String key = searchQuery.trim().isEmpty()
+					? "msptmap.analysis.empty" : "msptmap.analysis.search.empty";
+			list.child(UIComponents.label(Component.translatable(key))
 					.color(Color.ofArgb(TEXT_DIM)).shadow(false));
 		}
 		if (listScroll != null) {
@@ -1436,18 +1547,18 @@ public final class AnalysisScreen extends BaseOwoScreen<FlowLayout> {
 	/** 26.3 起输入后端改用 SDL，鼠标按钮编号为 1/2/3；此前为 0/1/2。 */
 	private static boolean isLeftClick(MouseClick click) {
 		//? if >=26.3 {
-		return click.button() == 1;
-		//?} else {
-		/*return click.button() == 0;
-		*///?}
+		/*return click.button() == 1;
+		*///?} else {
+		return click.button() == 0;
+		//?}
 	}
 
 	private static boolean isRightClick(MouseClick click) {
 		//? if >=26.3 {
-		return click.button() == 3;
-		//?} else {
-		/*return click.button() == 1;
-		*///?}
+		/*return click.button() == 3;
+		*///?} else {
+		return click.button() == 1;
+		//?}
 	}
 
 	private static void playClick() {

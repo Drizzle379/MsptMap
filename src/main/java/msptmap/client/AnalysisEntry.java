@@ -13,10 +13,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import org.jetbrains.annotations.Nullable;
 //? if >=26.3 {
-import com.mojang.blaze3d.platform.InputConstants;
-//?} else {
-/*import org.lwjgl.glfw.GLFW;
-*///?}
+/*import com.mojang.blaze3d.platform.InputConstants;
+*///?} else {
+import org.lwjgl.glfw.GLFW;
+//?}
 
 /**
  * 综合分析界面的入口：快捷键（默认不绑定，玩家可在控制设置中自设）与地图按钮共用 {@link #open}。
@@ -31,10 +31,10 @@ public final class AnalysisEntry {
 	public static void register() {
 		int defaultKey =
 				//? if >=26.3 {
-				InputConstants.UNKNOWN.getValue();
-				//?} else {
-				/*GLFW.GLFW_KEY_UNKNOWN;
-				*///?}
+				/*InputConstants.UNKNOWN.getValue();
+				*///?} else {
+				GLFW.GLFW_KEY_UNKNOWN;
+				//?}
 		//? if >=26.1.2 {
 		KeyMapping.Category category = KeyMapping.Category.register(Ids.of(MsptMapMod.MOD_ID, "analysis"));
 		key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.msptmap.analysis", defaultKey, category));
